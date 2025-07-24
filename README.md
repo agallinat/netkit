@@ -56,7 +56,7 @@ browseVignettes("netkit")
 Or online:
 
 - [Introduction to
-  netkit](https://agallinat.github.io/netkit/docs/articles/Introduction.html)
+  netkit](https://agallinat.github.io/netkit/articles/Introduction.html)
 
 ## Contributing
 
