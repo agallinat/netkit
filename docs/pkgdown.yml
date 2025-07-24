@@ -3,4 +3,7 @@ pkgdown: 2.1.3
 pkgdown_sha: ~
 articles:
   introduction: introduction.html
-last_built: 2025-07-24T19:32Z
+last_built: 2025-07-24T19:40Z
+urls:
+  reference: https://agallinat.github.io/netkit/reference
+  article: https://agallinat.github.io/netkit/articles

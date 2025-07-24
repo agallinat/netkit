@@ -100,7 +100,7 @@ minimal friction. All diagnostic plots are built on
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"agallinat/netkit"</span><span class="op">)</span></span></code></pre>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load netkit</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://agallinat.github.io/netkit" class="external-link">netkit</a></span><span class="op">)</span></span></code></pre></div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://agallinat.github.io/netkit">netkit</a></span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="annotate-graphs">1. Annotate Graphs<a class="anchor" aria-label="anchor" href="#annotate-graphs"></a>
@@ -137,7 +137,7 @@ using the <code><a href="../reference/assign_attributes.html">assign_attributes(
 and edges are updated. Warnings are issued when there are unmatched
 entries.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://agallinat.github.io/netkit" class="external-link">netkit</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://agallinat.github.io/netkit">netkit</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Add metadata to an existing graph</span></span>
 <span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/assign_attributes.html">assign_attributes</a></span><span class="op">(</span><span class="va">g</span>, nodes_table <span class="op">=</span> <span class="va">nodes_info</span>, edge_table <span class="op">=</span> <span class="va">edges_info</span><span class="op">)</span></span>
@@ -393,11 +393,11 @@ using a scatter plot with marginal histograms.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $graph</span></span>
-<span><span class="co">#&gt; IGRAPH fa9e426 UN-- 100 99 -- Barabasi graph</span></span>
+<span><span class="co">#&gt; IGRAPH 5ed3cdb UN-- 100 99 -- Barabasi graph</span></span>
 <span><span class="co">#&gt; + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm</span></span>
 <span><span class="co">#&gt; | (g/c), name (v/c), category (v/c), score (v/n), is_hub (v/l),</span></span>
 <span><span class="co">#&gt; | edge_score (e/n)</span></span>
-<span><span class="co">#&gt; + edges from fa9e426 (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from 5ed3cdb (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11</span></span>
 <span><span class="co">#&gt; [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21</span></span>
 <span><span class="co">#&gt; [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31</span></span>
@@ -471,11 +471,11 @@ to allow full plot customization.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $graph</span></span>
-<span><span class="co">#&gt; IGRAPH fa9e426 UN-- 100 99 -- Barabasi graph</span></span>
+<span><span class="co">#&gt; IGRAPH 5ed3cdb UN-- 100 99 -- Barabasi graph</span></span>
 <span><span class="co">#&gt; + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm</span></span>
 <span><span class="co">#&gt; | (g/c), name (v/c), category (v/c), score (v/n), is_bottleneck (v/l),</span></span>
 <span><span class="co">#&gt; | edge_score (e/n)</span></span>
-<span><span class="co">#&gt; + edges from fa9e426 (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from 5ed3cdb (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11</span></span>
 <span><span class="co">#&gt; [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21</span></span>
 <span><span class="co">#&gt; [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31</span></span>
@@ -525,20 +525,20 @@ the resulting plot is fully customizable with <code>ggplot2</code>.</p>
 <span><span class="co">#&gt; 7   R7                Kinless hub             z &gt;= 2.5 &amp; P &gt; 0.75</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $result</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 6</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 98 × 6</span></span></span>
 <span><span class="co">#&gt;    node  module       z     p role  stringsAsFactors</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1          3  2.43   0.449 R2    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2          3  0.152  0.444 R2    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3          3 -<span style="color: #BB0000;">0.608</span>  0.5   R2    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4          2  3.85   0.133 R5    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5          9  3.33   0.484 R6    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6          8  1.57   0.375 R2    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7          8 -<span style="color: #BB0000;">0.671</span>  0     R1    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8          6  3.86   0.227 R5    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9          2  0.040<span style="text-decoration: underline;">7</span> 0     R1    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10         6  0.037<span style="text-decoration: underline;">5</span> 0     R1    FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span></code></pre>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1          7  2.72   0.245 R5    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2          7  0.118  0.444 R2    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3          7 -<span style="color: #BB0000;">0.532</span>  0.5   R2    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4          1  3.60   0.133 R5    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5          8  3.33   0.484 R6    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6          3  1.57   0.375 R2    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7          3 -<span style="color: #BB0000;">0.671</span>  0     R1    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8          4  3.86   0.227 R5    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9          1  0.043<span style="text-decoration: underline;">1</span> 0     R1    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10         4  0.037<span style="text-decoration: underline;">5</span> 0     R1    FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 88 more rows</span></span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="modules">3.6. Modules<a class="anchor" aria-label="anchor" href="#modules"></a>
@@ -583,11 +583,11 @@ function, allowing full customization of the network plot.</p>
 <span><span class="co">#&gt; [1] "louvain"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $graph</span></span>
-<span><span class="co">#&gt; IGRAPH fa9e426 UN-- 100 99 -- Barabasi graph</span></span>
+<span><span class="co">#&gt; IGRAPH 5ed3cdb UN-- 100 99 -- Barabasi graph</span></span>
 <span><span class="co">#&gt; + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm</span></span>
 <span><span class="co">#&gt; | (g/c), name (v/c), category (v/c), score (v/n), module (v/n), color</span></span>
 <span><span class="co">#&gt; | (v/c), label (v/c), edge_score (e/n)</span></span>
-<span><span class="co">#&gt; + edges from fa9e426 (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from 5ed3cdb (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11</span></span>
 <span><span class="co">#&gt; [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21</span></span>
 <span><span class="co">#&gt; [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31</span></span>
@@ -632,35 +632,35 @@ proteins.</p>
 <span></span>
 <span><span class="fu"><a href="../reference/network_diffusion.html">network_diffusion</a></span><span class="op">(</span><span class="va">g</span>, seed_nodes <span class="op">=</span> <span class="va">seed_nodes</span>, method <span class="op">=</span> <span class="st">"laplacian"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 2</span></span></span>
-<span><span class="co">#&gt;    node  score</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 44    0.858</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 64    0.851</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 17    0.678</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 23    0.627</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 30    0.531</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 36    0.208</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 19    0.153</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 33    0.138</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 55    0.138</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 75    0.138</span></span>
+<span><span class="co">#&gt;    node   score</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 44    0.865 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 79    0.865 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 87    0.850 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 25    0.677 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 41    0.647 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 26    0.224 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 86    0.214 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8     0.093<span style="text-decoration: underline;">9</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 6     0.086<span style="text-decoration: underline;">7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 4     0.051<span style="text-decoration: underline;">0</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/network_diffusion_with_pvalues.html">network_diffusion_with_pvalues</a></span><span class="op">(</span><span class="va">g</span>, seed_nodes <span class="op">=</span> <span class="va">seed_nodes</span>, method <span class="op">=</span> <span class="st">"laplacian"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Running 1000 permutations with 5 random seed nodes each (parallelized)...</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 4</span></span></span>
-<span><span class="co">#&gt;    node  score p_empirical stringsAsFactors</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 44    0.858    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 64    0.851    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 17    0.678    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 23    0.627    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 30    0.531    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 36    0.208    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 19    0.153    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 33    0.138    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 55    0.138    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 75    0.138    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt;    node   score p_empirical stringsAsFactors</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span>           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 44    0.865     0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 79    0.865     0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 87    0.850     0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 25    0.677     0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 41    0.647     0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 26    0.224     0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 86    0.214     0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 6     0.086<span style="text-decoration: underline;">7</span>    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 12    0.042<span style="text-decoration: underline;">3</span>    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 7     0.022<span style="text-decoration: underline;">5</span>    0.000<span style="text-decoration: underline;">999</span> FALSE           </span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -705,16 +705,16 @@ ideal for exploratory and applied analyses.</p>
 <span></span>
 <span><span class="fu"><a href="../reference/greedy_seed_selection.html">greedy_seed_selection</a></span><span class="op">(</span><span class="va">g</span>, target_nodes <span class="op">=</span> <span class="va">target_nodes</span>, k <span class="op">=</span> <span class="fl">20</span>, method <span class="op">=</span> <span class="st">"laplacian"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $selected_seeds</span></span>
-<span><span class="co">#&gt;  [1] "86" "61" "99" "5"  "6"  "12" "7"  "16" "8"  "11" "31" "40" "42" "49" "51"</span></span>
-<span><span class="co">#&gt; [16] "58" "78" "83" "98" "24"</span></span>
+<span><span class="co">#&gt;  [1] "61" "99" "35" "6"  "4"  "5"  "52" "16" "17" "41" "8"  "2"  "32" "43" "47"</span></span>
+<span><span class="co">#&gt; [16] "48" "56" "59" "64" "87"</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $final_target_score</span></span>
-<span><span class="co">#&gt; [1] 1.038675</span></span>
+<span><span class="co">#&gt; [1] 0.9790991</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $scores_at_each_step</span></span>
-<span><span class="co">#&gt;  [1] 0.2144644 0.3864561 0.5584479 0.6541527 0.7451539 0.8200176 0.8436105</span></span>
-<span><span class="co">#&gt;  [8] 0.8672034 0.8862057 0.9000958 0.9139859 0.9278760 0.9417661 0.9556562</span></span>
-<span><span class="co">#&gt; [15] 0.9695462 0.9834363 0.9973264 1.0112165 1.0251066 1.0386749</span></span>
+<span><span class="co">#&gt;  [1] 0.1719920 0.3439840 0.5033102 0.6487288 0.6996954 0.7497938 0.7956516</span></span>
+<span><span class="co">#&gt;  [8] 0.8333527 0.8639716 0.8867701 0.9057855 0.9148409 0.9228732 0.9309054</span></span>
+<span><span class="co">#&gt; [15] 0.9389377 0.9469700 0.9550023 0.9630345 0.9710668 0.9790991</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $plot</span></span></code></pre></div>
 <p><img src="introduction_files/figure-html/reverse-diffusion-1.png" width="576"></p>
