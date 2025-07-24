@@ -1,0 +1,41 @@
+Package: netkit
+Type: Package
+Title: Network Analysis Toolkit for Biological Graphs
+Version: 0.0.1
+Author: Dr. Alex Gallinat [aut, cre]
+Maintainer: Alex Gallinat, PhD <alex.gaoc@gmail.com>
+Description: A set of tools for analyzing and visualizing biological and functional networks.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends: R (>= 4.1.0)
+Imports:
+    igraph,
+    ineq,
+    dplyr,
+    expm,
+    ggplot2,
+    ggExtra,
+    ggrepel,
+    graphics,
+    grDevices,
+    tibble,
+    scales,
+    Matrix,
+    utils,
+    progress,
+    pracma,
+    rlang,
+    future,
+    future.apply,
+    RSpectra
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+URL: https://agallinat.github.io/netkit
+
