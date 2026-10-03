@@ -1,6 +1,13 @@
-# netkit 0.0.1
+# netkit 0.0.1.9000 (development version)
 
-First release.
+Not yet released. The fourth version component (`.9000`) marks this as a
+development build; drop it, and update this heading to the release version, at
+submission time.
+
+Note the heading must keep a parseable version number. R's NEWS.md parser needs
+one, and a bare `# netkit (development version)` heading makes
+`R CMD check --as-cran` report `Problems with news in 'NEWS.md': No news entries
+found.`
 
 netkit provides a toolkit for analyzing and visualizing networks, built on
 [igraph](https://igraph.org) and returning ggplot2 objects rather than drawing
