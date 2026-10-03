@@ -5,5 +5,9 @@
 *.tar.gz
 *.Rcheck/
 doc/
-docs/
 dev/
+
+# docs/ is NOT ignored: GitHub Pages publishes the pkgdown site from it, so those
+# files have to be tracked. The entry used to be here, which was contradictory
+# (the files were tracked anyway) and silently hid every new page pkgdown
+# generated -- including docs/news/, which the navbar links to.
