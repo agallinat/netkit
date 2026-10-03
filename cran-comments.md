@@ -27,15 +27,29 @@ This is not a property of the package. R queries an external time service for
 that check, and the service it uses was returning HTTP 502 at the time of
 checking. It does not appear when the service is reachable.
 
+While the package carries a development version, the incoming-feasibility note
+also reports:
+
+```
+  Version contains large components (0.0.1.9000)
+```
+
+That is inherent to the `.9000` development-version convention and disappears
+once `DESCRIPTION` is set to a release version, which is the state this file
+describes. Drop the `.9000` suffix before submitting.
+
 ## Test environments
 
 * local macOS (aarch64-apple-darwin20), R 4.4.2
+* GitHub Actions (`.github/workflows/R-CMD-check.yaml`), all passing:
+  * ubuntu-latest, R devel
+  * ubuntu-latest, R release
+  * ubuntu-latest, R oldrel-1
+  * macos-latest, R release
+  * windows-latest, R release
 
-<!-- TODO before submitting: add the platforms actually checked. The GitHub
-     Actions workflow in .github/workflows/R-CMD-check.yaml covers
-     ubuntu-latest (R devel, release, oldrel-1), macOS-latest (release) and
-     windows-latest (release), but list a platform here only once a run has
-     genuinely passed on it. -->
+The GitHub Actions jobs run `rcmdcheck::rcmdcheck()` with `--as-cran` and
+`error_on = "warning"`, so they fail on a warning as well as an error.
 
 ## Downstream dependencies
 
