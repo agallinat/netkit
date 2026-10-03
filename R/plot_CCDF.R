@@ -143,7 +143,9 @@ plot_CCDF <- function(graph,
     )+
     labs(x = "Degree, k", y = "Pr(K > k)", color = "") +
     scale_color_manual(values = colors_vec) +
-    coord_cartesian(ylim = c(min(result$ccdf), NA),
+    # An edgeless graph yields no positive-degree classes, so `result` is empty and
+    # min() would be Inf (with a warning). Leave the limit to ggplot2 in that case.
+    coord_cartesian(ylim = c(if (nrow(result) > 0) min(result$ccdf) else NA, NA),
                     xlim = c(1, NA)) +
     theme_minimal(base_size = label.size)
 
@@ -187,6 +189,16 @@ compute_ccdf <- function(graph,
   }
 
   deg <- igraph::degree(graph, mode = mode)
+
+  # A graph with no vertices, or no edges, has no positive-degree classes and so
+  # no degree distribution to describe. Returning the empty table rather than
+  # erroring matches summarize_graph_metrics(), which reports NaN on degenerate
+  # input instead of refusing it. max() of an empty vector would be -Inf and make
+  # the factor levels invalid, so the length guard comes first.
+  if (length(deg) == 0 || max(deg) == 0) {
+    return(data.frame(degree = integer(0), ccdf = numeric(0)))
+  }
+
   deg_tab <- table(factor(deg, levels = 0:max(deg)))
   deg_vals <- as.integer(names(deg_tab))
   ccdf_vals <- rev(cumsum(rev(as.numeric(deg_tab)))) / sum(deg_tab)

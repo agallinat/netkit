@@ -23,7 +23,9 @@
 #'
 #' @return A list with the following components:
 #' \describe{
-#'   \item{\code{module_table}}{A tibble mapping each node to its module assignment.}
+#'   \item{\code{result}}{A tibble mapping each node to its module assignment.}
+#'   \item{\code{module_table}}{Deprecated alias for \code{result}, kept for
+#'     backward compatibility.}
 #'   \item{\code{n_modules}}{The number of modules that meet the \code{min_size} threshold.}
 #'   \item{\code{subgraphs}}{A named list of subgraphs for each module (only if \code{return_subgraphs = TRUE}).}
 #'   \item{\code{method}}{The community detection method used.}
@@ -182,6 +184,9 @@ find_modules <- function(graph,
   }
 
   return(list(
+    # `result` is the package-wide name for the node-level table; `module_table`
+    # is kept as an alias for backward compatibility and is deprecated.
+    result = as_tibble(module_df),
     module_table = as_tibble(module_df),
     n_modules = length(valid_modules),
     subgraphs = if (return_subgraphs) subgraph_list else NULL,

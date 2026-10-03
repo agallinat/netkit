@@ -17,12 +17,16 @@
 #' @param hub_z Numeric. Threshold for defining hubs in terms of within-module z-score. Default is `2.5`.
 #' @param label_region Optional character vector of role labels (e.g., `c("R4", "R7")`) indicating which role regions should have their nodes labeled in the plot. Default is `NULL`.
 #' @param label.size Numeric. Base font size for plot text. Default is `12`.
+#' @param thresholds Optional named numeric vector overriding one or more of the
+#'   participation-coefficient boundaries between roles. Names must be drawn from
+#'   `R1_R2`, `R2_R3`, `R3_R4`, `R5_R6` and `R6_R7`; unnamed entries, unknown
+#'   names, values outside `[0, 1]` and non-monotonic sets are rejected. `NULL`
+#'   (default) uses the published values -- see Details.
 #'
-#' @return A list with three elements:
+#' @return A list with five elements:
 #' \describe{
 #'   \item{`plot`}{A `ggplot2` object, or `NULL` when `plot = FALSE`. The element is
 #'     always present, so the return shape does not depend on the arguments.}
-#'   \item{`roles_definitions`}{A data frame describing the seven role types and their conditions.}
 #'   \item{`result`}{A data frame with node-level information: node name, module,
 #'     z-score, participation coefficient, and assigned role. It has one row per
 #'     graph vertex. The exception is `cluster.method = "spinglass"`, which can only
@@ -30,6 +34,13 @@
 #'     outside it have no module and are absent, which raises a warning. `z`, `p` and
 #'     `role` are `NA` for any vertex whose module, or whose neighbours' modules, are
 #'     unknown.}
+#'   \item{`graph`}{The input graph with `module`, `role_z`, `role_p` and `role`
+#'     attached as vertex attributes, so that the classification can be passed
+#'     straight to [plot_Net()] or [robustness_analysis()].}
+#'   \item{`method`}{A human-readable description of the community detection used
+#'     and the thresholds actually applied.}
+#'   \item{`roles_definitions`}{A data frame describing the seven role types and
+#'     their conditions, generated from the same thresholds the classifier used.}
 #' }
 #'
 #' @details
@@ -40,17 +51,24 @@
 #' memberships of its neighbours, so dropping a neighbour's module silently distorts
 #' the coefficient of the node that remains.
 #'
-#' The node roles are defined as:
+#' The node roles are defined as follows, where `hub_z` defaults to 2.5 and the
+#' participation-coefficient boundaries are those published in Guimera & Amaral
+#' (2005):
 #'
 #' \tabular{ll}{
 #' R1 \tab Ultra-peripheral (non-hub): \eqn{z < 2.5, P <= 0.05} \cr
-#' R2 \tab Peripheral (non-hub): \eqn{z < 2.5, 0.05 < P <= 0.6} \cr
-#' R3 \tab Non-hub connector: \eqn{z < 2.5, 0.6 < P <= 0.8} \cr
-#' R4 \tab Non-hub kinless: \eqn{z < 2.5, P > 0.8} \cr
-#' R5 \tab Provincial hub: \eqn{z >= 2.5, P <= 0.3} \cr
-#' R6 \tab Connector hub: \eqn{z >= 2.5, 0.3 < P <= 0.75} \cr
+#' R2 \tab Peripheral (non-hub): \eqn{z < 2.5, 0.05 < P <= 0.62} \cr
+#' R3 \tab Non-hub connector: \eqn{z < 2.5, 0.62 < P <= 0.80} \cr
+#' R4 \tab Non-hub kinless: \eqn{z < 2.5, P > 0.80} \cr
+#' R5 \tab Provincial hub: \eqn{z >= 2.5, P <= 0.30} \cr
+#' R6 \tab Connector hub: \eqn{z >= 2.5, 0.30 < P <= 0.75} \cr
 #' R7 \tab Kinless hub: \eqn{z >= 2.5, P > 0.75} \cr
 #' }
+#'
+#' Those five numbers are held in one place internally and are used by the
+#' classifier, by the `roles_definitions` table and by the shaded bands of the
+#' diagnostic plot alike, so the three cannot disagree. Override them with
+#' `thresholds` if a different convention is wanted.
 #'
 #' @references
 #' Guimerà, R., & Amaral, L. A. N. (2005). Functional cartography of complex metabolic networks. *Nature*, 433(7028), 895–900. \doi{10.1038/nature03288}
@@ -79,10 +97,14 @@ calculate_roles <- function(graph,
                             highlight_roles = TRUE,
                             hub_z = 2.5,
                             label_region = NULL,
-                            label.size = 12) {
+                            label.size = 12,
+                            thresholds = NULL) {
 
   # Results are keyed by vertex name throughout, so names must exist.
   graph <- as_netkit_graph(graph, backfill_names = TRUE)
+
+  # Single source of truth for the role boundaries; see R/utils-roles.R.
+  th <- as_role_thresholds(thresholds)
 
   # Extract membership vector
   if (is.null(communities)) {
@@ -118,13 +140,13 @@ calculate_roles <- function(graph,
                                           "Connector hub",
                                           "Kinless hub"),
                           Condition = c(
-                            paste0("z < ", hub_z, " & P <= 0.05"),
-                            paste0("z < ", hub_z, " & 0.05 < P & P <= 0.6"),
-                            paste0("z < ", hub_z, " & 0.6 < P & P <= 0.8"),
-                            paste0("z < ", hub_z, " & P > 0.8"),
-                            paste0("z >= ", hub_z, " & P <= 0.25"),
-                            paste0("z >= ", hub_z, " & 0.25 < P & P <= 0.75"),
-                            paste0("z >= ", hub_z, " & P > 0.75")
+                            paste0("z < ", hub_z, " & P <= ", th[["R1_R2"]]),
+                            paste0("z < ", hub_z, " & ", th[["R1_R2"]], " < P & P <= ", th[["R2_R3"]]),
+                            paste0("z < ", hub_z, " & ", th[["R2_R3"]], " < P & P <= ", th[["R3_R4"]]),
+                            paste0("z < ", hub_z, " & P > ", th[["R3_R4"]]),
+                            paste0("z >= ", hub_z, " & P <= ", th[["R5_R6"]]),
+                            paste0("z >= ", hub_z, " & ", th[["R5_R6"]], " < P & P <= ", th[["R6_R7"]]),
+                            paste0("z >= ", hub_z, " & P > ", th[["R6_R7"]])
                           ))
 
 
@@ -211,13 +233,13 @@ calculate_roles <- function(graph,
     if (is.na(z) || is.na(p)) {
       roles_df$role[i] <- NA
     } else if (z < hub_z) {
-      if (p <= 0.05) roles_df$role[i] <- "R1"
-      else if (p <= 0.60) roles_df$role[i] <- "R2"
-      else if (p <= 0.80) roles_df$role[i] <- "R3"
+      if (p <= th[["R1_R2"]]) roles_df$role[i] <- "R1"
+      else if (p <= th[["R2_R3"]]) roles_df$role[i] <- "R2"
+      else if (p <= th[["R3_R4"]]) roles_df$role[i] <- "R3"
       else roles_df$role[i] <- "R4"
     } else {
-      if (p <= 0.30) roles_df$role[i] <- "R5"
-      else if (p <= 0.75) roles_df$role[i] <- "R6"
+      if (p <= th[["R5_R6"]]) roles_df$role[i] <- "R5"
+      else if (p <= th[["R6_R7"]]) roles_df$role[i] <- "R6"
       else roles_df$role[i] <- "R7"
     }
   }
@@ -229,32 +251,34 @@ calculate_roles <- function(graph,
 
     if (highlight_roles) {
 
+      # Band edges come from the same `th` the classifier uses, so a shaded region
+      # can no longer disagree with the classification it illustrates.
       p <- p + annotate("rect",
-                          xmin = -Inf, xmax = 0.05,
+                          xmin = -Inf, xmax = th[["R1_R2"]],
                           ymin = -Inf, ymax = hub_z,
                           alpha = 0.2, fill = "black") +
         annotate("rect",
-                 xmin = 0.05, xmax = 0.6,
+                 xmin = th[["R1_R2"]], xmax = th[["R2_R3"]],
                  ymin = -Inf, ymax = hub_z,
                  alpha = 0.2, fill = "red") +
         annotate("rect",
-                 xmin = 0.6, xmax = 0.8,
+                 xmin = th[["R2_R3"]], xmax = th[["R3_R4"]],
                  ymin = -Inf, ymax = hub_z,
                  alpha = 0.2, fill = "green") +
         annotate("rect",
-                 xmin = 0.8, xmax = Inf,
+                 xmin = th[["R3_R4"]], xmax = Inf,
                  ymin = -Inf, ymax = hub_z,
                  alpha = 0.2, fill = "darkblue") +
         annotate("rect",
-                 xmin = -Inf, xmax = 0.25,
+                 xmin = -Inf, xmax = th[["R5_R6"]],
                  ymin = hub_z, ymax = Inf,
                  alpha = 0.2, fill = "yellow") +
         annotate("rect",
-                 xmin = 0.25, xmax = 0.75,
+                 xmin = th[["R5_R6"]], xmax = th[["R6_R7"]],
                  ymin = hub_z, ymax = Inf,
                  alpha = 0.2, fill = "brown") +
         annotate("rect",
-                 xmin = 0.75, xmax = Inf,
+                 xmin = th[["R6_R7"]], xmax = Inf,
                  ymin = hub_z, ymax = Inf,
                  alpha = 0.2, fill = "gray")
     }
@@ -290,11 +314,36 @@ calculate_roles <- function(graph,
 
   }
 
+  # Annotate the graph so the classification chains into plot_Net(),
+  # robustness_analysis() and the rest, as every other analysis function does.
+  # match() keys by name and leaves NA for any vertex absent from roles_df, which
+  # is the spinglass/largest-component case warned about above.
+  vmap <- match(igraph::V(graph)$name, roles_df$node)
+  igraph::vertex_attr(graph, "module") <- roles_df$module[vmap]
+  igraph::vertex_attr(graph, "role_z") <- roles_df$z[vmap]
+  igraph::vertex_attr(graph, "role_p") <- roles_df$p[vmap]
+  igraph::vertex_attr(graph, "role")   <- roles_df$role[vmap]
+
   # `plot` is always present, and NULL when plot = FALSE, so that the return
   # shape does not depend on the arguments.
   return(list(
     plot = p,
-    roles_definitions = roles_def,
-    result = roles_df
+    result = roles_df,
+    graph = graph,
+    method = paste0(
+      "Guimera-Amaral roles from ",
+      if (is.null(communities)) {
+        paste0("modules detected by '", cluster.method, "'")
+      } else {
+        "a caller-supplied community structure"
+      },
+      "; hub z-score threshold = ", hub_z,
+      "; participation boundaries R1/R2 = ", th[["R1_R2"]],
+      ", R2/R3 = ", th[["R2_R3"]],
+      ", R3/R4 = ", th[["R3_R4"]],
+      ", R5/R6 = ", th[["R5_R6"]],
+      ", R6/R7 = ", th[["R6_R7"]]
+    ),
+    roles_definitions = roles_def
   ))
 }

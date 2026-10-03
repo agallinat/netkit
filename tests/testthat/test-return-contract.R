@@ -5,14 +5,48 @@
 g <- test_graph()
 
 test_that("node-classification functions return the full plot/result/graph/method shape", {
-  for (res in list(find_hubs(g, plot = FALSE), find_bottlenecks(g, plot = FALSE))) {
+  # calculate_roles() is included here deliberately: it used to return
+  # plot/roles_definitions/result only, with no `graph` and no `method`, and
+  # nothing in this file noticed. Listing it by name is what stops that
+  # recurring.
+  classifiers <- list(
+    find_hubs        = find_hubs(g, plot = FALSE),
+    find_bottlenecks = find_bottlenecks(g, plot = FALSE),
+    calculate_roles  = calculate_roles(g, cluster.method = "louvain", plot = FALSE)
+  )
+  for (nm in names(classifiers)) {
+    res <- classifiers[[nm]]
     expect_type(res, "list")
-    expect_true(all(c("plot", "result", "graph", "method") %in% names(res)))
+    expect_true(all(c("plot", "result", "graph", "method") %in% names(res)), info = nm)
     expect_s3_class(res$result, "data.frame")
     expect_s3_class(res$graph, "igraph")
     expect_type(res$method, "character")
     expect_length(res$method, 1)
   }
+})
+
+test_that("every analysis function exposes a `result` table", {
+  # `result` is the package-wide name for the node- or step-level table.
+  # find_modules() and robustness_analysis() historically used `module_table`
+  # and `summary` instead; both now also carry `result`, so the vocabulary has
+  # no exceptions left to remember.
+  results <- list(
+    find_hubs           = find_hubs(g, plot = FALSE),
+    find_bottlenecks    = find_bottlenecks(g, plot = FALSE),
+    calculate_roles     = calculate_roles(g, cluster.method = "louvain", plot = FALSE),
+    find_modules        = find_modules(g, plot = FALSE),
+    robustness_analysis = robustness_analysis(g, removal_strategy = "degree",
+                                              steps = 5, plot = FALSE)
+  )
+  for (nm in names(results)) {
+    expect_true("result" %in% names(results[[nm]]), info = nm)
+    expect_s3_class(results[[nm]]$result, "data.frame")
+  }
+
+  # The deprecated aliases still point at the same object.
+  expect_identical(results$find_modules$result, results$find_modules$module_table)
+  expect_identical(results$robustness_analysis$result,
+                   results$robustness_analysis$summary)
 })
 
 test_that("`plot = FALSE` suppresses the plot object", {

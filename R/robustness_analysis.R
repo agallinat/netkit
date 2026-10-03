@@ -24,8 +24,11 @@
 #'     metrics as nodes are progressively removed, or \code{NULL} when
 #'     \code{plot = FALSE}. The element is always present, so the return shape does
 #'     not depend on the arguments.}
+#'   \item{\code{result}}{A summarized data frame (mean and SD) if \code{n_reps > 1},
+#'     otherwise raw results.}
 #'   \item{\code{all_results}}{A data frame with simulation results across all steps and repetitions.}
-#'   \item{\code{summary}}{A summarized data frame (mean and SD) if \code{n_reps > 1}, otherwise raw results.}
+#'   \item{\code{summary}}{Deprecated alias for \code{result}, kept for backward
+#'     compatibility.}
 #'   \item{\code{auc}}{Named list of AUC (area under the curve) values for each selected metric.}
 #' }
 #'
@@ -99,7 +102,12 @@ robustness_analysis <- function(graph,
   }
 
   metrics <- match.arg(metrics, several.ok = TRUE)
-  set.seed(seed)
+
+  # Only seed when asked. This used to be an unconditional set.seed(seed), which
+  # with the documented default seed = NULL runs set.seed(NULL) and re-seeds the
+  # generator from the clock -- so `set.seed(42); robustness_analysis(g)` was not
+  # reproducible, and the caller's RNG stream was silently destroyed along with it.
+  if (!is.null(seed)) set.seed(seed)
 
   n <- vcount(graph) - 1
   step_size <- ceiling(n / steps)
@@ -253,6 +261,9 @@ robustness_analysis <- function(graph,
   # shape does not depend on the arguments.
   return(list(
     plot = p,
+    # `result` is the package-wide name for the node/step-level table; `summary`
+    # is kept as an alias for backward compatibility and is deprecated.
+    result = summary,
     all_results = all_results,
     summary = summary,
     auc = auc_list

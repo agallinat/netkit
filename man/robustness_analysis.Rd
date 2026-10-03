@@ -42,8 +42,11 @@ A list with:
 metrics as nodes are progressively removed, or \code{NULL} when
 \code{plot = FALSE}. The element is always present, so the return shape does
 not depend on the arguments.}
+\item{\code{result}}{A summarized data frame (mean and SD) if \code{n_reps > 1},
+otherwise raw results.}
 \item{\code{all_results}}{A data frame with simulation results across all steps and repetitions.}
-\item{\code{summary}}{A summarized data frame (mean and SD) if \code{n_reps > 1}, otherwise raw results.}
+\item{\code{summary}}{Deprecated alias for \code{result}, kept for backward
+compatibility.}
 \item{\code{auc}}{Named list of AUC (area under the curve) values for each selected metric.}
 }
 }

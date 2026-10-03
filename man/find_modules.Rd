@@ -43,7 +43,9 @@ for each detected module.}
 \value{
 A list with the following components:
 \describe{
-\item{\code{module_table}}{A tibble mapping each node to its module assignment.}
+\item{\code{result}}{A tibble mapping each node to its module assignment.}
+\item{\code{module_table}}{Deprecated alias for \code{result}, kept for
+backward compatibility.}
 \item{\code{n_modules}}{The number of modules that meet the \code{min_size} threshold.}
 \item{\code{subgraphs}}{A named list of subgraphs for each module (only if \code{return_subgraphs = TRUE}).}
 \item{\code{method}}{The community detection method used.}

@@ -17,9 +17,15 @@
 #'   \item{\code{plot}}{A \code{ggplot2} object overlaying both CCDF curves.}
 #'   \item{\code{global_topology}}{A data frame with one row per input graph, as
 #'     produced by [summarize_graph_metrics()].}
-#'   \item{\code{similarity}}{A one-row data frame with \code{jaccard_similarity}
-#'     (Jaccard index of the edge sets), \code{node_overlap} (fraction of shared
-#'     nodes) and \code{edge_overlap} (fraction of shared edges).}
+#'   \item{\code{similarity}}{A one-row data frame with three distinct set
+#'     statistics: \code{jaccard_similarity}, the Jaccard index of the edge sets
+#'     (shared edges over their union); \code{node_overlap}, the Jaccard index of
+#'     the vertex sets; and \code{edge_overlap}, the overlap coefficient of the
+#'     edge sets (shared edges over the \emph{smaller} of the two edge sets).
+#'     The last is the informative companion to Jaccard when the two networks
+#'     differ greatly in size -- a small network nested inside a large one scores
+#'     near 1 on overlap and near 0 on Jaccard. Each is \code{NaN} where its
+#'     denominator is empty.}
 #'   \item{\code{ks_test}}{The Kolmogorov-Smirnov test comparing the two degree
 #'     distributions, as returned by [stats::ks.test()].}
 #' }
@@ -59,7 +65,8 @@ compare_networks <- function(graph1, graph2,
     degree_g2 <- igraph::degree(graph2)
     graph2 <- induced_subgraph(graph2, vids = which(degree_g2 > 0))
     if (0 %in% c(degree_g1, degree_g2)) {
-      cat("Single nodes excluded from the analysis.\nSet 'remove_singles' to FALSE to include all nodes.\n")
+      message("Single nodes excluded from the analysis. ",
+              "Set 'remove_singles' to FALSE to include all nodes.")
     }
   }
 
@@ -82,19 +89,32 @@ compare_networks <- function(graph1, graph2,
 
   edge_set1 <- apply(igraph::as_edgelist(graph1), 1, function(x) paste(sort(x), collapse = "|"))
   edge_set2 <- apply(igraph::as_edgelist(graph2), 1, function(x) paste(sort(x), collapse = "|"))
-  edge_overlap <- length(intersect(edge_set1, edge_set2)) / length(union(edge_set1, edge_set2))
-  jaccard_sim <- length(intersect(edge_set1, edge_set2)) / length(union(edge_set1, edge_set2))
+  shared_edges <- length(intersect(edge_set1, edge_set2))
+
+  # Jaccard and the overlap coefficient answer different questions, and
+  # `edge_overlap` used to be a duplicate of `jaccard_similarity` -- the identical
+  # expression under a second name. Dividing by the smaller edge set instead makes
+  # it the overlap (Szymkiewicz-Simpson) coefficient, which is the informative
+  # companion when the two networks differ greatly in size: a small curated
+  # network nested inside a large screen scores near 1 here and near 0 on Jaccard.
+  union_edges <- length(union(edge_set1, edge_set2))
+  min_edges <- min(length(unique(edge_set1)), length(unique(edge_set2)))
+
+  jaccard_sim <- if (union_edges == 0) NaN else shared_edges / union_edges
+  edge_overlap <- if (min_edges == 0) NaN else shared_edges / min_edges
 
   similarity <- data.frame(jaccard_similarity = jaccard_sim,
                            node_overlap = node_overlap,
                            edge_overlap = edge_overlap)
 
-  # Compute ccdfs
+  # Compute ccdfs. rep() rather than a scalar: compute_ccdf() returns zero rows
+  # for an edgeless graph, and recycling a length-1 value into a zero-row frame
+  # is an error ("replacement has 1 row, data has 0").
   ccdf1 <- compute_ccdf(graph1)
-  ccdf1$graph <- "Graph 1"
+  ccdf1$graph <- rep("Graph 1", nrow(ccdf1))
 
   ccdf2 <- compute_ccdf(graph2)
-  ccdf2$graph <- "Graph 2"
+  ccdf2$graph <- rep("Graph 2", nrow(ccdf2))
 
   ccdf_combined <- rbind(ccdf1, ccdf2)
 

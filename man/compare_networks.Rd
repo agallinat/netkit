@@ -35,9 +35,15 @@ A list with:
 \item{\code{plot}}{A \code{ggplot2} object overlaying both CCDF curves.}
 \item{\code{global_topology}}{A data frame with one row per input graph, as
 produced by \code{\link[=summarize_graph_metrics]{summarize_graph_metrics()}}.}
-\item{\code{similarity}}{A one-row data frame with \code{jaccard_similarity}
-(Jaccard index of the edge sets), \code{node_overlap} (fraction of shared
-nodes) and \code{edge_overlap} (fraction of shared edges).}
+\item{\code{similarity}}{A one-row data frame with three distinct set
+statistics: \code{jaccard_similarity}, the Jaccard index of the edge sets
+(shared edges over their union); \code{node_overlap}, the Jaccard index of
+the vertex sets; and \code{edge_overlap}, the overlap coefficient of the
+edge sets (shared edges over the \emph{smaller} of the two edge sets).
+The last is the informative companion to Jaccard when the two networks
+differ greatly in size -- a small network nested inside a large one scores
+near 1 on overlap and near 0 on Jaccard. Each is \code{NaN} where its
+denominator is empty.}
 \item{\code{ks_test}}{The Kolmogorov-Smirnov test comparing the two degree
 distributions, as returned by \code{\link[stats:ks.test]{stats::ks.test()}}.}
 }
