@@ -27,7 +27,7 @@
 #' plot_CCDF(g, PL_exponents = c(2, 2.5, 3))
 #'
 #' @importFrom igraph is_igraph degree induced_subgraph
-#' @importFrom ggplot2 ggplot aes geom_line aes_string scale_color_manual labs coord_cartesian theme_minimal scale_y_log10
+#' @importFrom ggplot2 ggplot aes geom_line scale_color_manual labs coord_cartesian theme_minimal scale_y_log10 scale_x_continuous
 #' @importFrom scales trans_breaks trans_format math_format label_math hue_pal
 #' @importFrom stats setNames
 #' @importFrom graphics par
@@ -128,7 +128,10 @@ plot_CCDF <- function(graph,
     for (gamma in PL_exponents) {
       col_name <- paste0("PL", gamma)
       label <- paste0("gamma = ", gamma)
-      p <- p + geom_line(aes_string(y = col_name, color = shQuote(label)),
+      # `!!` forces col_name and label at aes() construction time. Without it each
+      # layer would capture the loop variables by reference and every reference
+      # line would end up using the final exponent.
+      p <- p + geom_line(aes(y = !!sym(col_name), color = !!label),
                          linetype = "dashed", linewidth = 0.5)
     }
   }
@@ -138,7 +141,7 @@ plot_CCDF <- function(graph,
     scale_y_log10(breaks = trans_breaks("log10", function(x) 10^floor(x)),
                   labels = trans_format("log10", math_format(10^.x))) +
     scale_x_continuous(
-      trans = "log2"
+      transform = "log2"
     )+
     labs(x = "Degree, k", y = "Pr(K > k)", color = "") +
     scale_color_manual(values = colors_vec) +

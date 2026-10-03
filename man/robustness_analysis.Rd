@@ -52,35 +52,22 @@ evaluates how the structure degrades using selected robustness metrics.
 Useful for assessing the vulnerability or resilience of a graph.
 }
 \details{
-This function builds on classic approaches in network science for evaluating structural robustness
-(e.g., Albert, Jeong, & Barabási, Nature 2000) by simulating progressive node removal and quantifying
-the degradation of key topological features.
+This function builds on classic approaches in network science for evaluating structural robustness,
+simulating progressive node removal and quantifying the degradation of key topological features.
 
 For deterministic strategies (\code{"degree"}, \code{"betweenness"}, or custom attributes),
 nodes are removed in a fixed priority order. For the \code{"random"} strategy, the process is
 repeated \code{n_reps} times, and the results are aggregated.
 
-The function uses:
+The available metrics are:
 \itemize{
-\item \strong{Largest Connected Component (LCC)}: Size of the largest remaining component.
-\item \strong{Global Efficiency}: Average inverse shortest path length among all pairs.
-\item \strong{Number of Components}: Total number of disconnected components.
+\item \strong{Largest Connected Component}: size of the largest remaining component (\code{lcc_size}).
+\item \strong{Global Efficiency}: average inverse shortest path length among all pairs (\code{efficiency}).
+\item \strong{Number of Components}: total number of disconnected components (\code{n_components}).
 }
 
 Additionally, Area Under the Curve (AUC) is calculated for each metric, providing a scalar summary
 of robustness. A higher AUC indicates greater resilience (i.e., slower degradation).
-
-The implementation is inspired by principles described in:
-Albert R, Jeong H, Barabási AL. \emph{Error and attack tolerance of complex networks}. Nature. 2000;406:378–382.
-(\doi{10.1038/35019019})
-
-The function uses:
-\itemize{
-\item Size of the largest connected component (\code{lcc_size})
-\item Global efficiency (average inverse shortest path length)
-\item Number of components (\code{n_components})
-}
-to evaluate how robust the network remains during progressive node failure.
 }
 \examples{
 g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)

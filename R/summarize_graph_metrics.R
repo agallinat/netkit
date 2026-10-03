@@ -26,7 +26,7 @@
 #'   \item Modularity of the community structure (via Louvain algorithm)
 #' }
 #'
-#' @importFrom igraph is_igraph graph_from_data_frame as.undirected degree V E vertex_attr as_adjacency_matrix
+#' @importFrom igraph is_igraph graph_from_data_frame as_undirected degree V E vertex_attr as_adjacency_matrix
 #' @importFrom igraph components induced_subgraph edge_density diameter
 #' @importFrom igraph mean_distance transitivity assortativity_degree
 #' @importFrom igraph betweenness vcount ecount modularity cluster_louvain
@@ -57,7 +57,7 @@ summarize_graph_metrics <- function(graph) {
   directed <- is_directed(graph)
 
   if (directed) {
-    graph <- as.undirected(graph, mode = "collapse")
+    graph <- as_undirected(graph, mode = "collapse")
   }
 
   comps <- components(graph)

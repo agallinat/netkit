@@ -47,7 +47,7 @@
 #' res$n_modules
 #' head(res$module_table)
 #'
-#' @importFrom igraph is_igraph is_directed as.undirected cluster_louvain cluster_walktrap cluster_infomap cluster_edge_betweenness cluster_fluid_communities cluster_fast_greedy cluster_leading_eigen cluster_leiden cluster_spinglass membership induced_subgraph vertex_attr vertex_attr<- layout_with_fr vcount
+#' @importFrom igraph is_igraph is_directed as_undirected cluster_louvain cluster_walktrap cluster_infomap cluster_edge_betweenness cluster_fluid_communities cluster_fast_greedy cluster_leading_eigen cluster_leiden cluster_spinglass membership induced_subgraph vertex_attr vertex_attr<- layout_with_fr vcount
 #' @importFrom dplyr filter %>%
 #' @importFrom tibble as_tibble
 #' @importFrom scales hue_pal
@@ -76,7 +76,7 @@ find_modules <- function(graph,
   # --- Community detection ---
   if (method == "louvain") {
     if (is_directed(graph)) {
-      graph <- as.undirected(graph, mode = "collapse")
+      graph <- as_undirected(graph, mode = "collapse")
       message("Input graph converted to undirected for Louvain clustering.\n")
     }
     comm_result <- cluster_louvain(graph)
@@ -92,21 +92,21 @@ find_modules <- function(graph,
   } else if (method == "fast_greedy") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as.undirected(graph, mode = "collapse")
+      graph <- as_undirected(graph, mode = "collapse")
       message("Input graph converted to undirected for Fast Greedy clustering.")
     }
     comm_result <- cluster_fast_greedy(graph)
   } else if (method == "leading_eigen") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as.undirected(graph, mode = "collapse")
+      graph <- as_undirected(graph, mode = "collapse")
       message("Input graph converted to undirected for Leading Eigen clustering.")
     }
     comm_result <- cluster_leading_eigen(graph)
   } else if (method == "leiden") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as.undirected(graph, mode = "collapse")
+      graph <- as_undirected(graph, mode = "collapse")
       message("Input graph converted to undirected for Leiden clustering.")
     }
     comm_result <- cluster_leiden(graph)

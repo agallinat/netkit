@@ -65,7 +65,7 @@ greedy_seed_selection <- function(graph,
 
   if (inherits(graph, "data.frame")) {
     graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is.igraph(graph)) {
+  } else if (!igraph::is_igraph(graph)) {
     stop("Input 'graph' must be an igraph object or edge list data.frame.")
   }
 
