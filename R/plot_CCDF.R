@@ -6,7 +6,7 @@
 #' @param graph An \code{igraph} object representing the network to analyze or a
 #'   data frame containing a symbolic edge list in the first two columns. Additional
 #'   columns are considered as edge attributes.
-#' @param keep_direction Logical. Only for directed graphs. If \code{TRUE}, CCDF curves are drawn for 'in'-dgree,
+#' @param keep_direction Logical. Only for directed graphs. If \code{TRUE}, CCDF curves are drawn for 'in'-degree,
 #'   'out'-degree, and 'all'-degree distributions. \code{FALSE} to ignore directionality.
 #' @param remove_singles Logical. If \code{TRUE}, nodes with degree 0 are removed from the graph
 #'   before computing the CCDF. Default is \code{FALSE}.

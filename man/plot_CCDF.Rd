@@ -19,7 +19,7 @@ plot_CCDF(
 data frame containing a symbolic edge list in the first two columns. Additional
 columns are considered as edge attributes.}
 
-\item{keep_direction}{Logical. Only for directed graphs. If \code{TRUE}, CCDF curves are drawn for 'in'-dgree,
+\item{keep_direction}{Logical. Only for directed graphs. If \code{TRUE}, CCDF curves are drawn for 'in'-degree,
 'out'-degree, and 'all'-degree distributions. \code{FALSE} to ignore directionality.}
 
 \item{remove_singles}{Logical. If \code{TRUE}, nodes with degree 0 are removed from the graph
