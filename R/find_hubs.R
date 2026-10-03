@@ -23,12 +23,18 @@
 #'
 #' @return A list with the following components:
 #' \describe{
+#'   \item{\code{plot}}{A scatter plot of degree vs. betweenness with hub nodes
+#'     highlighted, or \code{NULL} when \code{plot = FALSE}. The element is always
+#'     present, so the return shape does not depend on the arguments. Note this is a
+#'     \code{ggExtraPlot} (a \pkg{grid} gtable), not a \code{ggplot}: the
+#'     scatterplot is passed through \code{\link[ggExtra]{ggMarginal}()} to add the
+#'     marginal histograms, which assembles it, so it can be printed but not
+#'     extended with \code{+}. To customize it, pass layers through
+#'     \code{gg_extra}; those are added before the assembly step.}
 #'   \item{\code{method}}{Description of the method and thresholds used.}
 #'   \item{\code{result}}{A \code{tibble} with node name, degree, betweenness, transformed metrics, and hub status.}
 #'   \item{\code{graph}}{The original graph with a new vertex attribute \code{is_hub}.}
 #' }
-#' If \code{plot = TRUE}, a scatter plot of degree vs. betweenness is displayed with
-#' hub nodes highlighted.
 #'
 #' @examples
 #' g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)

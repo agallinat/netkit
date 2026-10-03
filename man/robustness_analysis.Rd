@@ -38,13 +38,14 @@ Options include: \code{"lcc_size"}, \code{"efficiency"}, and \code{"n_components
 \value{
 A list with:
 \describe{
+\item{\code{plot}}{A \code{ggplot2} object showing the evolution of the selected
+metrics as nodes are progressively removed, or \code{NULL} when
+\code{plot = FALSE}. The element is always present, so the return shape does
+not depend on the arguments.}
 \item{\code{all_results}}{A data frame with simulation results across all steps and repetitions.}
 \item{\code{summary}}{A summarized data frame (mean and SD) if \code{n_reps > 1}, otherwise raw results.}
 \item{\code{auc}}{Named list of AUC (area under the curve) values for each selected metric.}
 }
-
-If \code{plot = TRUE}, a ggplot object is generated showing the evolution of selected metrics
-as nodes are progressively removed.
 }
 \description{
 Simulates the removal of nodes from a network using various strategies and
