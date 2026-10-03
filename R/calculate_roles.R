@@ -7,7 +7,9 @@
 #' If no community structure is provided, modules are automatically detected using the specified clustering method.
 #' The function can optionally produce a 2D role plot (z vs. P) highlighting the canonical role regions.
 #'
-#' @param graph An `igraph` object representing the network.
+#' @param graph An `igraph` object representing the network, or a data frame
+#'   containing a symbolic edge list in the first two columns. Additional columns are
+#'   considered as edge attributes.
 #' @param communities Optional. A community clustering object (as returned by an `igraph` clustering function), or a named membership vector. If `NULL`, community detection is performed using `cluster.method`.
 #' @param cluster.method Character. Clustering algorithm to use if `communities` is `NULL`. Default is `"spinglass"`. Passed to `find_modules()`.
 #' @param plot Logical. Whether to generate a 2D plot of participation coefficient (P) vs. within-module z-score (z). Default is `TRUE`.
@@ -78,6 +80,9 @@ calculate_roles <- function(graph,
                             hub_z = 2.5,
                             label_region = NULL,
                             label.size = 12) {
+
+  # Results are keyed by vertex name throughout, so names must exist.
+  graph <- as_netkit_graph(graph, backfill_names = TRUE)
 
   # Extract membership vector
   if (is.null(communities)) {

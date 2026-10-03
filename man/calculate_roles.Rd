@@ -16,7 +16,9 @@ calculate_roles(
 )
 }
 \arguments{
-\item{graph}{An \code{igraph} object representing the network.}
+\item{graph}{An \code{igraph} object representing the network, or a data frame
+containing a symbolic edge list in the first two columns. Additional columns are
+considered as edge attributes.}
 
 \item{communities}{Optional. A community clustering object (as returned by an \code{igraph} clustering function), or a named membership vector. If \code{NULL}, community detection is performed using \code{cluster.method}.}
 

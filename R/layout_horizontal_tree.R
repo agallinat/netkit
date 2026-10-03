@@ -4,7 +4,9 @@
 #' This is particularly useful for hierarchical visualizations where a left-to-right structure
 #' is preferred over the default top-to-bottom tree layout.
 #'
-#' @param graph An `igraph` object representing the input graph.
+#' @param graph An `igraph` object representing the input graph, or a data frame
+#'   containing a symbolic edge list in the first two columns. Additional columns are
+#'   considered as edge attributes.
 #'
 #' @return A numeric matrix with 2 columns representing x and y coordinates of each node in the layout.
 #' This matrix can be passed to `plot.igraph()` or other plotting functions.
@@ -18,6 +20,8 @@
 #' @export
 #'
 layout_horizontal_tree <- function(graph) {
+
+  graph <- as_netkit_graph(graph)
 
   angle = -0.5*pi
   RotMat = matrix(c(cos(angle),
