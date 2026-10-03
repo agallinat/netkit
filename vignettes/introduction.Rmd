@@ -325,7 +325,7 @@ A very common starting point is a list of nodes — differentially expressed gen
 seeds <- c("1", "5", "20", "40", "60")
 ````
 
-`"induced"` keeps only the seeds and whatever edges run between them: usually almost nothing, but it is the baseline the others should be compared against. `"neighbors"` adds the surrounding neighbourhood, with `max_degree` available to exclude promiscuous hubs — without that cap, first-neighbour expansion on a hub-dominated network returns most of the network.
+`"induced"` keeps only the seeds and whatever edges run between them: usually almost nothing, but it is the baseline the others should be compared against. `"neighbors"` adds the surrounding neighborhood, with `max_degree` available to exclude promiscuous hubs — without that cap, first-neighbor expansion on a hub-dominated network returns most of the network.
 
 ````{r subnetwork-neighbors, fig.width = 5, fig.height = 5}
 extract_subnetwork(g, seeds, method = "neighbors", order = 1,
