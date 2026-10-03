@@ -103,9 +103,9 @@ test_that("a single terminal is returned alone", {
   }
 })
 
-# --- Neighbourhood expansion ------------------------------------------------
+# --- Neighborhood expansion ------------------------------------------------
 
-test_that("neighbourhood expansion grows with order", {
+test_that("neighborhood expansion grows with order", {
   n1 <- igraph::vcount(extract_subnetwork(g, "m1", method = "neighbors",
                                           order = 1, plot = FALSE)$graph)
   n2 <- igraph::vcount(extract_subnetwork(g, "m1", method = "neighbors",
@@ -243,7 +243,7 @@ test_that("the path-based methods agree on distance, if not on which tie they br
   # `shortest_paths`: igraph uses breadth-first search with no weights and
   # Dijkstra with them, and those pick different paths among equal-cost ties.
   # What must agree is the thing that is actually well defined -- the distances
-  # the paths realise -- plus the guarantees the method advertises.
+  # the paths realize -- plus the guarantees the method advertises.
   gw <- test_graph_unit_weights()
   gu <- igraph::delete_edge_attr(gw, "weight")
   wseeds <- c("w1", "w10", "w20", "w30")

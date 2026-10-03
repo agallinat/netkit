@@ -31,7 +31,7 @@ columns are considered as edge attributes.}
 \describe{
 \item{\code{"induced"}}{Only \code{nodes} themselves, with whatever edges run between
 them. The baseline every other method should be compared against.}
-\item{\code{"neighbors"}}{\code{nodes} plus their \code{order}-step neighbourhood.}
+\item{\code{"neighbors"}}{\code{nodes} plus their \code{order}-step neighborhood.}
 \item{\code{"shortest_paths"}}{The union of all shortest paths between every
 pair of \code{nodes}. The classic "connect my gene list".}
 \item{\code{"steiner"}}{An approximate minimum Steiner tree over \code{nodes}: the
@@ -41,11 +41,11 @@ because it is a tree rather than a union of overlapping paths.}
 keep the \code{top_n} highest-scoring vertices.}
 }}
 
-\item{order}{Integer. Neighbourhood radius when \code{method = "neighbors"}.
+\item{order}{Integer. Neighborhood radius when \code{method = "neighbors"}.
 Default is \code{1}.}
 
 \item{max_degree}{Integer or \code{NULL}. When \code{method = "neighbors"}, exclude
-neighbours whose degree exceeds this. Without it, first-neighbour expansion
+neighbors whose degree exceeds this. Without it, first-neighbor expansion
 on a hub-dominated network returns most of the network; see Details.}
 
 \item{top_n}{Integer. Number of vertices to keep when \code{method = "diffusion"}.
@@ -120,9 +120,9 @@ different total cost than omitting them. Both satisfy the approximation bound;
 neither is "the" Steiner tree. Treat the specific vertex set as one valid
 answer rather than a canonical one.
 
-\code{max_degree} exists because first-neighbour expansion is dominated by hubs. In
+\code{max_degree} exists because first-neighbor expansion is dominated by hubs. In
 a protein interaction network a handful of promiscuous proteins are adjacent
-to a large fraction of the graph, so the one-step neighbourhood of almost any
+to a large fraction of the graph, so the one-step neighborhood of almost any
 gene list is most of the network. Capping degree removes them and leaves a
 subnetwork whose edges carry information.
 }

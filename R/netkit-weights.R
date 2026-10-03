@@ -39,7 +39,7 @@
 #' `weight` attribute. That is deliberate: it makes the interpretation an
 #' explicit choice rather than an accident of which igraph function happens to be
 #' called underneath. When a graph does carry a `weight` attribute and you pass
-#' nothing, netkit warns that it is being ignored, so the behaviour is never
+#' nothing, netkit warns that it is being ignored, so the behavior is never
 #' silent.
 #'
 #' Note that this differs from plain \pkg{igraph}, where the attribute is picked

@@ -105,8 +105,8 @@ test_that("a directed graph is collapsed with a message", {
                  "converted to undirected")
 })
 
-test_that("configuration falls back when vl cannot realise the degree sequence", {
-  # "vl" needs a connected realisation to exist, which isolated vertices rule
+test_that("configuration falls back when vl cannot realize the degree sequence", {
+  # "vl" needs a connected realization to exist, which isolated vertices rule
   # out. The fallback must warn rather than silently change model.
   iso <- igraph::add_vertices(test_graph(n = 30), 3,
                               name = c("iso1", "iso2", "iso3"))

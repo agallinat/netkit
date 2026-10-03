@@ -32,7 +32,7 @@
 #'     graph vertex. The exception is `cluster.method = "spinglass"`, which can only
 #'     be run on the largest connected component of a disconnected graph; vertices
 #'     outside it have no module and are absent, which raises a warning. `z`, `p` and
-#'     `role` are `NA` for any vertex whose module, or whose neighbours' modules, are
+#'     `role` are `NA` for any vertex whose module, or whose neighbors' modules, are
 #'     unknown.}
 #'   \item{`graph`}{The input graph with `module`, `role_z`, `role_p` and `role`
 #'     attached as vertex attributes, so that the classification can be passed
@@ -48,7 +48,7 @@
 #' [find_modules()] with `min_size = 1`, so no module is discarded for being small
 #' and every vertex receives a role. This matters for correctness as well as
 #' coverage: the participation coefficient of a node is computed from the module
-#' memberships of its neighbours, so dropping a neighbour's module silently distorts
+#' memberships of its neighbors, so dropping a neighbor's module silently distorts
 #' the coefficient of the node that remains.
 #'
 #' The node roles are defined as follows, where `hub_z` defaults to 2.5 and the
@@ -90,7 +90,7 @@
 #'   name of an edge attribute, or a numeric vector of length
 #'   `igraph::ecount(graph)`. When supplied, the within-module z-score is
 #'   computed from strengths and the participation coefficient from summed edge
-#'   strengths per module, which is the weighted generalisation given in
+#'   strengths per module, which is the weighted generalization given in
 #'   Guimera & Amaral's supplementary material. See [netkit-weights].
 #' @param weight_type Either `"strength"` (default) or `"distance"`. See
 #'   [netkit-weights].
@@ -126,8 +126,8 @@ calculate_roles <- function(graph,
     # min_size = 1 is deliberate. find_modules() defaults to min_size = 3, which
     # discards small modules -- and a node whose module was discarded is absent
     # from module_table, so its membership is NA. That silently corrupted the
-    # participation coefficient of *retained* neighbours, because the NA was
-    # dropped from the neighbour tally while the full degree was still used as the
+    # participation coefficient of *retained* neighbors, because the NA was
+    # dropped from the neighbor tally while the full degree was still used as the
     # denominator. Roles are a per-node measure, so there is no reason to filter
     # modules by size here at all.
     modules <- find_modules(graph, method = cluster.method, min_size = 1,
@@ -239,20 +239,20 @@ calculate_roles <- function(graph,
     neighbor_names <- igraph::V(graph)$name[nbrs]
     neighbor_modules <- membership[neighbor_names]
 
-    # Unweighted: count neighbours per module. Weighted: sum the strengths of the
-    # edges reaching each module, which is the weighted generalisation -- a node
+    # Unweighted: count neighbors per module. Weighted: sum the strengths of the
+    # edges reaching each module, which is the weighted generalization -- a node
     # tied to one module by a strong edge and to another by a weak one is not a
     # connector, though counting alone would say it is.
     #
-    # tapply() rather than table(): both drop NA-module neighbours, which is what
+    # tapply() rather than table(): both drop NA-module neighbors, which is what
     # keeps the numerator and the denominator derived from the same place (the
     # defect this function had twice before).
     k_i_m <- if (w$weighted) {
       # Pair each incident edge with its *own* far endpoint, rather than zipping
       # incident() against neighbors(). Those two are both sorted, but by edge id
       # and by vertex id respectively, so they are not guaranteed to correspond --
-      # and a mis-pairing here would attribute one neighbour's strength to another
-      # neighbour's module and still produce a coefficient in [0, 1].
+      # and a mis-pairing here would attribute one neighbor's strength to another
+      # neighbor's module and still produce a coefficient in [0, 1].
       e_ids <- igraph::incident(graph, node, mode = "all")
       ends <- igraph::ends(graph, e_ids, names = TRUE)
       far <- ifelse(ends[, 1] == node, ends[, 2], ends[, 1])
@@ -269,10 +269,10 @@ calculate_roles <- function(graph,
       table(neighbor_modules)
     }
 
-    # The denominator must be the number of neighbours actually tallied, not the
-    # node's full degree: table() drops neighbours with NA membership, so using
+    # The denominator must be the number of neighbors actually tallied, not the
+    # node's full degree: table() drops neighbors with NA membership, so using
     # the full degree makes the fractions sum to less than 1 and inflates P.
-    # These agree whenever every neighbour has a module, and stay well defined
+    # These agree whenever every neighbor has a module, and stay well defined
     # when some do not.
     k_i <- sum(k_i_m)
 

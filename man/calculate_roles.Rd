@@ -47,7 +47,7 @@ names, values outside \verb{[0, 1]} and non-monotonic sets are rejected. \code{N
 name of an edge attribute, or a numeric vector of length
 \code{igraph::ecount(graph)}. When supplied, the within-module z-score is
 computed from strengths and the participation coefficient from summed edge
-strengths per module, which is the weighted generalisation given in
+strengths per module, which is the weighted generalization given in
 Guimera & Amaral's supplementary material. See \link{netkit-weights}.}
 
 \item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
@@ -63,7 +63,7 @@ z-score, participation coefficient, and assigned role. It has one row per
 graph vertex. The exception is \code{cluster.method = "spinglass"}, which can only
 be run on the largest connected component of a disconnected graph; vertices
 outside it have no module and are absent, which raises a warning. \code{z}, \code{p} and
-\code{role} are \code{NA} for any vertex whose module, or whose neighbours' modules, are
+\code{role} are \code{NA} for any vertex whose module, or whose neighbors' modules, are
 unknown.}
 \item{\code{graph}}{The input graph with \code{module}, \code{role_z}, \code{role_p} and \code{role}
 attached as vertex attributes, so that the classification can be passed
@@ -87,7 +87,7 @@ When \code{communities} is \code{NULL}, community detection is delegated to
 \code{\link[=find_modules]{find_modules()}} with \code{min_size = 1}, so no module is discarded for being small
 and every vertex receives a role. This matters for correctness as well as
 coverage: the participation coefficient of a node is computed from the module
-memberships of its neighbours, so dropping a neighbour's module silently distorts
+memberships of its neighbors, so dropping a neighbor's module silently distorts
 the coefficient of the node that remains.
 
 The node roles are defined as follows, where \code{hub_z} defaults to 2.5 and the

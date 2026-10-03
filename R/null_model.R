@@ -46,12 +46,12 @@
 #' hold it fixed mostly rediscovers that the graph is heavy-tailed.
 #'
 #' They differ in how far they travel from the observed graph. `"rewire"` makes
-#' local double-edge swaps, so the ensemble is centred on the observed graph and
+#' local double-edge swaps, so the ensemble is centered on the observed graph and
 #' is the more conservative choice. `"configuration"` resamples from scratch.
 #'
 #' `"configuration"` is attempted with `method = "vl"`, which produces simple
 #' connected graphs, and falls back to `"configuration.simple"` with a warning
-#' where that is not possible -- `"vl"` requires a connected realisation of the
+#' where that is not possible -- `"vl"` requires a connected realization of the
 #' degree sequence to exist, which fails for example when the graph has isolated
 #' vertices.
 #'
@@ -124,7 +124,7 @@ null_model <- function(graph,
     NULL
   }
 
-  # "vl" yields simple connected graphs but needs a connected realisation of the
+  # "vl" yields simple connected graphs but needs a connected realization of the
   # degree sequence to exist; it fails outright on, for example, isolated
   # vertices. Probed once rather than inside the loop.
   degseq_method <- "vl"
@@ -138,9 +138,9 @@ null_model <- function(graph,
     )
     if (!probe) {
       degseq_method <- "configuration.simple"
-      warning("sample_degseq(method = \"vl\") cannot realise this degree ",
+      warning("sample_degseq(method = \"vl\") cannot realize this degree ",
               "sequence as a connected simple graph (isolated vertices, or no ",
-              "connected realisation). Falling back to ",
+              "connected realization). Falling back to ",
               "\"configuration.simple\", which may leave the null graphs ",
               "disconnected.", call. = FALSE)
     }
@@ -409,7 +409,7 @@ metric_significance <- function(graph,
 #' A network is "small-world" when it is much more clustered than a random graph
 #' with the same degree sequence while having a comparable average path length.
 #' `sigma` expresses that as a single ratio: `(C/C_rand) / (L/L_rand)`, where
-#' values appreciably above 1 indicate small-world organisation.
+#' values appreciably above 1 indicate small-world organization.
 #'
 #' @param graph An `igraph` object or a data frame edge list.
 #' @param n_null Integer. Number of null graphs. Default is `100`.
@@ -429,7 +429,7 @@ metric_significance <- function(graph,
 #' @details
 #' Only `sigma` is reported. The companion coefficient `omega` of Telesford et
 #' al. (2011) additionally requires a *lattice* reference, and \pkg{igraph}
-#' provides no degree-preserving latticisation; implementing one approximately
+#' provides no degree-preserving latticization; implementing one approximately
 #' would make `omega` quietly dependent on how well that approximation worked,
 #' so it is omitted rather than shipped unreliable.
 #'

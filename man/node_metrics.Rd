@@ -100,12 +100,12 @@ nodes. Not comparable across components -- see below.}
 is comparable across components, because an unreachable pair contributes
 \eqn{1/\infty = 0} rather than being excluded from the average.}
 \item{\code{eigenvector}}{Leading eigenvector of the adjacency matrix: a node is
-central if its neighbours are.}
+central if its neighbors are.}
 \item{\code{pagerank}}{Stationary distribution of a random surfer. Sums to 1.}
 \item{\code{coreness}}{Largest \emph{k} for which the node belongs to the k-core.}
 \item{\code{clustering}}{Local transitivity: how interconnected the node's
-neighbourhood is. \code{NaN} for nodes of degree below 2, which have no
-neighbour pairs.}
+neighborhood is. \code{NaN} for nodes of degree below 2, which have no
+neighbor pairs.}
 \item{\code{constraint}}{Burt's constraint: how much the node's connections are
 concentrated within a single group. Low constraint marks a broker.}
 \item{\code{eccentricity}}{Distance to the furthest reachable node.}

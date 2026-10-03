@@ -106,7 +106,7 @@ test_that("every vertex receives a role", {
 
 test_that("the participation coefficient is unaffected by module-size filtering", {
   # Regression guard for a silent numerical bug. When a module was discarded, its
-  # nodes' membership became NA; table() dropped those NAs from a neighbour's tally
+  # nodes' membership became NA; table() dropped those NAs from a neighbor's tally
   # while the node's full degree was still used as the denominator, so P came out
   # too high for *retained* nodes. On a 150-node graph with walktrap this gave 18
   # wrong coefficients and 7 wrong roles.

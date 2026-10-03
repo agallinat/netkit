@@ -54,7 +54,7 @@ test_that("metrics match hand-computed values on a 5-node ring", {
   expect_true(all(tb$coreness == 2))
 
   # On a 5-ring each node sits on exactly one shortest path between its two
-  # 2-hop neighbours, in one direction: unnormalized betweenness is 1.
+  # 2-hop neighbors, in one direction: unnormalized betweenness is 1.
   expect_true(all(tb$betweenness == 1))
 
   # Distances from any node are 1, 1, 2, 2, so harmonic centrality is
@@ -105,8 +105,8 @@ test_that("normalization is a positive rescaling, so it preserves the ranking", 
   expect_equal(rank(raw$betweenness), rank(nrm$betweenness))
 })
 
-test_that("local clustering is NaN exactly for nodes with fewer than two neighbours", {
-  # Not a defect: such a node has no pair of neighbours, so the quantity is
+test_that("local clustering is NaN exactly for nodes with fewer than two neighbors", {
+  # Not a defect: such a node has no pair of neighbors, so the quantity is
   # undefined rather than zero. Pinned so it is not "fixed" into a 0.
   res <- node_metrics(g, metrics = c("degree", "clustering"),
                       normalized = FALSE, plot = FALSE)
@@ -196,7 +196,7 @@ test_that("closeness ranks the smaller component higher, which is why it is not 
   # igraph averages distance over *reachable* vertices only, so on a fragmented
   # graph closeness rewards being in a small component: everything nearby.
   # test_graph_disconnected() is a 5-clique plus a 4-clique, so the 4-clique
-  # nodes have 3 neighbours at distance 1 (closeness 1/3) and the 5-clique nodes
+  # nodes have 3 neighbors at distance 1 (closeness 1/3) and the 5-clique nodes
   # have 4 (closeness 1/4). Ranking by closeness puts the periphery on top.
   g <- test_graph_disconnected()
   res <- node_metrics(g, metrics = c("closeness", "harmonic"), plot = FALSE,

@@ -68,12 +68,12 @@
 #'     is comparable across components, because an unreachable pair contributes
 #'     \eqn{1/\infty = 0} rather than being excluded from the average.}
 #'   \item{`eigenvector`}{Leading eigenvector of the adjacency matrix: a node is
-#'     central if its neighbours are.}
+#'     central if its neighbors are.}
 #'   \item{`pagerank`}{Stationary distribution of a random surfer. Sums to 1.}
 #'   \item{`coreness`}{Largest *k* for which the node belongs to the k-core.}
 #'   \item{`clustering`}{Local transitivity: how interconnected the node's
-#'     neighbourhood is. `NaN` for nodes of degree below 2, which have no
-#'     neighbour pairs.}
+#'     neighborhood is. `NaN` for nodes of degree below 2, which have no
+#'     neighbor pairs.}
 #'   \item{`constraint`}{Burt's constraint: how much the node's connections are
 #'     concentrated within a single group. Low constraint marks a broker.}
 #'   \item{`eccentricity`}{Distance to the furthest reachable node.}
@@ -216,7 +216,7 @@ node_metrics <- function(graph,
       pagerank = as.numeric(igraph::page_rank(graph, weights = w$strength)$vector),
       coreness = as.numeric(igraph::coreness(graph, mode = mode)),
       # type = "local" returns NaN for degree < 2, which is correct: such a node
-      # has no pairs of neighbours and therefore no neighbourhood to be clustered.
+      # has no pairs of neighbors and therefore no neighborhood to be clustered.
       clustering = as.numeric(igraph::transitivity(graph, type = "local")),
       constraint = as.numeric(igraph::constraint(graph, weights = w$strength)),
       eccentricity = as.numeric(igraph::eccentricity(graph, mode = mode,

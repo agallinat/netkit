@@ -133,7 +133,7 @@ network_diffusion <- function(graph, seed_nodes,
     use_sparse_P <- precompute$use_sparse_P
   } else {
     # Delegate to prepare_diffusion() rather than rebuilding the kernel inline.
-    # The two used to be separate copies of the adjacency-normalise -> Laplacian
+    # The two used to be separate copies of the adjacency-normalize -> Laplacian
     # -> Cholesky/transition-matrix block, which meant any change to the
     # diffusion maths had to be made twice.
     kernel <- prepare_diffusion(

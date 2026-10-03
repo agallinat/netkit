@@ -42,11 +42,11 @@ clustering and path length against a degree-matched random ensemble.
 A network is "small-world" when it is much more clustered than a random graph
 with the same degree sequence while having a comparable average path length.
 \code{sigma} expresses that as a single ratio: \code{(C/C_rand) / (L/L_rand)}, where
-values appreciably above 1 indicate small-world organisation.
+values appreciably above 1 indicate small-world organization.
 
 Only \code{sigma} is reported. The companion coefficient \code{omega} of Telesford et
 al. (2011) additionally requires a \emph{lattice} reference, and \pkg{igraph}
-provides no degree-preserving latticisation; implementing one approximately
+provides no degree-preserving latticization; implementing one approximately
 would make \code{omega} quietly dependent on how well that approximation worked,
 so it is omitted rather than shipped unreliable.
 

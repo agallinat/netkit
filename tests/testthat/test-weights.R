@@ -270,7 +270,7 @@ test_that("spinglass on a disconnected graph keeps its subgraph weights aligned"
   )
   expect_s3_class(res$result, "data.frame")
   expect_gt(res$n_modules, 0)
-  # Only the largest component is covered, which is the documented behaviour.
+  # Only the largest component is covered, which is the documented behavior.
   expect_lt(nrow(res$result), igraph::vcount(g))
 })
 

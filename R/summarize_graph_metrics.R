@@ -184,7 +184,7 @@ summarize_graph_metrics <- function(graph,
     diameter(lcc, weights = lcc_dist)
   }, error = function(e) NA)
 
-  # Barrat's definition is the weighted generalisation of transitivity; igraph
+  # Barrat's definition is the weighted generalization of transitivity; igraph
   # exposes it as type = "barrat" and it needs a strength per edge.
   Clustering_coefficient <- if (w$weighted) {
     tryCatch({

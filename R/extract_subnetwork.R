@@ -14,7 +14,7 @@
 #'   \describe{
 #'     \item{`"induced"`}{Only `nodes` themselves, with whatever edges run between
 #'       them. The baseline every other method should be compared against.}
-#'     \item{`"neighbors"`}{`nodes` plus their `order`-step neighbourhood.}
+#'     \item{`"neighbors"`}{`nodes` plus their `order`-step neighborhood.}
 #'     \item{`"shortest_paths"`}{The union of all shortest paths between every
 #'       pair of `nodes`. The classic "connect my gene list".}
 #'     \item{`"steiner"`}{An approximate minimum Steiner tree over `nodes`: the
@@ -23,10 +23,10 @@
 #'     \item{`"diffusion"`}{Propagate from `nodes` with [network_diffusion()] and
 #'       keep the `top_n` highest-scoring vertices.}
 #'   }
-#' @param order Integer. Neighbourhood radius when `method = "neighbors"`.
+#' @param order Integer. Neighborhood radius when `method = "neighbors"`.
 #'   Default is `1`.
 #' @param max_degree Integer or `NULL`. When `method = "neighbors"`, exclude
-#'   neighbours whose degree exceeds this. Without it, first-neighbour expansion
+#'   neighbors whose degree exceeds this. Without it, first-neighbor expansion
 #'   on a hub-dominated network returns most of the network; see Details.
 #' @param top_n Integer. Number of vertices to keep when `method = "diffusion"`.
 #'   Default is `100`.
@@ -87,9 +87,9 @@
 #' neither is "the" Steiner tree. Treat the specific vertex set as one valid
 #' answer rather than a canonical one.
 #'
-#' `max_degree` exists because first-neighbour expansion is dominated by hubs. In
+#' `max_degree` exists because first-neighbor expansion is dominated by hubs. In
 #' a protein interaction network a handful of promiscuous proteins are adjacent
-#' to a large fraction of the graph, so the one-step neighbourhood of almost any
+#' to a large fraction of the graph, so the one-step neighborhood of almost any
 #' gene list is most of the network. Capping degree removes them and leaves a
 #' subnetwork whose edges carry information.
 #'
@@ -262,14 +262,14 @@ extract_subnetwork <- function(graph,
   )
 }
 
-#' Neighbourhood expansion around a seed set
+#' Neighborhood expansion around a seed set
 #'
 #' Internal helper for `extract_subnetwork()`.
 #'
 #' @param graph An `igraph` object.
 #' @param seeds Character vector of seed names.
-#' @param order Neighbourhood radius.
-#' @param max_degree Degree cap for non-seed neighbours, or `NULL`.
+#' @param order Neighborhood radius.
+#' @param max_degree Degree cap for non-seed neighbors, or `NULL`.
 #'
 #' @return A named character vector of retention reasons, keyed by vertex name.
 #'
@@ -287,7 +287,7 @@ subnetwork_neighbors <- function(graph, seeds, order, max_degree) {
   extra <- setdiff(nb_names, seeds)
 
   if (!is.null(max_degree)) {
-    # Applied only to the added neighbours. A seed is in the set because the
+    # Applied only to the added neighbors. A seed is in the set because the
     # caller asked for it, so dropping one for being a hub would silently answer
     # a different question.
     deg <- igraph::degree(graph, v = extra)

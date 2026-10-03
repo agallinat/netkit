@@ -67,12 +67,12 @@ metric is partly determined by the degree sequence, so a null that does not
 hold it fixed mostly rediscovers that the graph is heavy-tailed.
 
 They differ in how far they travel from the observed graph. \code{"rewire"} makes
-local double-edge swaps, so the ensemble is centred on the observed graph and
+local double-edge swaps, so the ensemble is centered on the observed graph and
 is the more conservative choice. \code{"configuration"} resamples from scratch.
 
 \code{"configuration"} is attempted with \code{method = "vl"}, which produces simple
 connected graphs, and falls back to \code{"configuration.simple"} with a warning
-where that is not possible -- \code{"vl"} requires a connected realisation of the
+where that is not possible -- \code{"vl"} requires a connected realization of the
 degree sequence to exist, which fails for example when the graph has isolated
 vertices.
 }

@@ -1,5 +1,5 @@
 # The diffusion cluster is netkit's most intricate code. The
-# adjacency-normalise -> Laplacian -> Cholesky/transition-matrix block used to be
+# adjacency-normalize -> Laplacian -> Cholesky/transition-matrix block used to be
 # implemented twice, once in network_diffusion() and once in prepare_diffusion();
 # network_diffusion() now delegates to prepare_diffusion(), so there is a single
 # code path. The numeric-pin test below is what guards the maths now that the two

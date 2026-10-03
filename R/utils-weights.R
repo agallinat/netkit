@@ -35,7 +35,7 @@
 #' @param arg Name of the caller's argument, interpolated into error messages.
 #' @param warn_unused If `TRUE` and `weights` is `NULL` while the graph *does*
 #'   carry a `weight` edge attribute, warn that it is being ignored. This makes
-#'   the previously silent behaviour loud at the one moment it matters.
+#'   the previously silent behavior loud at the one moment it matters.
 #'
 #' @return A list with:
 #'   \describe{
@@ -177,7 +177,7 @@ describe_weights <- function(w) {
 #' diffusion kernels are applied to.
 #'
 #' The binary form -- 1 for a seed, 0 otherwise -- is the default and matches the
-#' original behaviour. `seed_weights` instead starts the diffusion from a
+#' original behavior. `seed_weights` instead starts the diffusion from a
 #' continuous signal, which is what the network-propagation literature assumes
 #' and what diffusing from a differential-expression result requires: the seeds
 #' are not equally important, and their magnitudes carry the evidence.
@@ -320,7 +320,7 @@ resolve_perm_seed_weights <- function(seed_weights, requested_seeds, kept_seeds)
 #' combine them is the only safe way to do this: a positional index silently
 #' misaligns, and the result still looks like a plausible set of weights.
 #' Strengths are summed (two reciprocal interactions are stronger than one) and
-#' costs are minimised (the cheaper of two routes is the one a path would take).
+#' costs are minimized (the cheaper of two routes is the one a path would take).
 #'
 #' @param graph An `igraph` object.
 #' @param w The list returned by `as_netkit_weights()`.
