@@ -46,16 +46,8 @@ compare_networks <- function(graph1, graph2,
 ) {
 
   # --- Validate input ---
-  if (inherits(graph1, "data.frame")) {
-    graph1 <- igraph::graph_from_data_frame(graph1, directed = FALSE)
-  } else if (!igraph::is_igraph(graph1)) {
-    stop("Input 'graph1' must be an igraph object or edge list data.frame")
-  }
-  if (inherits(graph2, "data.frame")) {
-    graph2 <- igraph::graph_from_data_frame(graph2, directed = FALSE)
-  } else if (!igraph::is_igraph(graph2)) {
-    stop("Input 'graph2' must be an igraph object or edge list data.frame")
-  }
+  graph1 <- as_netkit_graph(graph1, arg = "graph1")
+  graph2 <- as_netkit_graph(graph2, arg = "graph2")
 
   # --- Handle single nodes ---
   if (remove_singles) {

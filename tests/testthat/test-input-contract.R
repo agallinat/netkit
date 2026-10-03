@@ -22,15 +22,25 @@ test_that("edge-list data.frames are accepted wherever an igraph is", {
   )
 })
 
-test_that("non-graph input is rejected with a clear message", {
-  for (fn in list(summarize_graph_metrics, plot_CCDF, find_modules,
-                  find_hubs, find_bottlenecks, prepare_diffusion)) {
-    expect_error(fn("not a graph"), "igraph object or a data.frame")
+test_that("non-graph input is rejected with one consistent message", {
+  # All of these route through the shared as_netkit_graph() validator, so the
+  # wording is identical rather than varying per function as it used to.
+  for (fn in list(summarize_graph_metrics, plot_CCDF, find_modules, find_hubs,
+                  find_bottlenecks, prepare_diffusion, plot_Net, assign_attributes,
+                  robustness_analysis, highlight_nodes)) {
+    expect_error(fn("not a graph"),
+                 "Input 'graph' must be either an igraph object or a data.frame")
   }
   expect_error(network_diffusion("not a graph", seed_nodes = "a"),
-               "igraph object or a data.frame")
+               "Input 'graph' must be either an igraph object or a data.frame")
   expect_error(greedy_seed_selection("not a graph", target_nodes = "a"),
-               "igraph object or edge list")
+               "Input 'graph' must be either an igraph object or a data.frame")
+})
+
+test_that("the offending argument is named for multi-graph functions", {
+  g <- test_graph()
+  expect_error(compare_networks("not a graph", g), "Input 'graph1' must be")
+  expect_error(compare_networks(g, "not a graph"), "Input 'graph2' must be")
 })
 
 test_that("calculate_roles() and layout_horizontal_tree() require an igraph object", {

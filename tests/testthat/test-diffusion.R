@@ -1,8 +1,9 @@
-# The diffusion cluster is netkit's most intricate code, and the
-# adjacency-normalise -> Laplacian -> Cholesky/transition-matrix block is
-# currently implemented twice: once inside network_diffusion() and once inside
-# prepare_diffusion(). The precompute-equivalence test below is the guard that
-# makes consolidating those two copies safe.
+# The diffusion cluster is netkit's most intricate code. The
+# adjacency-normalise -> Laplacian -> Cholesky/transition-matrix block used to be
+# implemented twice, once in network_diffusion() and once in prepare_diffusion();
+# network_diffusion() now delegates to prepare_diffusion(), so there is a single
+# code path. The numeric-pin test below is what guards the maths now that the two
+# routes can no longer disagree with each other.
 
 g     <- test_graph()
 seeds <- c("n1", "n2", "n3")
@@ -22,9 +23,68 @@ test_that("diffusion returns one score per node, sorted descending", {
   }
 })
 
+test_that("diffusion scores match pinned reference values", {
+  # A 6-node ring seeded at one vertex. These numbers were captured from the
+  # implementation at the point network_diffusion() and prepare_diffusion() were
+  # merged into one code path, and verified bit-identical across both routes
+  # before and after that merge. They exist to catch an unintended change to the
+  # diffusion maths itself, which no structural test would notice.
+  g <- igraph::make_ring(6)
+  igraph::V(g)$name <- letters[1:6]
+
+  expected <- list(
+    laplacian = c(0.6456263174, 0.1393781993, 0.0313535080,
+                  0.0129102680, 0.0313535080, 0.1393781993),
+    heat      = c(0.4657761538, 0.2080108694, 0.0509457439,
+                  0.0163106196, 0.0509457439, 0.2080108694),
+    rwr       = c(0.4239985981, 0.1771410030, 0.0821182562,
+                  0.0574828834, 0.0821182562, 0.1771410030)
+  )
+
+  for (m in names(expected)) {
+    res <- network_diffusion(g, "a", method = m)
+    res <- res[order(res$node), ]
+    expect_equal(res$score, expected[[m]], tolerance = 1e-8,
+                 info = paste("diffusion maths changed for method", m))
+  }
+})
+
+test_that("diffusion respects the symmetry of a ring", {
+  # On a ring seeded at one vertex, scores must be symmetric about the seed.
+  g <- igraph::make_ring(6)
+  igraph::V(g)$name <- letters[1:6]
+
+  for (m in methods) {
+    res <- network_diffusion(g, "a", method = m)
+    s <- stats::setNames(res$score, res$node)
+    expect_equal(s[["b"]], s[["f"]], tolerance = 1e-10)
+    expect_equal(s[["c"]], s[["e"]], tolerance = 1e-10)
+    # The seed holds the maximum and the antipode the minimum.
+    expect_equal(names(which.max(s)), "a")
+    expect_equal(names(which.min(s)), "d")
+  }
+})
+
+test_that("normalizing a directed graph warns from either entry point", {
+  # network_diffusion() used to carry this warning in its own inline kernel
+  # block; now that it delegates, the warning lives in prepare_diffusion() and
+  # must still surface through both.
+  gd <- igraph::make_ring(6, directed = TRUE)
+  igraph::V(gd)$name <- letters[1:6]
+
+  expect_warning(network_diffusion(gd, "a", method = "rwr", normalize = TRUE),
+                 "Normalization for directed graphs is not supported")
+  expect_warning(prepare_diffusion(gd, method = "rwr", normalize = TRUE),
+                 "Normalization for directed graphs is not supported")
+
+  # No warning when normalization is not requested.
+  expect_no_warning(prepare_diffusion(gd, method = "rwr", normalize = FALSE))
+})
+
 test_that("precompute() reproduces the un-precomputed result exactly", {
-  # If this ever fails, the two copies of the kernel-construction block have
-  # drifted apart.
+  # Both routes now share one kernel implementation, so this no longer detects
+  # drift between two copies; it guards that `precompute =` is actually wired
+  # through and honoured rather than silently ignored.
   for (m in methods) {
     direct <- network_diffusion(g, seeds, method = m)
     kernel <- prepare_diffusion(g, method = m)

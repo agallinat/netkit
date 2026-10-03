@@ -65,11 +65,7 @@ plot_Net <- function(
 ) {
 
   # Input checks
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
+  graph <- as_netkit_graph(graph)
   if (!is.null(layout) && !is.matrix(layout)) stop("'layout' must be a matrix.")
 
   # Normalizing function

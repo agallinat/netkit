@@ -42,11 +42,9 @@ plot_CCDF <- function(graph,
                       colors = c("#000831","#e41a1c","darkgreen", "#9c52f2", "#b8b8ff"),
                       label.size = 12) {
 
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = keep_direction)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
+  # An edge-list data.frame is read as directed only when the caller asked to keep
+  # direction; an igraph input keeps its own directedness either way.
+  graph <- as_netkit_graph(graph, directed = keep_direction)
 
   if (remove_singles) {
     deg_all <- igraph::degree(graph)

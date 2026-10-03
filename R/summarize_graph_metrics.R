@@ -48,11 +48,7 @@
 summarize_graph_metrics <- function(graph) {
 
   # --- Validate input ---
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
+  graph <- as_netkit_graph(graph)
 
   directed <- is_directed(graph)
 

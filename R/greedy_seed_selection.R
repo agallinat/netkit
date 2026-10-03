@@ -63,15 +63,7 @@ greedy_seed_selection <- function(graph,
   # --- Input validation ---
   method <- match.arg(method)
 
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be an igraph object or edge list data.frame.")
-  }
-
-  if (is.null(igraph::V(graph)$name)) {
-    igraph::V(graph)$name <- as.character(seq_len(igraph::vcount(graph)))
-  }
+  graph <- as_netkit_graph(graph, backfill_names = TRUE)
 
   all_nodes <- igraph::V(graph)$name
   target_nodes <- intersect(target_nodes, all_nodes)

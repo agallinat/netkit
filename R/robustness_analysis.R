@@ -77,11 +77,7 @@ robustness_analysis <- function(graph,
                                 seed = NULL) {
 
   # Validate input
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
+  graph <- as_netkit_graph(graph)
 
   if (is_directed(graph)) graph <- as_undirected(graph, mode = "collapse")
 
