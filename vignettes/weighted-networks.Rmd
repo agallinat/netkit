@@ -1,0 +1,241 @@
+---
+title: "Weighted networks: strength or distance?"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Weighted networks: strength or distance?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Most real networks come with a number on every edge: a confidence score from an
+interaction database, a correlation from a co-expression matrix, a count of
+supporting publications, a reaction rate. This article is about what netkit does
+with that number, and why it asks you to say what kind of number it is.
+
+```{r setup}
+library(netkit)
+suppressMessages(library(igraph))
+```
+
+```{r helper, include = FALSE}
+# netkit resolves `weights` and `weight_type` into a strength vector and a cost
+# vector internally. This vignette peeks at that conversion to show what the two
+# readings actually do; it is not part of the public interface.
+as_netkit_weights_demo <- function(graph, attr, type) {
+  w <- edge_attr(graph, attr)
+  if (type == "strength") {
+    list(strength = w, distance = ifelse(w == 0, Inf, 1 / w))
+  } else {
+    list(strength = max(w) - w + min(w[w > 0]), distance = w)
+  }
+}
+```
+
+## The problem
+
+A weight can mean one of two opposite things.
+
+A **strength** means *larger values bind the endpoints more tightly*. A
+BioGRID confidence score of 0.9 is a stronger claim than 0.2. A co-expression
+correlation of 0.95 is a closer relationship than 0.3.
+
+A **distance** means *larger values push the endpoints further apart*. A
+reaction time, a transit cost, a dissimilarity.
+
+Which one you have changes the answer to almost every network question, in
+opposite directions. And `igraph` — which netkit is built on — reads the `weight`
+edge attribute implicitly, giving it **different meanings in different
+functions**: a cost in `betweenness()`, `distances()`, `diameter()` and
+`mean_distance()`, but a strength in `cluster_louvain()` and the other community
+detection algorithms.
+
+Here is what that looks like. The graph is a barbell: two cliques joined by a
+single bridge.
+
+```{r barbell}
+g <- disjoint_union(make_full_graph(4), make_full_graph(4))
+V(g)$name <- c(paste0("L", 1:4), paste0("R", 1:4))
+g <- add_edges(g, c("L1", "R1"))
+
+# A confidence score: the bridge is a very well-supported interaction, the
+# within-clique edges less so.
+E(g)$confidence <- 0.1
+E(g)$confidence[E(g)["L1" %--% "R1"]] <- 1.0
+```
+
+Read as a strength, that bridge is the most reliable edge in the graph, so
+crossing it should be *cheap*. Read as a cost, it is the most expensive edge, so
+crossing it should *dominate* any path that uses it.
+
+Comparing the two readings' path lengths directly would be meaningless — one is
+measured in units of confidence and the other in units of 1/confidence. What is
+comparable is the share of a crossing path that the bridge accounts for:
+
+```{r two-readings}
+bridge_share <- function(type) {
+  w <- as_netkit_weights_demo(g, "confidence", type)
+  # Cost of getting from one clique to the other, and the bridge's own cost.
+  total <- distances(g, v = "L2", to = "R2", weights = w$distance)[1, 1]
+  bridge <- w$distance[as.numeric(E(g)["L1" %--% "R1"])]
+  c(path_cost = total, bridge_cost = bridge, bridge_share = bridge / total)
+}
+
+rbind(strength = bridge_share("strength"),
+      distance = bridge_share("distance"))
+```
+
+Read as a strength, the bridge is the cheapest hop on the route and accounts for
+about 5% of it. Read as a cost, the very same number makes it the most expensive
+hop, accounting for over 80%. There is no way to get this right by inspection —
+both sets of numbers look perfectly plausible.
+
+## The default is to ignore weights, loudly
+
+netkit's `weights` argument defaults to `NULL`, which means **ignore edge
+weights entirely**, even when the graph carries a `weight` attribute. When it
+finds one it is ignoring, it says so:
+
+```{r warn}
+E(g)$weight <- E(g)$confidence
+
+res <- tryCatch(
+  summarize_graph_metrics(g),
+  warning = function(w) conditionMessage(w)
+)
+res
+```
+
+This differs from plain `igraph`, where the attribute is picked up
+automatically. The difference is deliberate: picking it up automatically is how
+the three-way inconsistency above stays invisible. Naming the attribute, or
+having no `weight` attribute at all, is silent.
+
+## What changes when weights are used
+
+Every function that can use weights takes the same two arguments, and derives
+both a strength and a cost vector from them so each metric receives the one it
+needs.
+
+```{r weighted-metrics}
+set.seed(1)
+net <- sample_gnp(60, 0.08, directed = FALSE)
+V(net)$name <- paste0("g", seq_len(vcount(net)))
+E(net)$confidence <- runif(ecount(net), 0.05, 1)
+
+unweighted <- summarize_graph_metrics(net)
+weighted <- summarize_graph_metrics(net, weights = "confidence")
+
+compare <- rbind(unweighted = unweighted, weighted = weighted)
+compare[, c("Avg_degree", "Avg_strength", "Average_path_length",
+            "Clustering_coefficient", "Avg_betweenness")]
+```
+
+`Avg_degree` is always the unweighted count and `Avg_strength` the weighted sum,
+so the two rows stay comparable. The path-based columns switch to their weighted
+definitions, and `Clustering_coefficient` becomes Barrat's weighted
+transitivity.
+
+`node_metrics()` makes the same distinction per vertex:
+
+```{r node-metrics}
+nm <- node_metrics(net, metrics = c("degree", "strength", "betweenness"),
+                   weights = "confidence", normalized = FALSE, plot = FALSE)
+head(nm$result)
+```
+
+## Diffusion propagates along strengths
+
+Signal propagation is the one place where there is no ambiguity: a stronger edge
+carries more signal. This is also where weights used to be dropped silently, so
+it is worth seeing the effect directly.
+
+Back to the barbell, with the bridge almost severed:
+
+```{r barrier}
+E(g)$w <- 1
+g <- set_edge_attr(g, "w", index = E(g)["L1" %--% "R1"], value = 0.001)
+
+far <- paste0("R", 1:4)
+
+open <- network_diffusion(g, "L2", method = "rwr")
+blocked <- network_diffusion(g, "L2", method = "rwr", weights = "w")
+
+c(unweighted = mean(open$score[open$node %in% far]),
+  weighted   = mean(blocked$score[blocked$node %in% far]))
+```
+
+With every edge treated alike, signal from `L2` reaches the far clique freely.
+With the bridge at weight 0.001, almost none of it gets through — which is what
+a near-severed connection should do.
+
+A strength of exactly zero means "no connection": it becomes an infinite
+distance, which the path-based measures treat as unreachable, and blocks
+diffusion completely.
+
+## Seeding from a continuous signal
+
+Related but separate: `seed_weights` lets the diffusion start from values rather
+than from set membership. If your seeds came from a differential-expression
+result, they are not equally important, and their magnitudes carry the evidence.
+
+```{r seed-weights}
+seeds <- c("g1", "g2", "g3")
+
+binary <- network_diffusion(net, seeds, method = "rwr")
+graded <- network_diffusion(net, seeds, method = "rwr",
+                            seed_weights = c(g1 = 3.1, g2 = 0.4, g3 = 1.2))
+
+head(data.frame(node = binary$node,
+                binary = binary$score,
+                graded = graded$score[match(binary$node, graded$node)]))
+```
+
+## What is not a weight
+
+Signed attributes are rejected rather than coerced:
+
+```{r signed, error = TRUE}
+E(net)$effect <- sample(c(-1, 1), ecount(net), replace = TRUE)
+summarize_graph_metrics(net, weights = "effect")
+```
+
+Activation versus inhibition, or a signed correlation, is not an edge weight —
+the reciprocal conversion between strength and distance has no meaning for a
+negative number. Take the absolute value if magnitude is what matters, and keep
+the sign as a separate edge attribute for annotation and visualization.
+
+## Reusing a diffusion kernel
+
+`prepare_diffusion()` builds the kernel once so repeated runs can skip it. A
+kernel is only valid for the weights it was built from, and netkit checks rather
+than trusting you to remember:
+
+```{r kernel, error = TRUE}
+kernel <- prepare_diffusion(net, method = "rwr", weights = "confidence")
+
+# Correct: same weights as the kernel was built with.
+head(network_diffusion(net, seeds, method = "rwr", weights = "confidence",
+                       precompute = kernel), 3)
+
+# Rejected: the kernel describes a different graph than the one requested.
+network_diffusion(net, seeds, method = "rwr", precompute = kernel)
+```
+
+## Summary
+
+| If your edge attribute is | pass |
+|---|---|
+| a confidence score, correlation, count, interaction score | `weight_type = "strength"` (the default) |
+| a cost, a dissimilarity, a transit time | `weight_type = "distance"` |
+| a sign (activation/inhibition) | not a weight — use `abs()`, or keep it as annotation |
+| not meant to be used at all | nothing; `weights = NULL` is the default |
+
+The one rule worth remembering: **netkit never reads a weight you did not ask it
+to read**, and it tells you when a graph carries one you ignored.
