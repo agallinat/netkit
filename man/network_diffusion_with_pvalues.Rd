@@ -71,12 +71,14 @@ based on a row-normalized transition matrix. Recommended method for large networ
 For \code{"laplacian"} and \code{"heat"}, the graph Laplacian is computed from the (optionally normalized) adjacency matrix.
 }
 \examples{
-\dontrun{
-g <- sample_gnp(100, 0.05, directed = F)
-V(g)$name <- as.character(seq_len(vcount(g)))
-seed_nodes <- sample(V(g)$name, 5)
-network_diffusion_with_pvalues(g, seed_npodes, method = "laplacian")
-}
+g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+seed_nodes <- igraph::V(g)$name[1:5]
+
+# n_permutations is reduced from its default of 1000 to keep the example fast;
+# use the default or higher for real analyses.
+network_diffusion_with_pvalues(g, seed_nodes, method = "laplacian",
+                               n_permutations = 50, seed = 1, verbose = FALSE)
 
 }
 \references{

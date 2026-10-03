@@ -36,10 +36,8 @@ Metrics computed:
 }
 }
 \examples{
-\dontrun{
-g <- igraph::sample_gnp(200, 0.05, directed = F)
+g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
 summarize_graph_metrics(g)
-}
 
 }
 \references{

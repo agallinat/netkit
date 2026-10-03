@@ -20,11 +20,11 @@
 #' @return A \code{ggplot2} object showing the CCDF of node degrees on a log-log scale.
 #'
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g <- sample_pa(1000)
-#' plot_CCDF(g, remove_singles = TRUE)
-#' }
+#' g <- igraph::sample_pa(200, power = 1.5, directed = FALSE)
+#' plot_CCDF(g)
+#'
+#' # Compare against reference power-law slopes.
+#' plot_CCDF(g, PL_exponents = c(2, 2.5, 3))
 #'
 #' @importFrom igraph is_igraph degree induced_subgraph
 #' @importFrom ggplot2 ggplot aes geom_line aes_string scale_color_manual labs coord_cartesian theme_minimal scale_y_log10
@@ -168,13 +168,6 @@ plot_CCDF <- function(graph,
 #' \describe{
 #'   \item{degree}{Integer node degree values.}
 #'   \item{ccdf}{Complementary cumulative distribution values (P(X ≥ x)).}
-#' }
-#'
-#' @examples
-#' \dontrun{
-#' g <- igraph::sample_pa(1000, power = 2.5, directed = FALSE)
-#' ccdf_data <- compute_ccdf(g)
-#' plot(ccdf_data$degree, ccdf_data$ccdf, log = "xy", type = "l")
 #' }
 #'
 #' @keywords internal

@@ -65,11 +65,13 @@ The target score can be interpreted as either the total or average diffusion sig
 Normalization helps scale results across networks of different sizes.
 }
 \examples{
-\dontrun{
-g <- sample_gnp(50, 0.05, directed = F)
+g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
 target <- c("1", "2", "3")
-greedy_seed_selection(g, target_nodes = target, k = 10)
-}
+
+res <- greedy_seed_selection(g, target_nodes = target, k = 3, plot = FALSE)
+res$selected_seeds
+res$scores_at_each_step
 
 }
 \seealso{

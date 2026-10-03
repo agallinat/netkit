@@ -31,7 +31,7 @@
 #' }
 #' If \code{plot = TRUE}, a network plot is displayed with nodes colored by module.
 #'
-#' #' @details
+#' @details
 #' This function is a wrapper around several \pkg{igraph} community detection algorithms,
 #' including Louvain (\code{cluster_louvain()}), Walktrap, Infomap, Fast Greedy, and others.
 #' It simplifies their application and offers optional filtering, visualization via \code{plot_Net()},
@@ -42,11 +42,10 @@
 #' InterJournal, Complex Systems. 2006;1695. \url{https://igraph.org}
 #'
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g <- sample_pa(100)
-#' find_modules(g, method = "louvain", plot = TRUE)
-#' }
+#' g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
+#' res <- find_modules(g, method = "louvain", plot = FALSE)
+#' res$n_modules
+#' head(res$module_table)
 #'
 #' @importFrom igraph is_igraph is_directed as.undirected cluster_louvain cluster_walktrap cluster_infomap cluster_edge_betweenness cluster_fluid_communities cluster_fast_greedy cluster_leading_eigen cluster_leiden cluster_spinglass membership induced_subgraph vertex_attr vertex_attr<- layout_with_fr vcount
 #' @importFrom dplyr filter %>%

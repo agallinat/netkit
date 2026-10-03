@@ -19,10 +19,9 @@ This is particularly useful for hierarchical visualizations where a left-to-righ
 is preferred over the default top-to-bottom tree layout.
 }
 \examples{
-\dontrun{
-g <- igraph::make_tree(10)
+g <- igraph::make_tree(15)
 coords <- layout_horizontal_tree(g)
+head(coords)
 plot_Net(g, layout = coords)
-}
 
 }

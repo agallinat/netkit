@@ -31,11 +31,13 @@
 #' hub nodes highlighted.
 #'
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g <- sample_pa(100)
-#' find_hubs(g, method = "quantile", plot = TRUE)
-#' }
+#' g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
+#' res <- find_hubs(g, method = "quantile", plot = FALSE)
+#' res$method
+#' head(res$result)
+#'
+#' # The returned graph carries an `is_hub` vertex attribute, so results chain.
+#' table(igraph::V(res$graph)$is_hub)
 #'
 #' @importFrom igraph is_igraph degree betweenness vertex_attr_names vertex_attr vertex_attr<- vcount
 #' @importFrom tibble tibble

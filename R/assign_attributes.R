@@ -11,6 +11,18 @@
 #' @param overwrite Logical. If \code{TRUE}, existing attributes are overwritten. If \code{FALSE}, existing attributes are preserved. Default is \code{TRUE}.
 #'
 #' @return An \code{igraph} object with added or updated attributes.
+#'
+#' @examples
+#' g <- igraph::make_ring(5)
+#' igraph::V(g)$name <- letters[1:5]
+#'
+#' nodes <- data.frame(node = letters[1:5], group = c("a", "a", "b", "b", "b"))
+#' edges <- data.frame(from = c("a", "b"), to = c("b", "c"), weight = c(10, 20))
+#'
+#' g <- assign_attributes(g, nodes_table = nodes, edge_table = edges)
+#' igraph::vertex_attr(g, "group")
+#' igraph::edge_attr(g, "weight")
+#'
 #' @export
 assign_attributes <- function(graph,
                               nodes_table = NULL,

@@ -50,24 +50,23 @@ A list with the following components:
 \item{\code{graph}}{The input graph with assigned 'module' and 'color' as vertex attributes, if \code{plot = TRUE}.}
 }
 If \code{plot = TRUE}, a network plot is displayed with nodes colored by module.
-
-#' @details
-This function is a wrapper around several \pkg{igraph} community detection algorithms,
-including Louvain (\code{cluster_louvain()}), Walktrap, Infomap, Fast Greedy, and others.
-It simplifies their application and offers optional filtering, visualization via \code{plot_Net()},
-and module subgraph extraction.
 }
 \description{
 Identifies modules (communities) in a network using a variety of community detection
 algorithms from the \pkg{igraph} package. Optionally filters out small modules,
 visualizes the detected modules, and returns induced subgraphs for each module.
 }
-\examples{
-\dontrun{
-library(igraph)
-g <- sample_pa(100)
-find_modules(g, method = "louvain", plot = TRUE)
+\details{
+This function is a wrapper around several \pkg{igraph} community detection algorithms,
+including Louvain (\code{cluster_louvain()}), Walktrap, Infomap, Fast Greedy, and others.
+It simplifies their application and offers optional filtering, visualization via \code{plot_Net()},
+and module subgraph extraction.
 }
+\examples{
+g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
+res <- find_modules(g, method = "louvain", plot = FALSE)
+res$n_modules
+head(res$module_table)
 
 }
 \references{

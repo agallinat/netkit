@@ -60,10 +60,6 @@ For deterministic strategies (\code{"degree"}, \code{"betweenness"}, or custom a
 nodes are removed in a fixed priority order. For the \code{"random"} strategy, the process is
 repeated \code{n_reps} times, and the results are aggregated.
 
-#' @references
-Albert R, Jeong H, Barabási AL. Error and attack tolerance of complex networks.
-Nature. 2000;406(6794):378–382. \doi{10.1038/35019019}
-
 The function uses:
 \itemize{
 \item \strong{Largest Connected Component (LCC)}: Size of the largest remaining component.
@@ -87,9 +83,17 @@ The function uses:
 to evaluate how robust the network remains during progressive node failure.
 }
 \examples{
-\dontrun{
-g <- igraph::sample_pa(100)
-robustness_analysis(g, removal_strategy = "degree", metrics = c("lcc_size", "n_components"))
-}
+g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
 
+# `steps` is reduced from its default of 50 to keep the example fast.
+res <- robustness_analysis(g, removal_strategy = "degree", steps = 10,
+                           metrics = c("lcc_size", "n_components"),
+                           plot = FALSE, seed = 1)
+res$auc
+head(res$summary)
+
+}
+\references{
+Albert R, Jeong H, Barabási AL. Error and attack tolerance of complex networks.
+Nature. 2000;406(6794):378–382. \doi{10.1038/35019019}
 }

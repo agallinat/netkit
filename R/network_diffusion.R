@@ -49,12 +49,15 @@
 #' \emph{PLoS Comput Biol}. 2010;6(1):e1000641. \doi{10.1371/journal.pcbi.1000641}
 #'
 #' @examples
-#' \dontrun{
-#' g <- sample_gnp(100, 0.05, directed = F)
-#' V(g)$name <- as.character(seq_len(vcount(g)))
-#' seed_nodes <- sample(V(g)$name, 5)
-#' network_diffusion(g, seed_npodes, method = "laplacian")
-#' }
+#' g <- igraph::sample_gnp(80, 0.06, directed = FALSE)
+#' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+#' seed_nodes <- igraph::V(g)$name[1:5]
+#'
+#' network_diffusion(g, seed_nodes, method = "laplacian")
+#'
+#' # Reuse a precomputed kernel across repeated calls.
+#' kernel <- prepare_diffusion(g, method = "rwr")
+#' network_diffusion(g, seed_nodes, method = "rwr", precompute = kernel)
 #'
 #' @importFrom igraph is_igraph V is_directed as_adjacency_matrix vertex_attr vertex_attr<- vcount
 #' @importFrom Matrix Diagonal Cholesky rowSums solve
@@ -181,6 +184,18 @@ network_diffusion <- function(graph, seed_nodes,
 #' @param restart_prob Restart probability (used in `"rwr"`).
 #'
 #' @return A matrix representing the diffusion kernel.
+#'
+#' @examples
+#' g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+#' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+#'
+#' kernel <- prepare_diffusion(g, method = "laplacian")
+#' kernel$method
+#'
+#' # Passing the kernel back in skips rebuilding it on every call.
+#' network_diffusion(g, seed_nodes = c("1", "2"), method = "laplacian",
+#'                   precompute = kernel)
+#'
 #' @keywords internal
 #'
 #' @export

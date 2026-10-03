@@ -38,11 +38,13 @@
 #' @seealso \code{\link{network_diffusion}}, \code{\link{network_diffusion_with_pvalues}}
 #'
 #' @examples
-#' \dontrun{
-#' g <- sample_gnp(50, 0.05, directed = F)
+#' g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+#' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
 #' target <- c("1", "2", "3")
-#' greedy_seed_selection(g, target_nodes = target, k = 10)
-#' }
+#'
+#' res <- greedy_seed_selection(g, target_nodes = target, k = 3, plot = FALSE)
+#' res$selected_seeds
+#' res$scores_at_each_step
 #'
 #' @importFrom igraph is_igraph vertex_attr vertex_attr<- vcount
 #' @importFrom progress progress_bar

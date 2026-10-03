@@ -43,10 +43,10 @@ This function plots the complementary cumulative distribution function (CCDF)
 of node degrees in a network and optionally overlays power-law reference curves.
 }
 \examples{
-\dontrun{
-library(igraph)
-g <- sample_pa(1000)
-plot_CCDF(g, remove_singles = TRUE)
-}
+g <- igraph::sample_pa(200, power = 1.5, directed = FALSE)
+plot_CCDF(g)
+
+# Compare against reference power-law slopes.
+plot_CCDF(g, PL_exponents = c(2, 2.5, 3))
 
 }

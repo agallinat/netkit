@@ -22,12 +22,11 @@
 #'   - ks_test: KS test result for degree distributions
 #'
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g1 <- sample_pa(100)
-#' g2 <- sample_gnp(100, 0.05, directed = F)
-#' compare_networks(g1, g2)
-#' }
+#' g1 <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
+#' g2 <- igraph::sample_gnp(80, 0.05, directed = FALSE)
+#' res <- compare_networks(g1, g2)
+#' res$global_topology
+#' res$ks_test
 #'
 #' @importFrom dplyr bind_rows
 #' @importFrom igraph is_igraph degree induced_subgraph graph_from_data_frame V E

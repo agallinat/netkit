@@ -15,11 +15,9 @@
 #' @return Invisibly returns the `igraph` object with updated attributes.
 #'
 #' @examples
-#' \dontrun{
 #' g <- igraph::make_ring(10)
 #' igraph::V(g)$name <- letters[1:10]
-#' highlight_nodes(g, nodes = c("a", "j"), method = c("label", "fill"))
-#' }
+#' highlight_nodes(g, nodes = c("a", "j"), method = "fill")
 #'
 #' @export
 highlight_nodes <- function(graph,

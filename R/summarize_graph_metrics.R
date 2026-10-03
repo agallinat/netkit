@@ -41,10 +41,8 @@
 #' - Louvain modularity method: Blondel, V. D., Guillaume, J. L., Lambiotte, R., & Lefebvre, E. (2008). *Fast unfolding of communities in large networks*. J. Stat. Mech., 2008(10), P10008.
 #'
 #' @examples
-#' \dontrun{
-#' g <- igraph::sample_gnp(200, 0.05, directed = F)
+#' g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
 #' summarize_graph_metrics(g)
-#' }
 #'
 #' @export
 summarize_graph_metrics <- function(graph) {

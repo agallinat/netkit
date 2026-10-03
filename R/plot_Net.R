@@ -37,11 +37,8 @@
 #'
 #' @return Invisibly returns \code{NULL}. The function produces a plot.
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g <- random.graph.game(100, 0.02)
+#' g <- igraph::sample_gnp(50, 0.06, directed = FALSE)
 #' plot_Net(g, label = TRUE, node.size.factor = 2)
-#' }
 #'
 #' @importFrom igraph vertex_attr_names vertex_attr degree edge_betweenness vcount vertex_attr<- V<- is_igraph E<- edge_attr edge_attr<-
 #' @importFrom graphics par rect text

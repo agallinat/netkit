@@ -10,11 +10,10 @@
 #' This matrix can be passed to `plot.igraph()` or other plotting functions.
 #'
 #' @examples
-#' \dontrun{
-#' g <- igraph::make_tree(10)
+#' g <- igraph::make_tree(15)
 #' coords <- layout_horizontal_tree(g)
+#' head(coords)
 #' plot_Net(g, layout = coords)
-#' }
 #'
 #' @export
 #'

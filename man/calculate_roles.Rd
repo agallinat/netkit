@@ -62,12 +62,15 @@ R7 \tab Kinless hub: \eqn{z >= 2.5, P > 0.75} \cr
 }
 }
 \examples{
-\dontrun{
-g <- igraph::sample_gnp(200, 0.05, directed = F)
-igraph::V(g)$name <- as.character(1:200)
-result <- calculate_roles(g, plot = TRUE)
+g <- igraph::sample_gnp(80, 0.08, directed = FALSE)
+igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+
+# "louvain" is used here rather than the "spinglass" default. spinglass cannot
+# run on a disconnected graph, so find_modules() falls back to the largest
+# connected component and the remaining nodes receive no role.
+result <- calculate_roles(g, cluster.method = "louvain", plot = FALSE)
 head(result$result)
-}
+result$roles_definitions
 
 }
 \references{
