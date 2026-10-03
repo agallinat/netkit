@@ -38,11 +38,13 @@
 #' @seealso \code{\link{network_diffusion}}, \code{\link{network_diffusion_with_pvalues}}
 #'
 #' @examples
-#' \dontrun{
-#' g <- sample_gnp(50, 0.05, directed = F)
+#' g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+#' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
 #' target <- c("1", "2", "3")
-#' greedy_seed_selection(g, target_nodes = target, k = 10)
-#' }
+#'
+#' res <- greedy_seed_selection(g, target_nodes = target, k = 3, plot = FALSE)
+#' res$selected_seeds
+#' res$scores_at_each_step
 #'
 #' @importFrom igraph is_igraph vertex_attr vertex_attr<- vcount
 #' @importFrom progress progress_bar
@@ -59,15 +61,9 @@ greedy_seed_selection <- function(graph,
                                   plot = TRUE) {
 
   # --- Input validation ---
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is.igraph(graph)) {
-    stop("Input 'graph' must be an igraph object or edge list data.frame.")
-  }
+  method <- match.arg(method)
 
-  if (is.null(igraph::V(graph)$name)) {
-    igraph::V(graph)$name <- as.character(seq_len(igraph::vcount(graph)))
-  }
+  graph <- as_netkit_graph(graph, backfill_names = TRUE)
 
   all_nodes <- igraph::V(graph)$name
   target_nodes <- intersect(target_nodes, all_nodes)

@@ -22,16 +22,16 @@
 #'   - ks_test: KS test result for degree distributions
 #'
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g1 <- sample_pa(100)
-#' g2 <- sample_gnp(100, 0.05, directed = F)
-#' compare_networks(g1, g2)
-#' }
+#' g1 <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
+#' g2 <- igraph::sample_gnp(80, 0.05, directed = FALSE)
+#' res <- compare_networks(g1, g2)
+#' res$global_topology
+#' res$ks_test
 #'
 #' @importFrom dplyr bind_rows
 #' @importFrom igraph is_igraph degree induced_subgraph graph_from_data_frame V E
-#' @importFrom ggplot2 ggplot aes geom_line aes_string scale_color_manual labs coord_cartesian theme_minimal scale_y_log10
+#' @importFrom ggplot2 ggplot aes geom_line scale_color_manual labs coord_cartesian theme_minimal scale_y_log10 scale_x_continuous
+#' @importFrom rlang sym
 #' @importFrom scales trans_breaks trans_format math_format label_math hue_pal
 #' @importFrom stats setNames ks.test
 #' @importFrom graphics par
@@ -46,16 +46,8 @@ compare_networks <- function(graph1, graph2,
 ) {
 
   # --- Validate input ---
-  if (inherits(graph1, "data.frame")) {
-    graph1 <- igraph::graph_from_data_frame(graph1, directed = FALSE)
-  } else if (!igraph::is_igraph(graph1)) {
-    stop("Input 'graph1' must be an igraph object or edge list data.frame")
-  }
-  if (inherits(graph2, "data.frame")) {
-    graph2 <- igraph::graph_from_data_frame(graph2, directed = FALSE)
-  } else if (!igraph::is_igraph(graph2)) {
-    stop("Input 'graph2' must be an igraph object or edge list data.frame")
-  }
+  graph1 <- as_netkit_graph(graph1, arg = "graph1")
+  graph2 <- as_netkit_graph(graph2, arg = "graph2")
 
   # --- Handle single nodes ---
   if (remove_singles) {
@@ -128,7 +120,8 @@ compare_networks <- function(graph1, graph2,
     for (gamma in PL_exponents) {
       col_name <- paste0("PL", gamma)
       label <- paste0("gamma = ", gamma)
-      p_combined <- p_combined + geom_line(aes_string(y = col_name, color = shQuote(label)),
+      # `!!` forces col_name and label at aes() construction time; see plot_CCDF().
+      p_combined <- p_combined + geom_line(aes(y = !!sym(col_name), color = !!label),
                                            linetype = "dashed", linewidth = 0.5)
     }
   }
@@ -139,7 +132,7 @@ compare_networks <- function(graph1, graph2,
       labels = trans_format("log10", math_format(10^.x))
     ) +
     scale_x_continuous(
-      trans = "log2") +
+      transform = "log2") +
     labs(x = "Degree, k", y = "Pr(K > k)", color = "Graph") +
     scale_color_manual(values = colors_vec) +
     theme_minimal(base_size = label.size)

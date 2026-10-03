@@ -29,12 +29,4 @@ for visualizing degree distributions, particularly on log-log plots, to identify
 power-law or heavy-tailed behaviors. Internal helper function for \code{plot_CCDF()}
 and \code{compare_networks()}.
 }
-\examples{
-\dontrun{
-g <- igraph::sample_pa(1000, power = 2.5, directed = FALSE)
-ccdf_data <- compute_ccdf(g)
-plot(ccdf_data$degree, ccdf_data$ccdf, log = "xy", type = "l")
-}
-
-}
 \keyword{internal}

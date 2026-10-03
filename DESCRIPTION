@@ -1,22 +1,31 @@
 Package: netkit
 Type: Package
-Title: Network Analysis Toolkit for Biological Graphs
-Version: 0.0.1
-Author: Dr. Alex Gallinat [aut, cre]
-Maintainer: Alex Gallinat, PhD <alex.gaoc@gmail.com>
-Description: A set of tools for analyzing and visualizing biological and functional networks.
+Title: Network Analysis and Visualization Toolkit
+Version: 0.0.1.9000
+Authors@R:
+    person("Alex", "Gallinat", email = "alex.gaoc@gmail.com",
+           role = c("aut", "cre"))
+Description: A collection of tools for analyzing and visualizing networks.
+    Summarizes global topology, identifies hubs, bottlenecks and community
+    structure, and classifies nodes into connectivity roles following
+    Guimera and Amaral (2005) <doi:10.1038/nature03288>. Propagates influence
+    from seed nodes using Laplacian smoothing, heat-kernel and
+    random-walk-with-restart diffusion, with permutation-based empirical
+    p-values, and simulates network robustness under progressive node removal.
+    Matrix operations use sparse representations throughout so that the methods
+    remain usable on large graphs.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+Language: en-US
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Depends: R (>= 4.1.0)
 Imports:
-    igraph,
+    igraph (>= 2.1.0),
     ineq,
     dplyr,
     expm,
-    ggplot2,
+    ggplot2 (>= 3.5.0),
     ggExtra,
     ggrepel,
     graphics,
@@ -34,8 +43,9 @@ Imports:
 Suggests:
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
+    rmarkdown,
+    spelling
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 URL: https://agallinat.github.io/netkit
-
+BugReports: https://github.com/agallinat/netkit/issues

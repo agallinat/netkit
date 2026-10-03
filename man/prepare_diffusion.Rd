@@ -31,4 +31,16 @@ A matrix representing the diffusion kernel.
 \description{
 Prepares and normalizes the diffusion kernel matrix to be used in network diffusion.
 }
+\examples{
+g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+
+kernel <- prepare_diffusion(g, method = "laplacian")
+kernel$method
+
+# Passing the kernel back in skips rebuilding it on every call.
+network_diffusion(g, seed_nodes = c("1", "2"), method = "laplacian",
+                  precompute = kernel)
+
+}
 \keyword{internal}

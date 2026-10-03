@@ -77,10 +77,7 @@ set node and edge colors, label nodes, and adjust edge widths
 (optionally mapped to edge betweenness centrality).
 }
 \examples{
-\dontrun{
-library(igraph)
-g <- random.graph.game(100, 0.02)
+g <- igraph::sample_gnp(50, 0.06, directed = FALSE)
 plot_Net(g, label = TRUE, node.size.factor = 2)
-}
 
 }

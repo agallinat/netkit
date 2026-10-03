@@ -26,7 +26,7 @@
 #'   \item Modularity of the community structure (via Louvain algorithm)
 #' }
 #'
-#' @importFrom igraph is_igraph graph_from_data_frame as.undirected degree V E vertex_attr as_adjacency_matrix
+#' @importFrom igraph is_igraph graph_from_data_frame as_undirected degree V E vertex_attr as_adjacency_matrix
 #' @importFrom igraph components induced_subgraph edge_density diameter
 #' @importFrom igraph mean_distance transitivity assortativity_degree
 #' @importFrom igraph betweenness vcount ecount modularity cluster_louvain
@@ -41,25 +41,19 @@
 #' - Louvain modularity method: Blondel, V. D., Guillaume, J. L., Lambiotte, R., & Lefebvre, E. (2008). *Fast unfolding of communities in large networks*. J. Stat. Mech., 2008(10), P10008.
 #'
 #' @examples
-#' \dontrun{
-#' g <- igraph::sample_gnp(200, 0.05, directed = F)
+#' g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
 #' summarize_graph_metrics(g)
-#' }
 #'
 #' @export
 summarize_graph_metrics <- function(graph) {
 
   # --- Validate input ---
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
+  graph <- as_netkit_graph(graph)
 
   directed <- is_directed(graph)
 
   if (directed) {
-    graph <- as.undirected(graph, mode = "collapse")
+    graph <- as_undirected(graph, mode = "collapse")
   }
 
   comps <- components(graph)

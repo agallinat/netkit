@@ -49,12 +49,15 @@
 #' \emph{PLoS Comput Biol}. 2010;6(1):e1000641. \doi{10.1371/journal.pcbi.1000641}
 #'
 #' @examples
-#' \dontrun{
-#' g <- sample_gnp(100, 0.05, directed = F)
-#' V(g)$name <- as.character(seq_len(vcount(g)))
-#' seed_nodes <- sample(V(g)$name, 5)
-#' network_diffusion(g, seed_npodes, method = "laplacian")
-#' }
+#' g <- igraph::sample_gnp(80, 0.06, directed = FALSE)
+#' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+#' seed_nodes <- igraph::V(g)$name[1:5]
+#'
+#' network_diffusion(g, seed_nodes, method = "laplacian")
+#'
+#' # Reuse a precomputed kernel across repeated calls.
+#' kernel <- prepare_diffusion(g, method = "rwr")
+#' network_diffusion(g, seed_nodes, method = "rwr", precompute = kernel)
 #'
 #' @importFrom igraph is_igraph V is_directed as_adjacency_matrix vertex_attr vertex_attr<- vcount
 #' @importFrom Matrix Diagonal Cholesky rowSums solve
@@ -69,15 +72,7 @@ network_diffusion <- function(graph, seed_nodes,
   method <- match.arg(method)
 
   # Convert graph to igraph if needed
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
-
-  if (is.null(vertex_attr(graph, "name"))) {
-    vertex_attr(graph, "name") <- as.character(seq_along(1:vcount(graph)))
-  }
+  graph <- as_netkit_graph(graph, backfill_names = TRUE)
 
   all_nodes <- vertex_attr(graph, "name")
   n <- length(all_nodes)
@@ -94,41 +89,22 @@ network_diffusion <- function(graph, seed_nodes,
     P <- precompute$P
     use_sparse_P <- precompute$use_sparse_P
   } else {
-    # Adjacency matrix
-    A <- as_adjacency_matrix(graph, sparse = TRUE)
-
-    is_directed_graph <- is_directed(graph)
-
-    if (normalize && !is_directed_graph) {
-      deg <- Matrix::rowSums(A)
-      deg[deg == 0] <- 1
-      D_inv_sqrt <- Diagonal(x = 1 / sqrt(deg))
-      A <- D_inv_sqrt %*% A %*% D_inv_sqrt
-    } else if (normalize && is_directed_graph) {
-      warning("Normalization for directed graphs is not supported. Skipping normalization.")
-    }
-
-    # Laplacian
-    D <- Diagonal(x = Matrix::rowSums(A))
-    L <- D - A
-
-    # Cholesky for Laplacian diffusion
-    ch <- NULL
-    if (method == "laplacian") {
-      I <- Diagonal(n = nrow(L))
-      ch <- Matrix::Cholesky(I + alpha * L, LDL = FALSE, perm = TRUE)
-    }
-
-    # Transition matrix for RWR (sparse)
-    P <- NULL
-    use_sparse_P <- FALSE
-    if (method == "rwr") {
-      row_sums <- Matrix::rowSums(A)
-      row_sums[row_sums == 0] <- 1
-      D_inv <- Diagonal(x = 1 / row_sums)
-      P <- D_inv %*% A  # sparse row-normalized transition matrix
-      use_sparse_P <- TRUE
-    }
+    # Delegate to prepare_diffusion() rather than rebuilding the kernel inline.
+    # The two used to be separate copies of the adjacency-normalise -> Laplacian
+    # -> Cholesky/transition-matrix block, which meant any change to the
+    # diffusion maths had to be made twice.
+    kernel <- prepare_diffusion(
+      graph = graph,
+      method = method,
+      alpha = alpha,
+      t = t,
+      restart_prob = restart_prob,
+      normalize = normalize
+    )
+    L <- kernel$L
+    ch <- kernel$ch
+    P <- kernel$P
+    use_sparse_P <- kernel$use_sparse_P
   }
 
   # Heat diffusion: exp(-tL) * f0 via truncated Taylor
@@ -181,6 +157,18 @@ network_diffusion <- function(graph, seed_nodes,
 #' @param restart_prob Restart probability (used in `"rwr"`).
 #'
 #' @return A matrix representing the diffusion kernel.
+#'
+#' @examples
+#' g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+#' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+#'
+#' kernel <- prepare_diffusion(g, method = "laplacian")
+#' kernel$method
+#'
+#' # Passing the kernel back in skips rebuilding it on every call.
+#' network_diffusion(g, seed_nodes = c("1", "2"), method = "laplacian",
+#'                   precompute = kernel)
+#'
 #' @keywords internal
 #'
 #' @export
@@ -192,15 +180,7 @@ prepare_diffusion <- function(graph,
 
   method <- match.arg(method)
 
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
-
-  if (is.null(vertex_attr(graph, "name"))) {
-    vertex_attr(graph, "name") <- as.character(seq_along(1:vcount(graph)))
-  }
+  graph <- as_netkit_graph(graph, backfill_names = TRUE)
 
   A <- as_adjacency_matrix(graph, sparse = TRUE)
   is_directed_graph <- is_directed(graph)
@@ -210,6 +190,10 @@ prepare_diffusion <- function(graph,
     deg[deg == 0] <- 1
     D_inv_sqrt <- Diagonal(x = 1 / sqrt(deg))
     A <- D_inv_sqrt %*% A %*% D_inv_sqrt
+  } else if (normalize && is_directed_graph) {
+    # Previously only network_diffusion() warned here. Now that it delegates the
+    # kernel construction to this function, the warning has to live here too.
+    warning("Normalization for directed graphs is not supported. Skipping normalization.")
   }
 
   D <- Diagonal(x = Matrix::rowSums(A))

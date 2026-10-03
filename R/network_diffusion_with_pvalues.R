@@ -39,6 +39,21 @@
 #'
 #' For `"laplacian"` and `"heat"`, the graph Laplacian is computed from the (optionally normalized) adjacency matrix.
 #'
+#' @section Parallel execution:
+#' The permutation null is evaluated with [future.apply::future_lapply()], which
+#' runs under whichever \pkg{future} plan is currently active. This function does
+#' not set a plan itself, so by default permutations run **sequentially**. To
+#' parallelize, set a plan once in your own session before calling:
+#'
+#' ```
+#' future::plan("multisession", workers = 4)
+#' res <- network_diffusion_with_pvalues(g, seed_nodes, n_permutations = 1000)
+#' future::plan("sequential")   # release the workers when finished
+#' ```
+#'
+#' Permutations are reproducible regardless of the plan: `seed` is passed to
+#' `future_lapply(future.seed = )`, which generates parallel-safe RNG streams.
+#'
 #' @references
 #' Köhler S, Bauer S, Horn D, Robinson PN. Walking the interactome for prioritization of candidate disease genes.
 #' \emph{Am J Hum Genet}. 2008;82(4):949–958. \doi{10.1016/j.ajhg.2008.02.013}
@@ -47,12 +62,14 @@
 #' \emph{PLoS Comput Biol}. 2010;6(1):e1000641. \doi{10.1371/journal.pcbi.1000641}
 #'
 #' @examples
-#' \dontrun{
-#' g <- sample_gnp(100, 0.05, directed = F)
-#' V(g)$name <- as.character(seq_len(vcount(g)))
-#' seed_nodes <- sample(V(g)$name, 5)
-#' network_diffusion_with_pvalues(g, seed_npodes, method = "laplacian")
-#' }
+#' g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+#' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+#' seed_nodes <- igraph::V(g)$name[1:5]
+#'
+#' # n_permutations is reduced from its default of 1000 to keep the example fast;
+#' # use the default or higher for real analyses.
+#' network_diffusion_with_pvalues(g, seed_nodes, method = "laplacian",
+#'                                n_permutations = 50, seed = 1, verbose = FALSE)
 #'
 #' @importFrom igraph is_igraph V is_directed as_adjacency_matrix vertex_attr vertex_attr<- vcount
 #' @importFrom Matrix Diagonal
@@ -81,8 +98,11 @@ network_diffusion_with_pvalues <- function(graph,
   real_scores <- setNames(real_scores_df$score, real_scores_df$node)
 
   if (verbose) {
-    message(sprintf("Running %d permutations with %d random seed nodes each (parallelized)...",
-                    n_permutations, n_seeds))
+    # class(plan()) is e.g. c("FutureStrategy", "sequential", "uniprocess", ...);
+    # element 2 is the strategy name ("sequential", "multisession", ...).
+    plan_name <- class(future::plan())[2]
+    message(sprintf("Running %d permutations with %d random seed nodes each (future plan: %s)...",
+                    n_permutations, n_seeds, plan_name))
   }
 
   # Precompute diffusion matrix
@@ -91,10 +111,16 @@ network_diffusion_with_pvalues <- function(graph,
                                alpha = alpha, t = t, restart_prob = restart_prob,
                                normalize = normalize)
 
-  # 2. Prepare parallel plan
-  future::plan("multisession")
+  # 2. Run permutations under whatever future plan the caller has set.
+  #
+  # This deliberately does NOT call future::plan(). A package must not change the
+  # user's plan: doing so overrides their choice globally, and the "multisession"
+  # workers it starts are never shut down, leaving socket connections open. That
+  # surfaces as "checking examples ... ERROR / connections left open" under
+  # R CMD check. The default plan is sequential; see @details for opting in to
+  # parallel execution.
 
-  # 3. Run permutations in parallel
+  # 3. Run permutations
   perm_results <- future.apply::future_lapply(seq_len(n_permutations), function(i) {
     perm_seeds <- sample(setdiff(all_nodes, seed_nodes), n_seeds)
     null_df <- network_diffusion(graph, perm_seeds, method, alpha, t, restart_prob, normalize, precompute = precomp)
@@ -114,8 +140,7 @@ network_diffusion_with_pvalues <- function(graph,
   result <- tibble::tibble(
     node = names(real_scores),
     score = as.numeric(real_scores),
-    p_empirical = as.numeric(p_values),
-    stringsAsFactors = FALSE
+    p_empirical = as.numeric(p_values)
   )
   result <- result[order(result$p_empirical), ]
   return(result)

@@ -29,47 +29,38 @@
 #' as nodes are progressively removed.
 #'
 #' @details
-#' This function builds on classic approaches in network science for evaluating structural robustness
-#' (e.g., Albert, Jeong, & Barabási, Nature 2000) by simulating progressive node removal and quantifying
-#' the degradation of key topological features.
+#' This function builds on classic approaches in network science for evaluating structural robustness,
+#' simulating progressive node removal and quantifying the degradation of key topological features.
 #'
 #' For deterministic strategies (\code{"degree"}, \code{"betweenness"}, or custom attributes),
 #' nodes are removed in a fixed priority order. For the \code{"random"} strategy, the process is
 #' repeated \code{n_reps} times, and the results are aggregated.
 #'
-#' #' @references
-#' Albert R, Jeong H, Barabási AL. Error and attack tolerance of complex networks.
-#' Nature. 2000;406(6794):378–382. \doi{10.1038/35019019}
-#'
-#' The function uses:
+#' The available metrics are:
 #' \itemize{
-#'   \item \strong{Largest Connected Component (LCC)}: Size of the largest remaining component.
-#'   \item \strong{Global Efficiency}: Average inverse shortest path length among all pairs.
-#'   \item \strong{Number of Components}: Total number of disconnected components.
+#'   \item \strong{Largest Connected Component}: size of the largest remaining component (\code{lcc_size}).
+#'   \item \strong{Global Efficiency}: average inverse shortest path length among all pairs (\code{efficiency}).
+#'   \item \strong{Number of Components}: total number of disconnected components (\code{n_components}).
 #' }
 #'
 #' Additionally, Area Under the Curve (AUC) is calculated for each metric, providing a scalar summary
 #' of robustness. A higher AUC indicates greater resilience (i.e., slower degradation).
 #'
-#' The implementation is inspired by principles described in:
-#' Albert R, Jeong H, Barabási AL. \emph{Error and attack tolerance of complex networks}. Nature. 2000;406:378–382.
-#' (\doi{10.1038/35019019})
-#'
-#' The function uses:
-#' \itemize{
-#'   \item Size of the largest connected component (\code{lcc_size})
-#'   \item Global efficiency (average inverse shortest path length)
-#'   \item Number of components (\code{n_components})
-#' }
-#' to evaluate how robust the network remains during progressive node failure.
+#' @references
+#' Albert R, Jeong H, Barabási AL. Error and attack tolerance of complex networks.
+#' Nature. 2000;406(6794):378–382. \doi{10.1038/35019019}
 #'
 #' @examples
-#' \dontrun{
-#' g <- igraph::sample_pa(100)
-#' robustness_analysis(g, removal_strategy = "degree", metrics = c("lcc_size", "n_components"))
-#' }
+#' g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
 #'
-#' @importFrom igraph is.igraph is.directed as.undirected vertex_attr_names V degree betweenness delete_vertices components vcount distances vertex_attr vertex_attr<-
+#' # `steps` is reduced from its default of 50 to keep the example fast.
+#' res <- robustness_analysis(g, removal_strategy = "degree", steps = 10,
+#'                            metrics = c("lcc_size", "n_components"),
+#'                            plot = FALSE, seed = 1)
+#' res$auc
+#' head(res$summary)
+#'
+#' @importFrom igraph is_igraph is_directed as_undirected vertex_attr_names V degree betweenness delete_vertices components vcount distances vertex_attr vertex_attr<-
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #' @importFrom dplyr bind_rows group_by summarise across all_of %>%
 #' @importFrom ggplot2 ggplot aes geom_line labs theme_minimal scale_color_manual
@@ -86,13 +77,14 @@ robustness_analysis <- function(graph,
                                 seed = NULL) {
 
   # Validate input
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is.igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
+  graph <- as_netkit_graph(graph)
 
-  if (is.directed(graph)) graph <- as.undirected(graph, mode = "collapse")
+  if (is_directed(graph)) graph <- as_undirected(graph, mode = "collapse")
+
+  # Resolve the unevaluated default (a length-3 vector) to its first option
+  if (length(removal_strategy) > 1) {
+    removal_strategy <- match.arg(removal_strategy, c("random", "degree", "betweenness"))
+  }
 
   # Handle flexible strategy
   if (length(removal_strategy) == 1 && removal_strategy %in% c("random", "degree", "betweenness")) {

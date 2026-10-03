@@ -67,12 +67,15 @@ For \code{"laplacian"} and \code{"heat"}, the graph Laplacian is computed from t
 For efficiency in iterative applications, precompute Laplacian and Cholesky decomposition using \code{\link{prepare_diffusion}()}.
 }
 \examples{
-\dontrun{
-g <- sample_gnp(100, 0.05, directed = F)
-V(g)$name <- as.character(seq_len(vcount(g)))
-seed_nodes <- sample(V(g)$name, 5)
-network_diffusion(g, seed_npodes, method = "laplacian")
-}
+g <- igraph::sample_gnp(80, 0.06, directed = FALSE)
+igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
+seed_nodes <- igraph::V(g)$name[1:5]
+
+network_diffusion(g, seed_nodes, method = "laplacian")
+
+# Reuse a precomputed kernel across repeated calls.
+kernel <- prepare_diffusion(g, method = "rwr")
+network_diffusion(g, seed_nodes, method = "rwr", precompute = kernel)
 
 }
 \references{

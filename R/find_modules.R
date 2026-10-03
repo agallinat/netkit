@@ -31,7 +31,7 @@
 #' }
 #' If \code{plot = TRUE}, a network plot is displayed with nodes colored by module.
 #'
-#' #' @details
+#' @details
 #' This function is a wrapper around several \pkg{igraph} community detection algorithms,
 #' including Louvain (\code{cluster_louvain()}), Walktrap, Infomap, Fast Greedy, and others.
 #' It simplifies their application and offers optional filtering, visualization via \code{plot_Net()},
@@ -42,13 +42,12 @@
 #' InterJournal, Complex Systems. 2006;1695. \url{https://igraph.org}
 #'
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g <- sample_pa(100)
-#' find_modules(g, method = "louvain", plot = TRUE)
-#' }
+#' g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
+#' res <- find_modules(g, method = "louvain", plot = FALSE)
+#' res$n_modules
+#' head(res$module_table)
 #'
-#' @importFrom igraph is_igraph is_directed as.undirected cluster_louvain cluster_walktrap cluster_infomap cluster_edge_betweenness cluster_fluid_communities cluster_fast_greedy cluster_leading_eigen cluster_leiden cluster_spinglass membership induced_subgraph vertex_attr vertex_attr<- layout_with_fr vcount
+#' @importFrom igraph is_igraph is_directed as_undirected cluster_louvain cluster_walktrap cluster_infomap cluster_edge_betweenness cluster_fluid_communities cluster_fast_greedy cluster_leading_eigen cluster_leiden cluster_spinglass membership induced_subgraph vertex_attr vertex_attr<- layout_with_fr vcount
 #' @importFrom dplyr filter %>%
 #' @importFrom tibble as_tibble
 #' @importFrom scales hue_pal
@@ -64,20 +63,12 @@ find_modules <- function(graph,
                          label = FALSE, ...) {
 
   # --- Validate input ---
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
-
-  if (is.null(vertex_attr(graph, "name"))) {
-    vertex_attr(graph, "name") <- as.character(seq_along(1:vcount(graph)))
-  }
+  graph <- as_netkit_graph(graph, backfill_names = TRUE)
 
   # --- Community detection ---
   if (method == "louvain") {
     if (is_directed(graph)) {
-      graph <- as.undirected(graph, mode = "collapse")
+      graph <- as_undirected(graph, mode = "collapse")
       message("Input graph converted to undirected for Louvain clustering.\n")
     }
     comm_result <- cluster_louvain(graph)
@@ -93,21 +84,21 @@ find_modules <- function(graph,
   } else if (method == "fast_greedy") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as.undirected(graph, mode = "collapse")
+      graph <- as_undirected(graph, mode = "collapse")
       message("Input graph converted to undirected for Fast Greedy clustering.")
     }
     comm_result <- cluster_fast_greedy(graph)
   } else if (method == "leading_eigen") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as.undirected(graph, mode = "collapse")
+      graph <- as_undirected(graph, mode = "collapse")
       message("Input graph converted to undirected for Leading Eigen clustering.")
     }
     comm_result <- cluster_leading_eigen(graph)
   } else if (method == "leiden") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as.undirected(graph, mode = "collapse")
+      graph <- as_undirected(graph, mode = "collapse")
       message("Input graph converted to undirected for Leiden clustering.")
     }
     comm_result <- cluster_leiden(graph)

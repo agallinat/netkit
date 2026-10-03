@@ -30,11 +30,10 @@
 #' If \code{plot = TRUE}, a scatter plot of degree vs. betweenness is displayed, highlighting bottlenecks.
 #'
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g <- sample_pa(100)
-#' find_bottlenecks(g, method = "quantile", plot = TRUE)
-#' }
+#' g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
+#' res <- find_bottlenecks(g, method = "quantile", plot = FALSE)
+#' res$method
+#' head(res$result)
 #'
 #' @importFrom igraph is_igraph degree betweenness vertex_attr_names vertex_attr vertex_attr<- vcount
 #' @importFrom tibble tibble
@@ -60,15 +59,7 @@ find_bottlenecks <- function(graph,
 
   method <- match.arg(method)
 
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
-
-  if (is.null(vertex_attr(graph, "name"))) {
-    vertex_attr(graph, "name") <- as.character(seq_along(1:vcount(graph)))
-  }
+  graph <- as_netkit_graph(graph, backfill_names = TRUE)
 
   # Compute degree and betweenness
   deg <- degree(graph)

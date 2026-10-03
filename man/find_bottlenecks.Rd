@@ -63,10 +63,9 @@ and quantile-based thresholding. Optionally, it produces a 2D scatter plot with
 bottlenecks highlighted.
 }
 \examples{
-\dontrun{
-library(igraph)
-g <- sample_pa(100)
-find_bottlenecks(g, method = "quantile", plot = TRUE)
-}
+g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
+res <- find_bottlenecks(g, method = "quantile", plot = FALSE)
+res$method
+head(res$result)
 
 }

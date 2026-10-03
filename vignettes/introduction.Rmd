@@ -112,7 +112,7 @@ plot_Net(g2, edge.width.factor = 0.5, node.size.factor = 2, edge.arrow.size = 0.
 
 ````
 
-Specific nodes can also be highlighted using the function `highlight_nodes()` and the nodes' name. Highlighting method (label, fill and/or outline) and colors can be customized at will. Aditional arguments are passed to the `plot_Net()` function:
+Specific nodes can also be highlighted using the function `highlight_nodes()` and the nodes' name. Highlighting method (label, fill and/or outline) and colors can be customized at will. Additional arguments are passed to the `plot_Net()` function:
 
 ````{r highlight-network, fig.width = 4, fig.height = 4}
 highlight_nodes(g, nodes = c("1", "2", "4"), method = c("outline", "fill"),
@@ -131,7 +131,7 @@ plot_Net(g, edge.width.factor = 0.3, node.size.factor = 2,
 
 ### 3.1. Global topology
 
-The core functions for a global network topology analysis are `plot_CCDF()`, which generates a plot of the **complementary cumulative degree distribution (CCDF)**, and `sumarize_graph_metrics()`, which calculates the following parmeters for an input graph:
+The core functions for a global network topology analysis are `plot_CCDF()`, which generates a plot of the **complementary cumulative degree distribution (CCDF)**, and `summarize_graph_metrics()`, which calculates the following parameters for an input graph:
 
 - Number of nodes and edges
 - Directed `TRUE/FALSE`
@@ -162,7 +162,7 @@ compare_networks(g, g2)
 
 ````
 
-### 3.2. Robustness Analyisis
+### 3.2. Robustness Analysis
 
 The package implements `robustness_analysis()` for simulating network robustness under targeted or random node removal, following the framework of [Albert et al., 2000](https://www.nature.com/articles/35019019). 
 
@@ -318,7 +318,7 @@ The generated plot is also a `ggplot2` object, and thus, fully customizable.
 
 ## 5. Credits and Contributions
 
-`netkit` has been developed, and is mantained, by Alex Gallinat, PhD. 
+`netkit` has been developed, and is maintained, by Alex Gallinat, PhD. 
 
 Contributions are welcome! If you’d like to report a bug, suggest a feature, or improve documentation, please open an issue or submit a pull request at:
 

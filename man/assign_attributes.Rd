@@ -29,3 +29,15 @@ using user-provided metadata tables. Vertex attributes are matched by the first 
 and edge attributes are matched using the first two columns of \code{edge_table}, taking graph direction into account.
 Only matching nodes and edges are updated. Warnings are issued when there are unmatched entries.
 }
+\examples{
+g <- igraph::make_ring(5)
+igraph::V(g)$name <- letters[1:5]
+
+nodes <- data.frame(node = letters[1:5], group = c("a", "a", "b", "b", "b"))
+edges <- data.frame(from = c("a", "b"), to = c("b", "c"), weight = c(10, 20))
+
+g <- assign_attributes(g, nodes_table = nodes, edge_table = edges)
+igraph::vertex_attr(g, "group")
+igraph::edge_attr(g, "weight")
+
+}

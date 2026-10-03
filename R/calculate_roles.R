@@ -42,14 +42,17 @@
 #' @seealso [find_modules()], [igraph::cluster_spinglass()], [igraph::membership()]
 #'
 #' @examples
-#' \dontrun{
-#' g <- igraph::sample_gnp(200, 0.05, directed = F)
-#' igraph::V(g)$name <- as.character(1:200)
-#' result <- calculate_roles(g, plot = TRUE)
-#' head(result$result)
-#' }
+#' g <- igraph::sample_gnp(80, 0.08, directed = FALSE)
+#' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
 #'
-#' @importFrom ggplot2 theme_bw ggplot annotate geom_point scale_x_continuous scale_color_manual labs
+#' # "louvain" is used here rather than the "spinglass" default. spinglass cannot
+#' # run on a disconnected graph, so find_modules() falls back to the largest
+#' # connected component and the remaining nodes receive no role.
+#' result <- calculate_roles(g, cluster.method = "louvain", plot = FALSE)
+#' head(result$result)
+#' result$roles_definitions
+#'
+#' @importFrom ggplot2 theme_bw ggplot aes annotate geom_point scale_x_continuous scale_color_manual labs theme
 #' @importFrom ggrepel geom_text_repel
 #'
 #' @export
@@ -66,11 +69,13 @@ calculate_roles <- function(graph,
   if (is.null(communities)) {
 
     modules <- find_modules(graph, method = cluster.method, plot = FALSE, return_subgraphs = FALSE)
-    membership <- setNames(modules$module_table$module, modules$module_table$node)
+    membership <- stats::setNames(modules$module_table$module, modules$module_table$node)
 
   } else if ("communities" %in% class(communities)) {
     membership <- igraph::membership(communities)
-  } else if (is.vector(communities) && length(communities) == igraph::vcount(graph)) {
+  } else if (is.atomic(communities) && length(communities) == igraph::vcount(graph)) {
+    # is.atomic() rather than is.vector(): igraph::membership() returns a named
+    # vector carrying a "membership" class attribute, which is.vector() rejects.
     membership <- communities
   } else {
     stop("Communities must be an igraph clustering object, a membership vector or NULL to find modules.")
@@ -101,7 +106,7 @@ calculate_roles <- function(graph,
     vnames <- as.character(seq_len(length(membership)))
   }
 
-  degrees <- degree(graph, mode = "all")[vnames]
+  degrees <- igraph::degree(graph, mode = "all")[vnames]
 
   # Initialize roles dataframe
   roles_df <- tibble::tibble(
@@ -109,8 +114,7 @@ calculate_roles <- function(graph,
     module = as.integer(membership[vnames]),
     z = NA_real_,
     p = NA_real_,
-    role = NA_character_,
-    stringsAsFactors = FALSE
+    role = NA_character_
   )
 
   # Compute within-module z-score
@@ -121,10 +125,10 @@ calculate_roles <- function(graph,
       next
     }
 
-    subg <- induced_subgraph(graph, mod_nodes)
-    ki <- degree(subg)
+    subg <- igraph::induced_subgraph(graph, mod_nodes)
+    ki <- igraph::degree(subg)
     mean_ki <- mean(ki)
-    sd_ki <- sd(ki)
+    sd_ki <- stats::sd(ki)
 
     z_vals <- if (is.na(sd_ki) || sd_ki == 0) rep(0, length(ki)) else (ki - mean_ki) / sd_ki
     roles_df$z[match(names(ki), roles_df$node)] <- z_vals
@@ -133,13 +137,13 @@ calculate_roles <- function(graph,
   # Compute participation coefficient
   for (i in seq_len(nrow(roles_df))) {
     node <- roles_df$node[i]
-    neighbors <- neighbors(graph, node, mode = "all")
-    if (length(neighbors) == 0) {
+    nbrs <- igraph::neighbors(graph, node, mode = "all")
+    if (length(nbrs) == 0) {
       roles_df$p[i] <- 0
       next
     }
 
-    neighbor_names <- V(graph)$name[neighbors]
+    neighbor_names <- igraph::V(graph)$name[nbrs]
     k_i <- degrees[node]
     neighbor_modules <- membership[neighbor_names]
     k_i_m <- table(neighbor_modules)

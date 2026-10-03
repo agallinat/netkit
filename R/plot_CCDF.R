@@ -6,7 +6,7 @@
 #' @param graph An \code{igraph} object representing the network to analyze or a
 #'   data frame containing a symbolic edge list in the first two columns. Additional
 #'   columns are considered as edge attributes.
-#' @param keep_direction Logical. Only for directed graphs. If \code{TRUE}, CCDF curves are drawn for 'in'-dgree,
+#' @param keep_direction Logical. Only for directed graphs. If \code{TRUE}, CCDF curves are drawn for 'in'-degree,
 #'   'out'-degree, and 'all'-degree distributions. \code{FALSE} to ignore directionality.
 #' @param remove_singles Logical. If \code{TRUE}, nodes with degree 0 are removed from the graph
 #'   before computing the CCDF. Default is \code{FALSE}.
@@ -20,14 +20,14 @@
 #' @return A \code{ggplot2} object showing the CCDF of node degrees on a log-log scale.
 #'
 #' @examples
-#' \dontrun{
-#' library(igraph)
-#' g <- sample_pa(1000)
-#' plot_CCDF(g, remove_singles = TRUE)
-#' }
+#' g <- igraph::sample_pa(200, power = 1.5, directed = FALSE)
+#' plot_CCDF(g)
+#'
+#' # Compare against reference power-law slopes.
+#' plot_CCDF(g, PL_exponents = c(2, 2.5, 3))
 #'
 #' @importFrom igraph is_igraph degree induced_subgraph
-#' @importFrom ggplot2 ggplot aes geom_line aes_string scale_color_manual labs coord_cartesian theme_minimal scale_y_log10
+#' @importFrom ggplot2 ggplot aes geom_line scale_color_manual labs coord_cartesian theme_minimal scale_y_log10 scale_x_continuous
 #' @importFrom scales trans_breaks trans_format math_format label_math hue_pal
 #' @importFrom stats setNames
 #' @importFrom graphics par
@@ -42,11 +42,9 @@ plot_CCDF <- function(graph,
                       colors = c("#000831","#e41a1c","darkgreen", "#9c52f2", "#b8b8ff"),
                       label.size = 12) {
 
-  if (inherits(graph, "data.frame")) {
-    graph <- igraph::graph_from_data_frame(graph, directed = keep_direction)
-  } else if (!igraph::is_igraph(graph)) {
-    stop("Input 'graph' must be either an igraph object or a data.frame representing an edge list.")
-  }
+  # An edge-list data.frame is read as directed only when the caller asked to keep
+  # direction; an igraph input keeps its own directedness either way.
+  graph <- as_netkit_graph(graph, directed = keep_direction)
 
   if (remove_singles) {
     deg_all <- igraph::degree(graph)
@@ -128,7 +126,10 @@ plot_CCDF <- function(graph,
     for (gamma in PL_exponents) {
       col_name <- paste0("PL", gamma)
       label <- paste0("gamma = ", gamma)
-      p <- p + geom_line(aes_string(y = col_name, color = shQuote(label)),
+      # `!!` forces col_name and label at aes() construction time. Without it each
+      # layer would capture the loop variables by reference and every reference
+      # line would end up using the final exponent.
+      p <- p + geom_line(aes(y = !!sym(col_name), color = !!label),
                          linetype = "dashed", linewidth = 0.5)
     }
   }
@@ -138,7 +139,7 @@ plot_CCDF <- function(graph,
     scale_y_log10(breaks = trans_breaks("log10", function(x) 10^floor(x)),
                   labels = trans_format("log10", math_format(10^.x))) +
     scale_x_continuous(
-      trans = "log2"
+      transform = "log2"
     )+
     labs(x = "Degree, k", y = "Pr(K > k)", color = "") +
     scale_color_manual(values = colors_vec) +
@@ -168,13 +169,6 @@ plot_CCDF <- function(graph,
 #' \describe{
 #'   \item{degree}{Integer node degree values.}
 #'   \item{ccdf}{Complementary cumulative distribution values (P(X ≥ x)).}
-#' }
-#'
-#' @examples
-#' \dontrun{
-#' g <- igraph::sample_pa(1000, power = 2.5, directed = FALSE)
-#' ccdf_data <- compute_ccdf(g)
-#' plot(ccdf_data$degree, ccdf_data$ccdf, log = "xy", type = "l")
 #' }
 #'
 #' @keywords internal
