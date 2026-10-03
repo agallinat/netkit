@@ -2,7 +2,7 @@
 title: "Introduction to netkit"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{introduction}
+  %\VignetteIndexEntry{Introduction to netkit}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -162,7 +162,62 @@ compare_networks(g, g2)
 
 ````
 
-### 3.2. Robustness Analysis
+### 3.2. Node-level metrics
+
+While `summarize_graph_metrics()` describes the graph as a whole, `node_metrics()` describes its vertices: it computes degree, strength, betweenness, harmonic centrality, eigenvector centrality, PageRank, coreness, local clustering, Burt's constraint and eccentricity in a single call, and attaches each one to the graph as a vertex attribute.
+
+That last part is what makes it chain. Any netkit function that accepts a numeric vertex attribute — `plot_Net(color = )`, `robustness_analysis(removal_strategy = )` — can use the results directly.
+
+````{r node-metrics, fig.width = 6, fig.height = 5}
+nm <- node_metrics(g, plot = FALSE)
+
+head(nm$result)
+
+# Every metric is now on the graph.
+setdiff(vertex_attr_names(nm$graph), c("name", "category", "score"))
+````
+
+The default diagnostic plot is a Spearman correlation heatmap of the metrics rather than a ranking, and deliberately so. The usual mistake with a table like this is to read the columns as independent evidence, when on many networks betweenness, eigenvector centrality and PageRank all correlate with degree above 0.9 — so a node that looks important by four measures may be important by one.
+
+````{r node-metrics-plot, fig.width = 6, fig.height = 5}
+node_metrics(g, metrics = c("degree", "betweenness", "pagerank", "coreness"))$plot
+````
+
+Set `plot_type = "ranking"` for a faceted bar chart of the top-scoring nodes per metric instead.
+
+### 3.3. Is any of this surprising?
+
+A clustering coefficient of 0.4 or a modularity of 0.42 means nothing on its own: random graphs with the same degree sequence routinely reach similar values. `null_model()` builds a matched random ensemble and `metric_significance()` scores the observed graph against it.
+
+The `"rewire"` default preserves the degree sequence *exactly* by making double-edge swaps, which is almost always the right null for a topological claim — nearly every network metric is partly determined by the degree sequence, so a null that does not hold it fixed mostly rediscovers that the graph is heavy-tailed. `"erdos_renyi"` matches only the vertex and edge counts and is included as the deliberate weak contrast.
+
+````{r null-model, fig.width = 7, fig.height = 4}
+# n_null is kept small here for speed; use 100 or more in practice.
+sig <- metric_significance(g, metrics = c("Clustering_coefficient", "Modularity",
+                                          "Degree_assortativity"),
+                           n_null = 30, seed = 1)
+sig$result
+````
+
+Note the floor on the p-value. Empirical p-values use the `(r + 1) / (n + 1)` convention and so are never zero — with 30 null graphs the smallest attainable value is `1/31 ≈ 0.032`, and no effect however large can beat it. The `method` element says so explicitly:
+
+````{r null-method}
+sig$method
+````
+
+The accompanying plot shows each null distribution with the observed value marked:
+
+````{r null-plot, fig.width = 7, fig.height = 3}
+sig$plot
+````
+
+`small_worldness()` is the classic application of the same machinery, reporting sigma = (C/C_rand)/(L/L_rand). Values appreciably above 1 indicate small-world organization.
+
+````{r small-world}
+small_worldness(sample_smallworld(1, 100, 4, 0.05), n_null = 20, seed = 1)$result
+````
+
+### 3.4. Robustness Analysis
 
 The package implements `robustness_analysis()` for simulating network robustness under targeted or random node removal, following the framework of [Albert et al., 2000](https://www.nature.com/articles/35019019). 
 
@@ -178,7 +233,7 @@ robustness_analysis(g, removal_strategy = "betweenness")
 
 ````
 
-### 3.3. Hubs
+### 3.5. Hubs
 
 **Hub nodes** are defined as nodes with a particularly high degree and betweenness centrality. Using the function `find_hubs()`, we can identify these nodes using either z-score or quantile thresholds for degree and betweenness centrality. The function generates a diagnostic plot to visualize the classification using a scatter plot with marginal histograms. 
 
@@ -213,7 +268,7 @@ hubs_result$plot
 
 ````
 
-### 3.4. Bottlenecks
+### 3.6. Bottlenecks
 
 **Bottlenecks** are defined as nodes with a particularly high betweenness centrality but low degree. Similarly to the `find_hubs()` function, we can use `find_bottlenecks()` to identify these nodes. Either z-score or quantile thresholds can be employed for degree and betweenness centrality thresholding. The function generates a diagnostic plot to visualize the classification using a scatter plot with marginal histograms.
 
@@ -226,7 +281,7 @@ find_bottlenecks(g,
 
 ````
 
-### 3.5. Calculate Roles
+### 3.7. Calculate Roles
 
 Beyond classical hubs and bottlenecks, the package implements the function `calculate_roles()` for node role classification based on within-module and between-module connectivity, as described by [Guimerà & Amaral, 2005](https://www.nature.com/articles/nature03288), which defines nodes' roles using two metrics:
 
@@ -247,7 +302,7 @@ calculate_roles(g,
 ````
 
 
-### 3.6. Modules
+### 3.8. Modules
 
 The package also implements a function to identify **modules** (communities) in a network using a variety of community detection algorithms from the `igraph` package (e.g., Louvain, Walktrap, Infomap). Optionally filters out small modules, visualizes the detected modules, and returns induced subgraphs for each module.
 
@@ -262,11 +317,46 @@ find_modules(g,
 ````
 
 
-## 4. Information flow
+## 4. Extracting a subnetwork
+
+A very common starting point is a list of nodes — differentially expressed genes, known disease genes, a set of drug targets — and the question of how they relate to one another. `extract_subnetwork()` answers that with five strategies of increasing ambition.
+
+````{r subnetwork-setup}
+seeds <- c("1", "5", "20", "40", "60")
+````
+
+`"induced"` keeps only the seeds and whatever edges run between them: usually almost nothing, but it is the baseline the others should be compared against. `"neighbors"` adds the surrounding neighbourhood, with `max_degree` available to exclude promiscuous hubs — without that cap, first-neighbour expansion on a hub-dominated network returns most of the network.
+
+````{r subnetwork-neighbors, fig.width = 5, fig.height = 5}
+extract_subnetwork(g, seeds, method = "neighbors", order = 1,
+                   edge.width.factor = 0.3, node.size.factor = 2)$method
+````
+
+`"shortest_paths"` takes the union of every shortest path between every pair of seeds — the classic "connect my gene list". `"steiner"` instead finds an approximate minimum Steiner tree: the smallest *tree* that connects them all, via the Kou–Markowsky–Berman heuristic. The union keeps every equally short route and so grows quickly; the tree keeps one connecting structure and is far easier to read, which usually makes it the better figure.
+
+````{r subnetwork-steiner, fig.width = 5, fig.height = 5}
+st <- extract_subnetwork(g, seeds, method = "steiner",
+                         edge.width.factor = 0.3, node.size.factor = 2)
+
+# Always a tree: vcount - 1 edges, and no leaf that is not a seed.
+c(nodes = vcount(st$graph), edges = ecount(st$graph))
+
+st$result
+````
+
+`"diffusion"` reuses the diffusion machinery of the next section, keeping the top-scoring vertices instead:
+
+````{r subnetwork-diffusion, fig.width = 5, fig.height = 5}
+extract_subnetwork(g, seeds, method = "diffusion", top_n = 20, plot = FALSE)$method
+````
+
+Unlike most of netkit, these return no `plot` element: like `plot_Net()`, `find_modules()` and `highlight_nodes()`, they render through base graphics and so have no plot object to hand back.
+
+## 5. Information flow
 
 Understanding how signals propagate across a network is a key step in many systems-level analyses. Information flow analysis allows users to identify nodes that are likely to be influenced by a stimulus or, conversely, nodes that can best influence a desired set of targets. For instance, in biological networks, **information flow analysis** is key for pathway reconstruction, to associate nodes (genes/proteins) to molecular functions or diseases, and to prioritize candidate drugs for a given target. 
 
-### 4.1. Network Diffusion
+### 5.1. Network Diffusion
 
 The functions `network_diffusion()` and `network_diffusion_with_pvalues()` simulate the spread of information from a set of seed nodes across the network. Both functions supports several diffusion models (`"laplacian", "heat", "rwr"`) and computes the propagated signal to every node in the network. 
 
@@ -286,7 +376,7 @@ network_diffusion_with_pvalues(g, seed_nodes = seed_nodes, method = "laplacian")
 ````
 
 
-### 4.2. Reverse Network Diffusion
+### 5.2. Reverse Network Diffusion
 
 The function `greedy_seed_selection()` implements a **greedy algorithm** to select a set of seed nodes (of size *k*) that maximize the total diffusion signal over a given set of **target nodes**.
 
@@ -316,7 +406,7 @@ greedy_seed_selection(g, target_nodes = target_nodes, k = 20, method = "laplacia
 
 The generated plot is also a `ggplot2` object, and thus, fully customizable.
 
-## 5. Credits and Contributions
+## 6. Credits and Contributions
 
 `netkit` has been developed, and is maintained, by Alex Gallinat, PhD. 
 

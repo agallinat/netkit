@@ -4,6 +4,7 @@
 # netkit
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 The goal of **netkit** is to provide a comprehensive and user-friendly
@@ -12,25 +13,71 @@ systems analysis. It includes tools for flexible graph annotation,
 topological analysis, network visualization, and diffusion-based signal
 propagation.
 
-Advanced features include a greedy algorithm for reverse diffusion
-analysis — predicting optimal seed node sets that maximize signal
-propagation to a specified set of target nodes — and tools for
-simulating network robustness under targeted or random node removal,
-following the framework of [Albert et al.,
-2000](https://www.nature.com/articles/35019019). Additionally,
-**netkit** implements node role classification based on within-module
-and between-module connectivity, as described by [Guimerà & Amaral,
-2005](https://www.nature.com/articles/nature03288).
+## What it does
+
+- **Topology** — `summarize_graph_metrics()` for the graph as a whole
+  and `node_metrics()` for its vertices (eleven centrality and position
+  measures in one call), plus `plot_CCDF()` and `compare_networks()`.
+
+- **Statistical testing** — `null_model()` builds degree-preserving
+  random ensembles, and `metric_significance()` scores an observed
+  metric against them, so “modularity 0.42” becomes a z-score and an
+  empirical p-value rather than a bare number. `small_worldness()` is
+  the classic application.
+
+- **Node classification** — `find_hubs()`, `find_bottlenecks()`, and
+  `calculate_roles()`, which implements the R1–R7 connectivity
+  cartography of [Guimerà & Amaral,
+  2005](https://www.nature.com/articles/nature03288).
+
+- **Subnetwork extraction** — `extract_subnetwork()` turns a gene list
+  into a readable figure, by induced subgraph, neighborhood expansion,
+  the union of shortest paths, an approximate Steiner tree, or
+  diffusion-based expansion.
+
+- **Information flow** — `network_diffusion()` and
+  `network_diffusion_with_pvalues()`, the latter with a degree-matched
+  permutation null, since diffusion scores are strongly
+  degree-dependent. `greedy_seed_selection()` solves the inverse
+  problem: given nodes you want to affect, which upstream nodes should
+  you perturb?
+
+- **Robustness** — `robustness_analysis()` simulates targeted and random
+  node removal following [Albert et al.,
+  2000](https://www.nature.com/articles/35019019).
+
+- **Visualization** — `plot_Net()` and friends, with node/edge metadata
+  mapping, dynamic sizing, and layout control.
+
+Analysis functions return a named list with a consistent vocabulary —
+`plot`, `result`, `graph`, `method` — which is what lets them chain:
+
+``` r
+g <- node_metrics(g)$graph        # eleven metrics as vertex attributes
+g <- find_hubs(g)$graph           # plus is_hub
+g <- find_modules(g)$graph        # plus module
+robustness_analysis(g, removal_strategy = "pagerank")
+```
+
+## Edge weights
+
+Every function that can use edge weights takes `weights` and a
+`weight_type` declaring whether the values are a **strength**
+(confidence scores, correlations — larger means more tightly connected)
+or a **distance** (costs, dissimilarities — larger means further apart).
+netkit ignores edge weights unless asked, and warns when a graph carries
+a `weight` attribute it is ignoring.
+
+That is deliberate, and differs from plain `igraph`, which reads the
+attribute automatically while giving it *opposite* meanings in different
+functions — a cost in `betweenness()` and `distances()`, a strength in
+`cluster_louvain()`. See `vignette("weighted-networks")`.
 
 With a special scope to generate high-quality and interpretable figures
 suitable for publication, most of the functions generate both tabular
-results and diagnostic plots. The package also offers flexible network
-visualization options that support node/edge metadata mapping, dynamic
-sizing, and layout control.
-
-Altogether, **netkit** is designed to help researchers explore,
-interpret, and visualize complex networks with minimal friction and
-maximum insight.
+results and diagnostic plots. Altogether, **netkit** is designed to help
+researchers explore, interpret, and visualize complex networks with
+minimal friction and maximum insight.
 
 ## Installation
 
@@ -57,6 +104,10 @@ Or online:
 
 - [Introduction to
   netkit](https://agallinat.github.io/netkit/articles/introduction.html)
+
+(The “Weighted networks” article is in the package —
+`vignette("weighted-networks")` — and appears online once the pkgdown
+site is next rebuilt.)
 
 ## Contributing
 
