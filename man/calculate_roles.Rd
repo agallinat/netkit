@@ -13,7 +13,9 @@ calculate_roles(
   hub_z = 2.5,
   label_region = NULL,
   label.size = 12,
-  thresholds = NULL
+  thresholds = NULL,
+  weights = NULL,
+  weight_type = c("strength", "distance")
 )
 }
 \arguments{
@@ -40,6 +42,16 @@ participation-coefficient boundaries between roles. Names must be drawn from
 \code{R1_R2}, \code{R2_R3}, \code{R3_R4}, \code{R5_R6} and \code{R6_R7}; unnamed entries, unknown
 names, values outside \verb{[0, 1]} and non-monotonic sets are rejected. \code{NULL}
 (default) uses the published values -- see Details.}
+
+\item{weights}{Optional edge weights: \code{NULL} (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+\code{igraph::ecount(graph)}. When supplied, the within-module z-score is
+computed from strengths and the participation coefficient from summed edge
+strengths per module, which is the weighted generalisation given in
+Guimera & Amaral's supplementary material. See \link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
+\link{netkit-weights}.}
 }
 \value{
 A list with five elements:
@@ -97,6 +109,38 @@ classifier, by the \code{roles_definitions} table and by the shaded bands of the
 diagnostic plot alike, so the three cannot disagree. Override them with
 \code{thresholds} if a different convention is wanted.
 }
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
+}
+
 \examples{
 g <- igraph::sample_gnp(80, 0.08, directed = FALSE)
 igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))

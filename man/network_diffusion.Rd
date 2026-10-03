@@ -12,7 +12,10 @@ network_diffusion(
   t = 1,
   restart_prob = 0.3,
   normalize = TRUE,
-  precompute = NULL
+  precompute = NULL,
+  weights = NULL,
+  weight_type = c("strength", "distance"),
+  seed_weights = NULL
 )
 }
 \arguments{
@@ -42,10 +45,27 @@ where \eqn{P} is the transition matrix and \eqn{r} is the restart probability.
 \item{normalize}{Logical. Whether to normalize the adjacency matrix (symmetric normalization for undirected graphs). Default is \code{TRUE}.}
 
 \item{precompute}{Optional list of precompute diffusion matrices (e.g., Laplacian, Cholesky factor, or transition matrix).
-Use \code{\link{prepare_diffusion}()} to generate this object and avoid redundant computations when calling this function repeatedly (e.g., in greedy optimization).}
+Use \code{\link{prepare_diffusion}()} to generate this object and avoid redundant computations when calling this function repeatedly (e.g., in greedy optimization).
+A kernel built with different edge weights than requested is rejected rather
+than reused.}
+
+\item{weights}{Optional edge weights: \code{NULL} (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+\code{igraph::ecount(graph)}. Signal propagates along edge \emph{strengths}. See
+\link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
+\link{netkit-weights}.}
+
+\item{seed_weights}{Optional numeric vector of initial values for the seeds,
+replacing the default binary indicator. Either named (matched to
+\code{seed_nodes} by name) or unnamed and parallel to \code{seed_nodes}. Use this to
+diffuse from a continuous signal -- log fold changes, scores, prior
+probabilities -- rather than from set membership, which is what the
+propagation literature generally assumes.}
 }
 \value{
-A data frame with two columns:
+A tibble with two columns, sorted by descending score:
 \describe{
 \item{node}{Node name}
 \item{score}{Diffusion score representing influence from the seed nodes}
@@ -66,6 +86,38 @@ based on a row-normalized transition matrix. Recommended method for large networ
 For \code{"laplacian"} and \code{"heat"}, the graph Laplacian is computed from the (optionally normalized) adjacency matrix.
 For efficiency in iterative applications, precompute Laplacian and Cholesky decomposition using \code{\link{prepare_diffusion}()}.
 }
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
+}
+
 \examples{
 g <- igraph::sample_gnp(80, 0.06, directed = FALSE)
 igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
@@ -76,6 +128,14 @@ network_diffusion(g, seed_nodes, method = "laplacian")
 # Reuse a precomputed kernel across repeated calls.
 kernel <- prepare_diffusion(g, method = "rwr")
 network_diffusion(g, seed_nodes, method = "rwr", precompute = kernel)
+
+# Diffuse along edge strengths rather than treating every edge alike.
+igraph::E(g)$confidence <- runif(igraph::ecount(g), 0.1, 1)
+network_diffusion(g, seed_nodes, method = "rwr", weights = "confidence")
+
+# Start from a continuous signal instead of set membership.
+network_diffusion(g, seed_nodes, method = "rwr",
+                  seed_weights = c(2.4, -1.1, 0.7, 3.0, 0.2))
 
 }
 \references{

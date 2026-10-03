@@ -14,7 +14,10 @@ network_diffusion_with_pvalues(
   normalize = TRUE,
   n_permutations = 1000,
   seed = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  weights = NULL,
+  weight_type = c("strength", "distance"),
+  seed_weights = NULL
 )
 }
 \arguments{
@@ -48,6 +51,18 @@ where \eqn{P} is the transition matrix and \eqn{r} is the restart probability.
 \item{seed}{Optional integer for reproducible random number generation. If \code{NULL} (default), seed is not set.}
 
 \item{verbose}{Logical. If \code{TRUE} (default), displays a progress bar during permutations.}
+
+\item{weights}{Optional edge weights: \code{NULL} (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+\code{igraph::ecount(graph)}. See \link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
+\link{netkit-weights}.}
+
+\item{seed_weights}{Optional numeric vector of initial seed values, passed to
+\code{\link[=network_diffusion]{network_diffusion()}}, replacing the default binary indicator. Note that the
+permutation null re-uses these magnitudes on the permuted seed sets, so the
+null tests the \emph{position} of the seeds rather than their values.}
 }
 \value{
 A data frame with two columns:
@@ -84,6 +99,38 @@ future::plan("sequential")   # release the workers when finished
 
 Permutations are reproducible regardless of the plan: \code{seed} is passed to
 \code{future_lapply(future.seed = )}, which generates parallel-safe RNG streams.
+}
+
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
 }
 
 \examples{

@@ -22,6 +22,17 @@
 #' @param n_permutations Integer. Number of permutations to run for empirical p-value estimation (default `1000`).
 #' @param seed Optional integer for reproducible random number generation. If `NULL` (default), seed is not set.
 #' @param verbose Logical. If `TRUE` (default), displays a progress bar during permutations.
+#' @param weights Optional edge weights: `NULL` (default) to ignore them, the
+#'   name of an edge attribute, or a numeric vector of length
+#'   `igraph::ecount(graph)`. See [netkit-weights].
+#' @param weight_type Either `"strength"` (default) or `"distance"`. See
+#'   [netkit-weights].
+#' @param seed_weights Optional numeric vector of initial seed values, passed to
+#'   [network_diffusion()], replacing the default binary indicator. Note that the
+#'   permutation null re-uses these magnitudes on the permuted seed sets, so the
+#'   null tests the *position* of the seeds rather than their values.
+#'
+#' @inheritSection netkit-weights Edge weights
 #'
 #' @return A data frame with two columns:
 #' \describe{
@@ -84,17 +95,58 @@ network_diffusion_with_pvalues <- function(graph,
                                            normalize = TRUE,
                                            n_permutations = 1000,
                                            seed = NULL,
-                                           verbose = TRUE) {
+                                           verbose = TRUE,
+                                           weights = NULL,
+                                           weight_type = c("strength", "distance"),
+                                           seed_weights = NULL) {
 
-  set.seed(seed)
+  method <- match.arg(method)
+  weight_type <- match.arg(weight_type)
+
+  # Only seed when asked: set.seed(NULL) re-seeds from the clock, so the
+  # documented default silently destroyed the caller's RNG stream. Same defect
+  # as robustness_analysis() had.
+  if (!is.null(seed)) set.seed(seed)
+
+  # This function is documented to accept a data.frame edge list but was the one
+  # export that never routed through the shared input validator -- it called
+  # igraph::vertex_attr() on the raw argument, so an edge list failed with
+  # igraph's own "Must provide a graph object" rather than working.
+  graph <- as_netkit_graph(graph, backfill_names = TRUE)
+
   all_nodes <- igraph::vertex_attr(graph, "name")
-  n_seeds <- length(seed_nodes)
-  seed_nodes <- intersect(seed_nodes, all_nodes)
+  requested_seeds <- as.character(seed_nodes)
+  seed_nodes <- intersect(requested_seeds, all_nodes)
 
   if (length(seed_nodes) == 0) stop("None of the seed nodes are in the graph.")
 
+  # Count the seeds that were actually used, not the ones that were requested.
+  # n_seeds used to be set before this intersection, so any seed absent from the
+  # graph made every permuted set *larger* than the real one -- which inflates
+  # the null scores and biases every p-value, without anything to show for it.
+  n_seeds <- length(seed_nodes)
+
+  if (length(seed_nodes) < length(requested_seeds)) {
+    warning(sprintf(
+      "%d of %d seed nodes are not vertices of the graph and were dropped.",
+      length(requested_seeds) - length(seed_nodes), length(requested_seeds)
+    ), call. = FALSE)
+  }
+
+  # Resolve seed_weights to a plain positional vector aligned with the retained
+  # seeds, so the same magnitudes can be reused on each permuted set. A named
+  # vector keyed by the real seed names could not be matched to permuted names.
+  seed_weights <- resolve_perm_seed_weights(seed_weights, requested_seeds,
+                                            seed_nodes)
+
   # 1. Compute real diffusion scores
-  real_scores_df <- network_diffusion(graph, seed_nodes, method, alpha, t, restart_prob, normalize)
+  real_scores_df <- network_diffusion(graph, seed_nodes, method = method,
+                                      alpha = alpha, t = t,
+                                      restart_prob = restart_prob,
+                                      normalize = normalize,
+                                      weights = weights,
+                                      weight_type = weight_type,
+                                      seed_weights = seed_weights)
   real_scores <- setNames(real_scores_df$score, real_scores_df$node)
 
   if (verbose) {
@@ -109,7 +161,9 @@ network_diffusion_with_pvalues <- function(graph,
   precomp <- prepare_diffusion(graph = graph,
                                method = method,
                                alpha = alpha, t = t, restart_prob = restart_prob,
-                               normalize = normalize)
+                               normalize = normalize,
+                               weights = weights,
+                               weight_type = weight_type)
 
   # 2. Run permutations under whatever future plan the caller has set.
   #
@@ -123,7 +177,11 @@ network_diffusion_with_pvalues <- function(graph,
   # 3. Run permutations
   perm_results <- future.apply::future_lapply(seq_len(n_permutations), function(i) {
     perm_seeds <- sample(setdiff(all_nodes, seed_nodes), n_seeds)
-    null_df <- network_diffusion(graph, perm_seeds, method, alpha, t, restart_prob, normalize, precompute = precomp)
+    null_df <- network_diffusion(graph, perm_seeds, method = method,
+                                 alpha = alpha, t = t,
+                                 restart_prob = restart_prob,
+                                 normalize = normalize, precompute = precomp,
+                                 weights = weights, weight_type = weight_type)
     setNames(null_df$score, null_df$node)
   }, future.seed = seed)
 

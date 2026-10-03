@@ -43,6 +43,15 @@
 #' @importFrom rlang sym
 #' @importFrom scales trans_breaks trans_format math_format label_math hue_pal
 #' @importFrom stats setNames ks.test
+#' @param weights1,weights2 Optional edge weights for each graph: `NULL`
+#'   (default) to ignore them, the name of an edge attribute, or a numeric
+#'   vector. Supplied separately because the two graphs need not carry the same
+#'   attribute. See [netkit-weights].
+#' @param weight_type Either `"strength"` (default) or `"distance"`, applied to
+#'   both graphs. See [netkit-weights].
+#'
+#' @inheritSection netkit-weights Edge weights
+#'
 #' @importFrom graphics par
 #'
 #' @export
@@ -51,8 +60,13 @@ compare_networks <- function(graph1, graph2,
                              show_PL = TRUE,
                              PL_exponents = c(2, 3),
                              colors = c("#e41a1c", "#000831", "#9c52f2", "#b8b8ff"),
-                             label.size = 12
+                             label.size = 12,
+                             weights1 = NULL,
+                             weights2 = NULL,
+                             weight_type = c("strength", "distance")
 ) {
+
+  weight_type <- match.arg(weight_type)
 
   # --- Validate input ---
   graph1 <- as_netkit_graph(graph1, arg = "graph1")
@@ -71,8 +85,10 @@ compare_networks <- function(graph1, graph2,
   }
 
   # --- Compute basic metrics ---
-  metrics1 <- summarize_graph_metrics(graph1)
-  metrics2 <- summarize_graph_metrics(graph2)
+  metrics1 <- summarize_graph_metrics(graph1, weights = weights1,
+                                      weight_type = weight_type)
+  metrics2 <- summarize_graph_metrics(graph2, weights = weights2,
+                                      weight_type = weight_type)
 
   # --- Degree distributions ---
   deg1 <- igraph::degree(graph1)

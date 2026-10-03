@@ -86,6 +86,17 @@
 #' head(result$result)
 #' result$roles_definitions
 #'
+#' @param weights Optional edge weights: `NULL` (default) to ignore them, the
+#'   name of an edge attribute, or a numeric vector of length
+#'   `igraph::ecount(graph)`. When supplied, the within-module z-score is
+#'   computed from strengths and the participation coefficient from summed edge
+#'   strengths per module, which is the weighted generalisation given in
+#'   Guimera & Amaral's supplementary material. See [netkit-weights].
+#' @param weight_type Either `"strength"` (default) or `"distance"`. See
+#'   [netkit-weights].
+#'
+#' @inheritSection netkit-weights Edge weights
+#'
 #' @importFrom ggplot2 theme_bw ggplot aes annotate geom_point scale_x_continuous scale_color_manual labs theme
 #' @importFrom ggrepel geom_text_repel
 #'
@@ -98,10 +109,13 @@ calculate_roles <- function(graph,
                             hub_z = 2.5,
                             label_region = NULL,
                             label.size = 12,
-                            thresholds = NULL) {
+                            thresholds = NULL,
+                            weights = NULL,
+                            weight_type = c("strength", "distance")) {
 
   # Results are keyed by vertex name throughout, so names must exist.
   graph <- as_netkit_graph(graph, backfill_names = TRUE)
+  w <- as_netkit_weights(graph, weights, weight_type)
 
   # Single source of truth for the role boundaries; see R/utils-roles.R.
   th <- as_role_thresholds(thresholds)
@@ -117,7 +131,8 @@ calculate_roles <- function(graph,
     # denominator. Roles are a per-node measure, so there is no reason to filter
     # modules by size here at all.
     modules <- find_modules(graph, method = cluster.method, min_size = 1,
-                            plot = FALSE, return_subgraphs = FALSE)
+                            plot = FALSE, return_subgraphs = FALSE,
+                            weights = weights, weight_type = weight_type)
     membership <- stats::setNames(modules$module_table$module, modules$module_table$node)
 
   } else if ("communities" %in% class(communities)) {
@@ -193,8 +208,18 @@ calculate_roles <- function(graph,
       next
     }
 
-    subg <- igraph::induced_subgraph(graph, mod_nodes)
-    ki <- igraph::degree(subg)
+    # Carry strengths into the subgraph as an edge attribute: induced_subgraph()
+    # drops the edges leaving the module, so a positional index into the
+    # whole-graph weight vector would misalign.
+    subg <- igraph::induced_subgraph(
+      if (w$weighted) igraph::set_edge_attr(graph, ".netkit_s", value = w$strength) else graph,
+      mod_nodes
+    )
+    ki <- if (w$weighted) {
+      igraph::strength(subg, weights = igraph::edge_attr(subg, ".netkit_s"))
+    } else {
+      igraph::degree(subg)
+    }
     mean_ki <- mean(ki)
     sd_ki <- stats::sd(ki)
 
@@ -213,7 +238,36 @@ calculate_roles <- function(graph,
 
     neighbor_names <- igraph::V(graph)$name[nbrs]
     neighbor_modules <- membership[neighbor_names]
-    k_i_m <- table(neighbor_modules)
+
+    # Unweighted: count neighbours per module. Weighted: sum the strengths of the
+    # edges reaching each module, which is the weighted generalisation -- a node
+    # tied to one module by a strong edge and to another by a weak one is not a
+    # connector, though counting alone would say it is.
+    #
+    # tapply() rather than table(): both drop NA-module neighbours, which is what
+    # keeps the numerator and the denominator derived from the same place (the
+    # defect this function had twice before).
+    k_i_m <- if (w$weighted) {
+      # Pair each incident edge with its *own* far endpoint, rather than zipping
+      # incident() against neighbors(). Those two are both sorted, but by edge id
+      # and by vertex id respectively, so they are not guaranteed to correspond --
+      # and a mis-pairing here would attribute one neighbour's strength to another
+      # neighbour's module and still produce a coefficient in [0, 1].
+      e_ids <- igraph::incident(graph, node, mode = "all")
+      ends <- igraph::ends(graph, e_ids, names = TRUE)
+      far <- ifelse(ends[, 1] == node, ends[, 2], ends[, 1])
+      e_mod <- membership[far]
+      s_e <- w$strength[as.numeric(e_ids)]
+
+      keep <- !is.na(e_mod)
+      if (!any(keep)) {
+        stats::setNames(numeric(0), character(0))
+      } else {
+        tapply(s_e[keep], e_mod[keep], sum)
+      }
+    } else {
+      table(neighbor_modules)
+    }
 
     # The denominator must be the number of neighbours actually tallied, not the
     # node's full degree: table() drops neighbours with NA membership, so using
@@ -337,6 +391,7 @@ calculate_roles <- function(graph,
       } else {
         "a caller-supplied community structure"
       },
+      " (", describe_weights(w), ")",
       "; hub z-score threshold = ", hub_z,
       "; participation boundaries R1/R2 = ", th[["R1_R2"]],
       ", R2/R3 = ", th[["R2_R3"]],

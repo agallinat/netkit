@@ -8,7 +8,7 @@ g <- test_graph()
 test_that("find_hubs() returns a complete node-level table", {
   res <- find_hubs(g, plot = FALSE)
 
-  expect_named(res$result, c("node", "degree", "betweenness",
+  expect_named(res$result, c("node", "degree", "strength", "betweenness",
                              "degree_metric", "betweenness_metric", "is_hub"))
   expect_equal(nrow(res$result), igraph::vcount(g))
   expect_type(res$result$is_hub, "logical")
@@ -23,7 +23,7 @@ test_that("find_hubs() returns a complete node-level table", {
 test_that("find_bottlenecks() returns a complete node-level table", {
   res <- find_bottlenecks(g, plot = FALSE)
 
-  expect_named(res$result, c("node", "degree", "betweenness",
+  expect_named(res$result, c("node", "degree", "strength", "betweenness",
                              "degree_metric", "betweenness_metric",
                              "is_bottleneck"))
   expect_equal(nrow(res$result), igraph::vcount(g))

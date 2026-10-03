@@ -25,9 +25,9 @@ test_that("the one-row metric table has a stable column set", {
 
   expect_equal(nrow(m), 1L)
   expect_named(m, c(
-    "Nodes", "Edges", "Is_directed", "Density", "Diameter",
+    "Nodes", "Edges", "Is_directed", "Is_weighted", "Density", "Diameter",
     "Average_path_length", "Clustering_coefficient", "Degree_assortativity",
-    "Avg_degree", "Avg_betweenness", "Components", "Single_nodes",
+    "Avg_degree", "Avg_strength", "Avg_betweenness", "Components", "Single_nodes",
     "LCC_size", "LCC_percent", "Algebraic_connectivity", "Degree_entropy",
     "Gini_degree", "Modularity"
   ))

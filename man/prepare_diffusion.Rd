@@ -10,7 +10,9 @@ prepare_diffusion(
   alpha = 0.7,
   t = 1,
   restart_prob = 0.3,
-  normalize = TRUE
+  normalize = TRUE,
+  weights = NULL,
+  weight_type = c("strength", "distance")
 )
 }
 \arguments{
@@ -24,13 +26,60 @@ first two columns. Additional columns are considered as edge attributes.}
 \item{t}{Time parameter (used in \code{"heat"}).}
 
 \item{restart_prob}{Restart probability (used in \code{"rwr"}).}
+
+\item{normalize}{Logical. Whether to symmetrically normalize the adjacency
+matrix. Default is \code{TRUE}.}
+
+\item{weights}{Optional edge weights: \code{NULL} (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+\code{igraph::ecount(graph)}. Diffusion propagates along edge \emph{strengths}, so a
+\code{"distance"} type is converted before use. See \link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
+\link{netkit-weights}.}
 }
 \value{
-A matrix representing the diffusion kernel.
+A list with the kernel components: \code{L} (the Laplacian), \code{ch} (its
+Cholesky factor, for \code{"laplacian"}), \code{P} (the transition matrix, for
+\code{"rwr"}), \code{use_sparse_P}, \code{method}, and \code{weights_key} -- a digest of the
+weights the kernel was built from, which \code{\link[=network_diffusion]{network_diffusion()}} checks
+before reusing it.
 }
 \description{
 Prepares and normalizes the diffusion kernel matrix to be used in network diffusion.
 }
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
+}
+
 \examples{
 g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
 igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
@@ -41,6 +90,10 @@ kernel$method
 # Passing the kernel back in skips rebuilding it on every call.
 network_diffusion(g, seed_nodes = c("1", "2"), method = "laplacian",
                   precompute = kernel)
+
+# A weighted kernel propagates along edge strengths.
+igraph::E(g)$confidence <- runif(igraph::ecount(g), 0.1, 1)
+w_kernel <- prepare_diffusion(g, method = "rwr", weights = "confidence")
 
 }
 \keyword{internal}
