@@ -94,6 +94,11 @@ robustness_analysis <- function(graph,
 
   if (is.directed(graph)) graph <- as.undirected(graph, mode = "collapse")
 
+  # Resolve the unevaluated default (a length-3 vector) to its first option
+  if (length(removal_strategy) > 1) {
+    removal_strategy <- match.arg(removal_strategy, c("random", "degree", "betweenness"))
+  }
+
   # Handle flexible strategy
   if (length(removal_strategy) == 1 && removal_strategy %in% c("random", "degree", "betweenness")) {
     strategy <- removal_strategy

@@ -114,8 +114,7 @@ network_diffusion_with_pvalues <- function(graph,
   result <- tibble::tibble(
     node = names(real_scores),
     score = as.numeric(real_scores),
-    p_empirical = as.numeric(p_values),
-    stringsAsFactors = FALSE
+    p_empirical = as.numeric(p_values)
   )
   result <- result[order(result$p_empirical), ]
   return(result)

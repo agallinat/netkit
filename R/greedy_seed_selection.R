@@ -59,6 +59,8 @@ greedy_seed_selection <- function(graph,
                                   plot = TRUE) {
 
   # --- Input validation ---
+  method <- match.arg(method)
+
   if (inherits(graph, "data.frame")) {
     graph <- igraph::graph_from_data_frame(graph, directed = FALSE)
   } else if (!igraph::is.igraph(graph)) {
