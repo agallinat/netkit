@@ -91,6 +91,52 @@ test_that("a seed makes random removal reproducible", {
                without_progress(do.call(robustness_analysis, args))$summary)
 })
 
+test_that("AUC is finite for every metric under default arguments", {
+  # Regression guard. Global efficiency divides by n(n-1), which is 0 once a single
+  # vertex remains. With the default steps = 50, step_size becomes 1 for any graph
+  # of about 51 nodes or fewer, so the loop did reach one vertex and auc$efficiency
+  # came back NaN from the documented default call.
+  for (n in c(20, 50, 51)) {
+    gg <- test_graph(n = n, seed = 2)
+    res <- without_progress(
+      robustness_analysis(gg, removal_strategy = "degree", plot = FALSE, seed = 1)
+    )
+    expect_false(any(is.nan(res$summary$efficiency)), info = paste("n =", n))
+    for (m in names(res$auc)) {
+      expect_true(is.finite(res$auc[[m]]), info = paste("n =", n, "metric", m))
+    }
+  }
+})
+
+test_that("a collapsed network reports zero efficiency rather than NaN", {
+  gg <- test_graph(n = 30, seed = 4)
+  res <- robustness_analysis(gg, removal_strategy = "degree", steps = 40,
+                             plot = FALSE, seed = 1)
+
+  # steps > vcount forces step_size = 1, so the final step leaves one vertex.
+  expect_equal(min(res$summary$lcc_size), 1)
+  expect_equal(utils::tail(res$summary$efficiency, 1), 0)
+})
+
+test_that("an all-zero metric does not produce a NaN AUC or NaN plot values", {
+  # Normalizing by max() is a divide-by-zero when a metric is zero throughout, as
+  # global efficiency is for a graph with no edges.
+  ge <- igraph::make_empty_graph(20, directed = FALSE)
+  igraph::V(ge)$name <- paste0("e", seq_len(20))
+
+  res <- draw_quietly(
+    robustness_analysis(ge, removal_strategy = "degree", steps = 5,
+                        plot = TRUE, seed = 1)
+  )
+
+  expect_equal(res$auc$efficiency, 0)
+  for (m in names(res$auc)) expect_true(is.finite(res$auc[[m]]), info = m)
+
+  built <- ggplot2::ggplot_build(res$plot)
+  ys <- unlist(lapply(built$data, function(d) d$y))
+  expect_true(all(is.finite(ys)))
+})
+
 test_that("metrics can be requested selectively", {
   res <- robustness_analysis(g, removal_strategy = "degree",
                              metrics = "lcc_size", steps = 5,
