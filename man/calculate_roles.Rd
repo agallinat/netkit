@@ -38,7 +38,13 @@ A list with three elements:
 \item{\code{plot}}{A \code{ggplot2} object, or \code{NULL} when \code{plot = FALSE}. The element is
 always present, so the return shape does not depend on the arguments.}
 \item{\code{roles_definitions}}{A data frame describing the seven role types and their conditions.}
-\item{\code{result}}{A data frame with node-level information: node name, module, z-score, participation coefficient, and assigned role.}
+\item{\code{result}}{A data frame with node-level information: node name, module,
+z-score, participation coefficient, and assigned role. It has one row per
+graph vertex. The exception is \code{cluster.method = "spinglass"}, which can only
+be run on the largest connected component of a disconnected graph; vertices
+outside it have no module and are absent, which raises a warning. \code{z}, \code{p} and
+\code{role} are \code{NA} for any vertex whose module, or whose neighbours' modules, are
+unknown.}
 }
 }
 \description{
@@ -49,6 +55,13 @@ Nodes are assigned to one of seven role categories (R1–R7) based on their loca
 \details{
 If no community structure is provided, modules are automatically detected using the specified clustering method.
 The function can optionally produce a 2D role plot (z vs. P) highlighting the canonical role regions.
+
+When \code{communities} is \code{NULL}, community detection is delegated to
+\code{\link[=find_modules]{find_modules()}} with \code{min_size = 1}, so no module is discarded for being small
+and every vertex receives a role. This matters for correctness as well as
+coverage: the participation coefficient of a node is computed from the module
+memberships of its neighbours, so dropping a neighbour's module silently distorts
+the coefficient of the node that remains.
 
 The node roles are defined as:
 
