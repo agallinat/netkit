@@ -92,13 +92,83 @@ test_that("a malformed communities argument is rejected", {
                "clustering object, a membership vector or NULL")
 })
 
-test_that("falling back to find_modules() can drop nodes from small modules", {
-  # Documented quirk rather than endorsed behaviour: with communities = NULL the
-  # function delegates to find_modules(), whose default min_size = 3 discards
-  # small modules, so those nodes never reach the roles table.
-  res <- calculate_roles(g, cluster.method = "louvain", plot = FALSE)
+test_that("every vertex receives a role", {
+  # find_modules() is called with min_size = 1 so that no module is discarded.
+  # Previously it ran at the default min_size = 3 and nodes in small modules never
+  # reached the roles table.
+  for (m in c("louvain", "walktrap", "infomap")) {
+    set.seed(7)
+    res <- calculate_roles(g, cluster.method = m, plot = FALSE)
+    expect_setequal(res$result$node, igraph::V(g)$name)
+    expect_false(any(duplicated(res$result$node)))
+  }
+})
 
-  expect_lte(nrow(res$result), igraph::vcount(g))
-  expect_true(all(res$result$node %in% igraph::V(g)$name))
-  expect_false(any(duplicated(res$result$node)))
+test_that("the participation coefficient is unaffected by module-size filtering", {
+  # Regression guard for a silent numerical bug. When a module was discarded, its
+  # nodes' membership became NA; table() dropped those NAs from a neighbour's tally
+  # while the node's full degree was still used as the denominator, so P came out
+  # too high for *retained* nodes. On a 150-node graph with walktrap this gave 18
+  # wrong coefficients and 7 wrong roles.
+  set.seed(3)
+  gw <- igraph::sample_gnp(150, 0.02, directed = FALSE)
+  igraph::V(gw)$name <- paste0("b", seq_len(150))
+
+  set.seed(7)
+  via_find_modules <- calculate_roles(gw, cluster.method = "walktrap", plot = FALSE)
+  set.seed(7)
+  via_membership <- calculate_roles(
+    gw, communities = igraph::membership(igraph::cluster_walktrap(gw)), plot = FALSE
+  )
+
+  expect_equal(nrow(via_find_modules$result), igraph::vcount(gw))
+
+  a <- via_find_modules$result[order(via_find_modules$result$node), ]
+  b <- via_membership$result[order(via_membership$result$node), ]
+  expect_equal(a$p, b$p)
+  expect_equal(a$role, b$role)
+})
+
+test_that("the participation coefficient stays within bounds for pendant nodes", {
+  # A degree-1 node has all its edges inside one module, so P must be exactly 0.
+  star <- igraph::make_star(10, mode = "undirected")
+  igraph::V(star)$name <- paste0("s", seq_len(10))
+  res <- calculate_roles(star, communities = rep(1L, 10), plot = FALSE)
+
+  leaves <- res$result[res$result$node != "s1", ]
+  expect_true(all(leaves$p == 0))
+  expect_true(all(res$result$p >= 0 & res$result$p <= 1))
+})
+
+test_that("vertices with no module assignment are reported, not dropped silently", {
+  # spinglass cannot run on a disconnected graph, so find_modules() restricts it to
+  # the largest connected component. The resulting partial coverage now warns.
+  set.seed(42)
+  gd <- igraph::sample_gnp(80, 0.02, directed = FALSE)
+  igraph::V(gd)$name <- paste0("s", seq_len(80))
+  expect_gt(igraph::components(gd)$no, 1)
+
+  expect_warning(
+    res <- calculate_roles(gd, cluster.method = "spinglass", plot = FALSE),
+    "vertices have no module assignment"
+  )
+  expect_lt(nrow(res$result), igraph::vcount(gd))
+})
+
+test_that("a membership vector containing NAs is handled rather than erroring", {
+  # Previously this failed with "Invalid vertex names": the NA module was treated as
+  # a module, and induced_subgraph() was handed NA node names.
+  set.seed(1)
+  gn <- igraph::sample_pa(40, directed = FALSE)
+  igraph::V(gn)$name <- paste0("n", seq_len(40))
+  m <- igraph::membership(igraph::cluster_louvain(gn))
+  m[1:5] <- NA
+
+  res <- suppressWarnings(calculate_roles(gn, communities = m, plot = FALSE))
+
+  expect_equal(nrow(res$result), 40L)
+  expect_equal(sum(is.na(res$result$module)), 5L)
+  # Undefined inputs propagate to an undefined role rather than a wrong one.
+  expect_true(all(is.na(res$result$role[is.na(res$result$module)])))
+  expect_true(all(res$result$p >= 0 & res$result$p <= 1, na.rm = TRUE))
 })

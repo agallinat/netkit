@@ -21,10 +21,23 @@
 #'   \item{`plot`}{A `ggplot2` object, or `NULL` when `plot = FALSE`. The element is
 #'     always present, so the return shape does not depend on the arguments.}
 #'   \item{`roles_definitions`}{A data frame describing the seven role types and their conditions.}
-#'   \item{`result`}{A data frame with node-level information: node name, module, z-score, participation coefficient, and assigned role.}
+#'   \item{`result`}{A data frame with node-level information: node name, module,
+#'     z-score, participation coefficient, and assigned role. It has one row per
+#'     graph vertex. The exception is `cluster.method = "spinglass"`, which can only
+#'     be run on the largest connected component of a disconnected graph; vertices
+#'     outside it have no module and are absent, which raises a warning. `z`, `p` and
+#'     `role` are `NA` for any vertex whose module, or whose neighbours' modules, are
+#'     unknown.}
 #' }
 #'
 #' @details
+#' When `communities` is `NULL`, community detection is delegated to
+#' [find_modules()] with `min_size = 1`, so no module is discarded for being small
+#' and every vertex receives a role. This matters for correctness as well as
+#' coverage: the participation coefficient of a node is computed from the module
+#' memberships of its neighbours, so dropping a neighbour's module silently distorts
+#' the coefficient of the node that remains.
+#'
 #' The node roles are defined as:
 #'
 #' \tabular{ll}{
@@ -69,7 +82,15 @@ calculate_roles <- function(graph,
   # Extract membership vector
   if (is.null(communities)) {
 
-    modules <- find_modules(graph, method = cluster.method, plot = FALSE, return_subgraphs = FALSE)
+    # min_size = 1 is deliberate. find_modules() defaults to min_size = 3, which
+    # discards small modules -- and a node whose module was discarded is absent
+    # from module_table, so its membership is NA. That silently corrupted the
+    # participation coefficient of *retained* neighbours, because the NA was
+    # dropped from the neighbour tally while the full degree was still used as the
+    # denominator. Roles are a per-node measure, so there is no reason to filter
+    # modules by size here at all.
+    modules <- find_modules(graph, method = cluster.method, min_size = 1,
+                            plot = FALSE, return_subgraphs = FALSE)
     membership <- stats::setNames(modules$module_table$module, modules$module_table$node)
 
   } else if ("communities" %in% class(communities)) {
@@ -102,12 +123,27 @@ calculate_roles <- function(graph,
                           ))
 
 
-  vnames <- names(membership)
-  if (is.null(vnames)) {
-    vnames <- as.character(seq_len(length(membership)))
+  # An unnamed membership vector is positional, in vertex order, which is what
+  # igraph::membership() returns. Naming it from the graph is required: inventing
+  # index names ("1", "2", ...) instead meant every later vertex lookup failed with
+  # "Invalid vertex names" whenever the graph's own names were anything else.
+  if (is.null(names(membership))) {
+    names(membership) <- igraph::V(graph)$name
   }
+  vnames <- names(membership)
 
-  degrees <- igraph::degree(graph, mode = "all")[vnames]
+  # Warn rather than silently return a partial table. With communities = NULL this
+  # should now cover every vertex; the exception is cluster.method = "spinglass",
+  # which find_modules() can only run on the largest connected component.
+  missing_nodes <- setdiff(igraph::V(graph)$name, vnames)
+  if (length(missing_nodes) > 0) {
+    warning(sprintf(
+      "%d of %d vertices have no module assignment and are absent from the result: %s%s",
+      length(missing_nodes), igraph::vcount(graph),
+      paste(utils::head(missing_nodes, 5), collapse = ", "),
+      if (length(missing_nodes) > 5) ", ..." else ""
+    ))
+  }
 
   # Initialize roles dataframe
   roles_df <- tibble::tibble(
@@ -118,11 +154,15 @@ calculate_roles <- function(graph,
     role = NA_character_
   )
 
-  # Compute within-module z-score
-  for (mod in unique(roles_df$module)) {
-    mod_nodes <- roles_df$node[roles_df$module == mod]
+  # Compute within-module z-score. NA modules are skipped rather than treated as a
+  # module of their own: a membership vector containing NAs would otherwise select
+  # NA node names and make induced_subgraph() fail with "Invalid vertex names".
+  # Those nodes keep z = NA and so are classified with role = NA.
+  for (mod in unique(roles_df$module[!is.na(roles_df$module)])) {
+    idx <- which(roles_df$module == mod)
+    mod_nodes <- roles_df$node[idx]
     if (length(mod_nodes) <= 1) {
-      roles_df$z[roles_df$node %in% mod_nodes] <- 0
+      roles_df$z[idx] <- 0
       next
     }
 
@@ -145,11 +185,17 @@ calculate_roles <- function(graph,
     }
 
     neighbor_names <- igraph::V(graph)$name[nbrs]
-    k_i <- degrees[node]
     neighbor_modules <- membership[neighbor_names]
     k_i_m <- table(neighbor_modules)
-    sum_frac_sq <- sum((k_i_m / k_i)^2)
-    roles_df$p[i] <- 1 - sum_frac_sq
+
+    # The denominator must be the number of neighbours actually tallied, not the
+    # node's full degree: table() drops neighbours with NA membership, so using
+    # the full degree makes the fractions sum to less than 1 and inflates P.
+    # These agree whenever every neighbour has a module, and stay well defined
+    # when some do not.
+    k_i <- sum(k_i_m)
+
+    roles_df$p[i] <- if (k_i == 0) NA_real_ else 1 - sum((k_i_m / k_i)^2)
   }
 
   # Classify roles based on z and p
