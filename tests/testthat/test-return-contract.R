@@ -39,16 +39,46 @@ test_that("find_modules() has no plot slot because it draws via plot_Net()", {
   expect_false("plot" %in% names(draw_quietly(find_modules(g, plot = TRUE))))
 })
 
-test_that("calculate_roles() and robustness_analysis() omit `plot` entirely when plot = FALSE", {
-  # Note the inconsistency with find_hubs()/find_bottlenecks(), which keep the
-  # name and set it to NULL. Recorded rather than endorsed: if these are
-  # harmonised to always return a `plot` slot, update these expectations.
-  roles <- calculate_roles(g, cluster.method = "louvain", plot = FALSE)
-  expect_false("plot" %in% names(roles))
+test_that("every plot-returning function keeps a `plot` element in both modes", {
+  # The return shape must not depend on the arguments: `plot` is always present,
+  # and NULL when plot = FALSE. calculate_roles() and robustness_analysis() used
+  # to drop the name entirely, which made names() and str() vary by call.
+  off <- list(
+    find_hubs             = find_hubs(g, plot = FALSE),
+    find_bottlenecks      = find_bottlenecks(g, plot = FALSE),
+    calculate_roles       = calculate_roles(g, cluster.method = "louvain", plot = FALSE),
+    robustness_analysis   = robustness_analysis(g, removal_strategy = "degree",
+                                                steps = 5, n_reps = 1,
+                                                plot = FALSE, seed = 1),
+    greedy_seed_selection = greedy_seed_selection(g, target_nodes = c("n10", "n11"),
+                                                  k = 2, plot = FALSE)
+  )
+  for (nm in names(off)) {
+    expect_true("plot" %in% names(off[[nm]]), info = nm)
+    expect_null(off[[nm]]$plot, info = nm)
+  }
 
-  rob <- robustness_analysis(g, removal_strategy = "degree", steps = 5,
-                             n_reps = 1, plot = FALSE, seed = 1)
-  expect_false("plot" %in% names(rob))
+  on <- list(
+    find_hubs           = draw_quietly(find_hubs(g, plot = TRUE)),
+    find_bottlenecks    = draw_quietly(find_bottlenecks(g, plot = TRUE)),
+    calculate_roles     = calculate_roles(g, cluster.method = "louvain", plot = TRUE),
+    robustness_analysis = robustness_analysis(g, removal_strategy = "degree",
+                                              steps = 5, n_reps = 1,
+                                              plot = TRUE, seed = 1)
+  )
+  for (nm in names(on)) {
+    expect_true("plot" %in% names(on[[nm]]), info = nm)
+    expect_false(is.null(on[[nm]]$plot), info = nm)
+  }
+})
+
+test_that("the plot element is named `plot` everywhere, including compare_networks()", {
+  # compare_networks() used to call it CCDF_plot, which broke the shared
+  # vocabulary. Renamed while netkit is still unreleased and has no users.
+  res <- compare_networks(g, test_graph_gnp())
+  expect_true("plot" %in% names(res))
+  expect_s3_class(res$plot, "ggplot")
+  expect_false("CCDF_plot" %in% names(res))
 })
 
 test_that("the annotated graph carries the new vertex attribute and chains onward", {

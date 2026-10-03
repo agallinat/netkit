@@ -31,14 +31,15 @@ compare_networks(
 }
 \value{
 A list with:
-\itemize{
-\item metrics1: Summary metrics for graph1
-\item metrics2: Summary metrics for graph2
-\item CCDF_plot: ggplot overlay of ccdfs
-\item jaccard_similarity: Jaccard index of edge sets
-\item node_overlap: Fraction of shared nodes
-\item edge_overlap: Fraction of shared edges
-\item ks_test: KS test result for degree distributions
+\describe{
+\item{\code{plot}}{A \code{ggplot2} object overlaying both CCDF curves.}
+\item{\code{global_topology}}{A data frame with one row per input graph, as
+produced by \code{\link[=summarize_graph_metrics]{summarize_graph_metrics()}}.}
+\item{\code{similarity}}{A one-row data frame with \code{jaccard_similarity}
+(Jaccard index of the edge sets), \code{node_overlap} (fraction of shared
+nodes) and \code{edge_overlap} (fraction of shared edges).}
+\item{\code{ks_test}}{The Kolmogorov-Smirnov test comparing the two degree
+distributions, as returned by \code{\link[stats:ks.test]{stats::ks.test()}}.}
 }
 }
 \description{

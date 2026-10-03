@@ -18,7 +18,8 @@
 #'
 #' @return A list with three elements:
 #' \describe{
-#'   \item{`plot`}{The `ggplot2` object (only if `plot = TRUE`).}
+#'   \item{`plot`}{A `ggplot2` object, or `NULL` when `plot = FALSE`. The element is
+#'     always present, so the return shape does not depend on the arguments.}
 #'   \item{`roles_definitions`}{A data frame describing the seven role types and their conditions.}
 #'   \item{`result`}{A data frame with node-level information: node name, module, z-score, participation coefficient, and assigned role.}
 #' }
@@ -232,17 +233,17 @@ calculate_roles <- function(graph,
                       size = 3)  # Names size,
     }
 
-    return(list(
-      plot = p,
-      roles_definitions = roles_def,
-      result = roles_df
-    ))
-
   } else {
 
-    return(list(
-      roles_definitions = roles_def,
-      result = roles_df
-    ))
+    p <- NULL
+
   }
+
+  # `plot` is always present, and NULL when plot = FALSE, so that the return
+  # shape does not depend on the arguments.
+  return(list(
+    plot = p,
+    roles_definitions = roles_def,
+    result = roles_df
+  ))
 }

@@ -35,7 +35,8 @@ calculate_roles(
 \value{
 A list with three elements:
 \describe{
-\item{\code{plot}}{The \code{ggplot2} object (only if \code{plot = TRUE}).}
+\item{\code{plot}}{A \code{ggplot2} object, or \code{NULL} when \code{plot = FALSE}. The element is
+always present, so the return shape does not depend on the arguments.}
 \item{\code{roles_definitions}}{A data frame describing the seven role types and their conditions.}
 \item{\code{result}}{A data frame with node-level information: node name, module, z-score, participation coefficient, and assigned role.}
 }

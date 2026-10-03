@@ -13,13 +13,16 @@
 #' @param colors Optional vector of colors for the CCDF plot.
 #'
 #' @return A list with:
-#'   - metrics1: Summary metrics for graph1
-#'   - metrics2: Summary metrics for graph2
-#'   - CCDF_plot: ggplot overlay of ccdfs
-#'   - jaccard_similarity: Jaccard index of edge sets
-#'   - node_overlap: Fraction of shared nodes
-#'   - edge_overlap: Fraction of shared edges
-#'   - ks_test: KS test result for degree distributions
+#' \describe{
+#'   \item{\code{plot}}{A \code{ggplot2} object overlaying both CCDF curves.}
+#'   \item{\code{global_topology}}{A data frame with one row per input graph, as
+#'     produced by [summarize_graph_metrics()].}
+#'   \item{\code{similarity}}{A one-row data frame with \code{jaccard_similarity}
+#'     (Jaccard index of the edge sets), \code{node_overlap} (fraction of shared
+#'     nodes) and \code{edge_overlap} (fraction of shared edges).}
+#'   \item{\code{ks_test}}{The Kolmogorov-Smirnov test comparing the two degree
+#'     distributions, as returned by [stats::ks.test()].}
+#' }
 #'
 #' @examples
 #' g1 <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
@@ -138,7 +141,7 @@ compare_networks <- function(graph1, graph2,
     theme_minimal(base_size = label.size)
 
   return(list(
-    CCDF_plot = p_combined,
+    plot = p_combined,
     global_topology = rbind(metrics1, metrics2),
     similarity = similarity,
     ks_test = ks

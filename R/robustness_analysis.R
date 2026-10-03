@@ -20,13 +20,14 @@
 #'
 #' @return A list with:
 #' \describe{
+#'   \item{\code{plot}}{A \code{ggplot2} object showing the evolution of the selected
+#'     metrics as nodes are progressively removed, or \code{NULL} when
+#'     \code{plot = FALSE}. The element is always present, so the return shape does
+#'     not depend on the arguments.}
 #'   \item{\code{all_results}}{A data frame with simulation results across all steps and repetitions.}
 #'   \item{\code{summary}}{A summarized data frame (mean and SD) if \code{n_reps > 1}, otherwise raw results.}
 #'   \item{\code{auc}}{Named list of AUC (area under the curve) values for each selected metric.}
 #' }
-#'
-#' If \code{plot = TRUE}, a ggplot object is generated showing the evolution of selected metrics
-#' as nodes are progressively removed.
 #'
 #' @details
 #' This function builds on classic approaches in network science for evaluating structural robustness,
@@ -229,20 +230,18 @@ robustness_analysis <- function(graph,
       scale_color_manual(values = c("LCC Size" = "steelblue", "Efficiency" = "darkgreen", "Components" = "red")) +
       labs(color = "Metric", fill = "Metric")
 
-    return(list(
-      plot = p,
-      all_results = all_results,
-      summary = summary,
-      auc = auc_list
-    ))
-
   } else {
 
-    return(list(
-      all_results = all_results,
-      summary = summary,
-      auc = auc_list
-    ))
+    p <- NULL
 
   }
+
+  # `plot` is always present, and NULL when plot = FALSE, so that the return
+  # shape does not depend on the arguments.
+  return(list(
+    plot = p,
+    all_results = all_results,
+    summary = summary,
+    auc = auc_list
+  ))
 }

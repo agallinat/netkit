@@ -24,7 +24,8 @@ test_that("the returned structure is as documented", {
   res <- robustness_analysis(g, removal_strategy = "degree", steps = 5,
                              n_reps = 1, plot = FALSE, seed = 1)
 
-  expect_named(res, c("all_results", "summary", "auc"))
+  expect_named(res, c("plot", "all_results", "summary", "auc"))
+  expect_null(res$plot)   # plot = FALSE, but the element is still present
   expect_s3_class(res$summary, "data.frame")
   expect_named(res$summary, c("rep", "removed", "removed_frac",
                               "lcc_size", "efficiency", "n_components"))
