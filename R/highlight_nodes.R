@@ -46,14 +46,22 @@ highlight_nodes <- function(graph,
 
   if ("outline" %in% method) {
     igraph::V(graph)$frame.color <- ifelse(highlight_mask, highlight_frame_color, background_color)
+    frame_arg <- "frame.color"
   } else {
-    igraph::V(graph)$frame.color <- NA
+    # Leave frame.color unset and let plot_Net() fall back to the fill colour, which
+    # makes the frame invisible. Setting the attribute to NA instead made
+    # plot.igraph warn "vertex attribute frame.color contains NAs" on every call
+    # that did not ask for the outline method.
+    if ("frame.color" %in% igraph::vertex_attr_names(graph)) {
+      graph <- igraph::delete_vertex_attr(graph, "frame.color")
+    }
+    frame_arg <- NULL
   }
 
   plot_Net(graph,
            color = "color",
            label = "label" %in% method,
            label.color = label_color,
-           frame.color = "frame.color", ...)
+           frame.color = frame_arg, ...)
 
 }

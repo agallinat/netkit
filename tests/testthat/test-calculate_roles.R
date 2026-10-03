@@ -148,9 +148,15 @@ test_that("vertices with no module assignment are reported, not dropped silently
   igraph::V(gd)$name <- paste0("s", seq_len(80))
   expect_gt(igraph::components(gd)$no, 1)
 
+  # Two warnings are expected and both are asserted: find_modules() reports the
+  # fallback to the LCC, and calculate_roles() reports the resulting partial
+  # coverage.
   expect_warning(
-    res <- calculate_roles(gd, cluster.method = "spinglass", plot = FALSE),
-    "vertices have no module assignment"
+    expect_warning(
+      res <- calculate_roles(gd, cluster.method = "spinglass", plot = FALSE),
+      "vertices have no module assignment"
+    ),
+    "cannot work with unconnected graph"
   )
   expect_lt(nrow(res$result), igraph::vcount(gd))
 })

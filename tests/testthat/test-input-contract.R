@@ -43,12 +43,22 @@ test_that("the offending argument is named for multi-graph functions", {
   expect_error(compare_networks(g, "not a graph"), "Input 'graph2' must be")
 })
 
-test_that("calculate_roles() and layout_horizontal_tree() require an igraph object", {
-  # Documents a real inconsistency: these two exports do not implement the
-  # data.frame branch of the input preamble. If that is ever unified, these
-  # expectations should flip to expect_type()/expect_true().
-  expect_error(calculate_roles(el), "Must provide a graph object")
-  expect_error(layout_horizontal_tree(el), "Must provide a graph object")
+test_that("calculate_roles() and layout_horizontal_tree() accept edge lists too", {
+  # These two were the last exports not implementing the data.frame branch of the
+  # input preamble; both now route through as_netkit_graph() like the rest.
+  roles <- calculate_roles(el, cluster.method = "louvain", plot = FALSE)
+  expect_type(roles, "list")
+  expect_setequal(roles$result$node, igraph::V(g)$name)
+
+  lay <- layout_horizontal_tree(el)
+  expect_true(is.matrix(lay))
+  expect_equal(nrow(lay), igraph::vcount(g))
+
+  # And they reject non-graph input with the same shared message as everything else.
+  expect_error(calculate_roles("not a graph"),
+               "Input 'graph' must be either an igraph object or a data.frame")
+  expect_error(layout_horizontal_tree("not a graph"),
+               "Input 'graph' must be either an igraph object or a data.frame")
 })
 
 test_that("missing vertex names are backfilled with indices", {

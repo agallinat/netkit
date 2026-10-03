@@ -64,7 +64,10 @@ test_that("overwrite = FALSE preserves an existing attribute", {
   kept <- assign_attributes(g, nodes_table = nodes, overwrite = FALSE)
   expect_equal(igraph::V(kept)$grp, rep("original", 5))
 
-  replaced <- assign_attributes(g, nodes_table = nodes, overwrite = TRUE)
+  # overwrite = TRUE announces itself; assert that rather than letting the warning
+  # sit in the suite's summary as ambient noise.
+  expect_warning(replaced <- assign_attributes(g, nodes_table = nodes, overwrite = TRUE),
+                 "Overwriting existing vertex attribute 'grp'")
   expect_equal(igraph::V(replaced)$grp, rep("new", 5))
 })
 
@@ -74,7 +77,9 @@ test_that("a diffusion result can be attached directly to the graph", {
   diffusion <- network_diffusion(g, seed_nodes = c("n1", "n2"), method = "rwr")
   names(diffusion)[1] <- "name"
 
-  g2 <- assign_attributes(g, nodes_table = diffusion)
+  # The fixture already carries a numeric `score`, so this overwrites it.
+  expect_warning(g2 <- assign_attributes(g, nodes_table = diffusion),
+                 "Overwriting existing vertex attribute 'score'")
   expect_true("score" %in% igraph::vertex_attr_names(g2))
   expect_false(any(is.na(igraph::V(g2)$score)))
 })

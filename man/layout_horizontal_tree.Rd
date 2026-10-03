@@ -7,7 +7,9 @@
 layout_horizontal_tree(graph)
 }
 \arguments{
-\item{graph}{An \code{igraph} object representing the input graph.}
+\item{graph}{An \code{igraph} object representing the input graph, or a data frame
+containing a symbolic edge list in the first two columns. Additional columns are
+considered as edge attributes.}
 }
 \value{
 A numeric matrix with 2 columns representing x and y coordinates of each node in the layout.
