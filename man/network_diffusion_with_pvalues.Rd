@@ -70,6 +70,22 @@ based on a row-normalized transition matrix. Recommended method for large networ
 
 For \code{"laplacian"} and \code{"heat"}, the graph Laplacian is computed from the (optionally normalized) adjacency matrix.
 }
+\section{Parallel execution}{
+
+The permutation null is evaluated with \code{\link[future.apply:future_lapply]{future.apply::future_lapply()}}, which
+runs under whichever \pkg{future} plan is currently active. This function does
+not set a plan itself, so by default permutations run \strong{sequentially}. To
+parallelize, set a plan once in your own session before calling:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{future::plan("multisession", workers = 4)
+res <- network_diffusion_with_pvalues(g, seed_nodes, n_permutations = 1000)
+future::plan("sequential")   # release the workers when finished
+}\if{html}{\out{</div>}}
+
+Permutations are reproducible regardless of the plan: \code{seed} is passed to
+\code{future_lapply(future.seed = )}, which generates parallel-safe RNG streams.
+}
+
 \examples{
 g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
 igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))

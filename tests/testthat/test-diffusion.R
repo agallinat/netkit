@@ -162,6 +162,25 @@ test_that("permutation p-values come back in the documented shape", {
   expect_equal(res$p_empirical, sort(res$p_empirical))
 })
 
+test_that("the caller's future plan is left untouched and no connections leak", {
+  # Regression guard. network_diffusion_with_pvalues() used to call
+  # future::plan("multisession") internally, which (a) silently overrode the
+  # user's global plan and (b) started worker processes that were never shut
+  # down. The open worker sockets made R CMD check fail with
+  # "checking examples ... ERROR / connections left open". It was invisible on a
+  # sandboxed dev machine that cannot spawn subprocesses, and only showed up on CI.
+  plan_before <- class(future::plan())
+  conns_before <- nrow(showConnections(all = FALSE))
+
+  network_diffusion_with_pvalues(
+    g, seeds, method = "laplacian",
+    n_permutations = 10, seed = 1, verbose = FALSE
+  )
+
+  expect_equal(class(future::plan()), plan_before)
+  expect_equal(nrow(showConnections(all = FALSE)), conns_before)
+})
+
 test_that("p-values are reproducible for a fixed seed", {
   args <- list(graph = g, seed_nodes = seeds, method = "laplacian",
                n_permutations = 25, seed = 7, verbose = FALSE)
