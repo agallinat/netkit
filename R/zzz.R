@@ -6,6 +6,8 @@ if (getRversion() >= "2.15.1") {
     ".x", "ccfd", "graph", "ccdf_in", "ccdf_out", "colorRampPalette",
     "role", "target_score", "target_score",
     # node_metrics(): the correlation heatmap and the ranking facets
-    "metric", "metric_x", "metric_y", "correlation", "value", "label"
+    "metric", "metric_x", "metric_y", "correlation", "value", "label",
+    # metric_significance(): the faceted null-distribution panel
+    "observed"
   ))
 }

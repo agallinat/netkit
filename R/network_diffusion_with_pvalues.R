@@ -22,6 +22,20 @@
 #' @param n_permutations Integer. Number of permutations to run for empirical p-value estimation (default `1000`).
 #' @param seed Optional integer for reproducible random number generation. If `NULL` (default), seed is not set.
 #' @param verbose Logical. If `TRUE` (default), displays a progress bar during permutations.
+#' @param null Which permutation null to compare against:
+#'   \describe{
+#'     \item{`"degree_matched"`}{The default. Each real seed is replaced by a
+#'       randomly chosen vertex of similar degree, so the permuted sets have the
+#'       same degree profile as the real one.}
+#'     \item{`"uniform"`}{Permuted seed sets are drawn uniformly from the
+#'       non-seed vertices, matching only the seed count.}
+#'   }
+#'   See Details for why the default is degree-matched.
+#' @param match_pool Integer. For `null = "degree_matched"`, how many
+#'   nearest-degree candidates each real seed may be replaced by. Default is
+#'   `10`. Smaller values match degree more tightly but give the null less
+#'   variance; `Inf` makes every candidate eligible and so reduces exactly to
+#'   `null = "uniform"`.
 #' @param weights Optional edge weights: `NULL` (default) to ignore them, the
 #'   name of an edge attribute, or a numeric vector of length
 #'   `igraph::ecount(graph)`. See [netkit-weights].
@@ -82,7 +96,29 @@
 #' network_diffusion_with_pvalues(g, seed_nodes, method = "laplacian",
 #'                                n_permutations = 50, seed = 1, verbose = FALSE)
 #'
-#' @importFrom igraph is_igraph V is_directed as_adjacency_matrix vertex_attr vertex_attr<- vcount
+#' @section Choice of null:
+#'
+#' Diffusion scores are strongly degree-dependent: a high-degree vertex receives
+#' signal from more directions, so it scores highly almost regardless of where
+#' the seeds are. A null that draws seed sets uniformly therefore compares a real
+#' seed set -- which in most applications is enriched for well-studied, highly
+#' connected vertices -- against a null composed mostly of poorly connected ones,
+#' and reports much of the degree difference as significance.
+#'
+#' `null = "degree_matched"` removes that confound by replacing each real seed
+#' with a randomly chosen vertex drawn from the `match_pool` candidates closest
+#' to it in degree. The resulting p-values answer "are these seeds unusually well
+#' *placed*?" rather than "are these seeds unusually well *connected*?", which is
+#' almost always the intended question.
+#'
+#' How closely the match can be made is limited by the graph. If the seed set is
+#' extreme -- the six highest-degree vertices of a scale-free network, say --
+#' there are simply no other vertices of comparable degree to permute with, and
+#' no permutation null can fully correct for degree. The function warns when the
+#' closest available candidates are still far from the seeds, so the residual
+#' confound is visible rather than assumed away.
+#'
+#' @importFrom igraph is_igraph V is_directed as_adjacency_matrix vertex_attr vertex_attr<- vcount degree
 #' @importFrom Matrix Diagonal
 #' @importFrom expm expm
 #' @importFrom dplyr arrange desc
@@ -98,10 +134,13 @@ network_diffusion_with_pvalues <- function(graph,
                                            verbose = TRUE,
                                            weights = NULL,
                                            weight_type = c("strength", "distance"),
-                                           seed_weights = NULL) {
+                                           seed_weights = NULL,
+                                           null = c("degree_matched", "uniform"),
+                                           match_pool = 10) {
 
   method <- match.arg(method)
   weight_type <- match.arg(weight_type)
+  null <- match.arg(null)
 
   # Only seed when asked: set.seed(NULL) re-seeds from the clock, so the
   # documented default silently destroyed the caller's RNG stream. Same defect
@@ -175,13 +214,32 @@ network_diffusion_with_pvalues <- function(graph,
   # parallel execution.
 
   # 3. Run permutations
+  # Candidate pool and, for the degree-matched null, the bin structure. Both are
+  # computed once outside the permutation loop.
+  candidates <- setdiff(all_nodes, seed_nodes)
+  if (length(candidates) < n_seeds) {
+    stop(sprintf(
+      paste0("Only %d non-seed vertices are available but %d are needed per ",
+             "permutation. The seed set is too large a share of the graph for ",
+             "a permutation null."),
+      length(candidates), n_seeds
+    ), call. = FALSE)
+  }
+
+  sampler <- if (null == "degree_matched") {
+    make_degree_matched_sampler(graph, seed_nodes, candidates, match_pool)
+  } else {
+    function() sample(candidates, n_seeds)
+  }
+
   perm_results <- future.apply::future_lapply(seq_len(n_permutations), function(i) {
-    perm_seeds <- sample(setdiff(all_nodes, seed_nodes), n_seeds)
+    perm_seeds <- sampler()
     null_df <- network_diffusion(graph, perm_seeds, method = method,
                                  alpha = alpha, t = t,
                                  restart_prob = restart_prob,
                                  normalize = normalize, precompute = precomp,
-                                 weights = weights, weight_type = weight_type)
+                                 weights = weights, weight_type = weight_type,
+                                 seed_weights = seed_weights)
     setNames(null_df$score, null_df$node)
   }, future.seed = seed)
 
@@ -202,4 +260,103 @@ network_diffusion_with_pvalues <- function(graph,
   )
   result <- result[order(result$p_empirical), ]
   return(result)
+}
+
+#' Build a degree-matched seed sampler
+#'
+#' Internal. Returns a closure that draws a permuted seed set whose degrees match
+#' the real seed set's, by replacing each real seed with a randomly chosen
+#' candidate of similar degree.
+#'
+#' Nearest-degree matching rather than binning. Two binning schemes were tried
+#' first and both matched only loosely on exactly the graphs this correction
+#' matters for. Quantile bins of degree *value* collapse on a heavy-tailed
+#' distribution -- most vertices of a scale-free graph have degree 1, so most
+#' quantiles coincide and the surviving top bin spans everything from degree 3 to
+#' the largest hub. Quantile bins of degree *rank* are equal-sized by
+#' construction, but still wide: ten bins over 200 vertices put twenty vertices
+#' per bin, and in the top bin their degrees ranged from 1 to 17, so the bin mean
+#' was nowhere near the seed it was meant to match. Matching each seed
+#' individually removes the binning granularity from the problem entirely.
+#'
+#' @param graph An `igraph` object.
+#' @param seed_nodes The real seed names.
+#' @param candidates Vertex names eligible as permuted seeds.
+#' @param match_pool How many nearest-degree candidates each real seed may be
+#'   replaced by. Small values match degree tightly but give the null little
+#'   variance; `Inf` makes every candidate eligible and so reduces exactly to the
+#'   uniform null.
+#'
+#' @return A function of no arguments returning a character vector of seed names.
+#'
+#' @keywords internal
+#' @noRd
+make_degree_matched_sampler <- function(graph, seed_nodes, candidates,
+                                        match_pool) {
+
+  if (!is.numeric(match_pool) || length(match_pool) != 1 || match_pool < 1) {
+    stop("'match_pool' must be a single number of at least 1.", call. = FALSE)
+  }
+
+  deg <- igraph::degree(graph)
+  names(deg) <- igraph::V(graph)$name
+
+  # When every candidate is eligible for every seed, this *is* the uniform null.
+  # Returning that sampler rather than an equivalent-in-distribution one makes
+  # the equivalence exact, which is what the documentation claims, and avoids
+  # warning below about a match that was never requested.
+  if (match_pool >= length(candidates)) {
+    n_seeds <- length(seed_nodes)
+    return(function() sample(candidates, n_seeds))
+  }
+
+  cand_deg <- deg[candidates]
+  k <- min(match_pool, length(candidates))
+
+  # The eligible pool for each seed, computed once rather than per permutation.
+  pools <- lapply(seed_nodes, function(s) {
+    ord <- order(abs(cand_deg - deg[[s]]))
+    candidates[utils::head(ord, k)]
+  })
+
+  # How well the match can possibly do is limited by what the graph contains: an
+  # extreme seed set has no comparable vertices to be replaced by. Say so once,
+  # rather than leaving the caller to assume the correction was exact.
+  best <- vapply(seq_along(seed_nodes), function(i) {
+    mean(deg[pools[[i]]])
+  }, numeric(1))
+  seed_deg <- deg[seed_nodes]
+  if (any(seed_deg > 0) &&
+      mean(abs(best - seed_deg)) > 0.5 * mean(seed_deg)) {
+    warning(sprintf(
+      paste0("The graph contains few vertices of comparable degree to the seed ",
+             "set (mean seed degree %.1f, mean degree of the closest available ",
+             "candidates %.1f), so the null is only approximately ",
+             "degree-matched. This is a property of the graph, not of the ",
+             "sampling: an extreme seed set has no comparable vertices to be ",
+             "permuted with."),
+      mean(seed_deg), mean(best)
+    ), call. = FALSE)
+  }
+
+  function() {
+    drawn <- character(0)
+    for (pl in pools) {
+      available <- setdiff(pl, drawn)
+      if (length(available) == 0) {
+        # The pool is exhausted because an earlier seed took its members. Widen
+        # to every remaining candidate rather than failing, and take the closest
+        # in degree so the match degrades gracefully.
+        others <- setdiff(candidates, drawn)
+        if (length(others) == 0) {
+          stop("Not enough candidate vertices to build a degree-matched ",
+               "permutation. Use null = \"uniform\", or reduce the seed set.",
+               call. = FALSE)
+        }
+        available <- others[order(abs(deg[others] - mean(deg[pl])))][1]
+      }
+      drawn <- c(drawn, available[sample.int(length(available), 1)])
+    }
+    drawn
+  }
 }

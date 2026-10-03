@@ -17,7 +17,9 @@ network_diffusion_with_pvalues(
   verbose = TRUE,
   weights = NULL,
   weight_type = c("strength", "distance"),
-  seed_weights = NULL
+  seed_weights = NULL,
+  null = c("degree_matched", "uniform"),
+  match_pool = 10
 )
 }
 \arguments{
@@ -63,6 +65,22 @@ name of an edge attribute, or a numeric vector of length
 \code{\link[=network_diffusion]{network_diffusion()}}, replacing the default binary indicator. Note that the
 permutation null re-uses these magnitudes on the permuted seed sets, so the
 null tests the \emph{position} of the seeds rather than their values.}
+
+\item{null}{Which permutation null to compare against:
+\describe{
+\item{\code{"degree_matched"}}{The default. Each real seed is replaced by a
+randomly chosen vertex of similar degree, so the permuted sets have the
+same degree profile as the real one.}
+\item{\code{"uniform"}}{Permuted seed sets are drawn uniformly from the
+non-seed vertices, matching only the seed count.}
+}
+See Details for why the default is degree-matched.}
+
+\item{match_pool}{Integer. For \code{null = "degree_matched"}, how many
+nearest-degree candidates each real seed may be replaced by. Default is
+\code{10}. Smaller values match degree more tightly but give the null less
+variance; \code{Inf} makes every candidate eligible and so reduces exactly to
+\code{null = "uniform"}.}
 }
 \value{
 A data frame with two columns:
@@ -99,6 +117,30 @@ future::plan("sequential")   # release the workers when finished
 
 Permutations are reproducible regardless of the plan: \code{seed} is passed to
 \code{future_lapply(future.seed = )}, which generates parallel-safe RNG streams.
+}
+
+\section{Choice of null}{
+
+
+Diffusion scores are strongly degree-dependent: a high-degree vertex receives
+signal from more directions, so it scores highly almost regardless of where
+the seeds are. A null that draws seed sets uniformly therefore compares a real
+seed set -- which in most applications is enriched for well-studied, highly
+connected vertices -- against a null composed mostly of poorly connected ones,
+and reports much of the degree difference as significance.
+
+\code{null = "degree_matched"} removes that confound by replacing each real seed
+with a randomly chosen vertex drawn from the \code{match_pool} candidates closest
+to it in degree. The resulting p-values answer "are these seeds unusually well
+\emph{placed}?" rather than "are these seeds unusually well \emph{connected}?", which is
+almost always the intended question.
+
+How closely the match can be made is limited by the graph. If the seed set is
+extreme -- the six highest-degree vertices of a scale-free network, say --
+there are simply no other vertices of comparable degree to permute with, and
+no permutation null can fully correct for degree. The function warns when the
+closest available candidates are still far from the seeds, so the residual
+confound is visible rather than assumed away.
 }
 
 \section{Edge weights}{
