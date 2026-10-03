@@ -2,8 +2,16 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^README\.Rmd$
+^README\.html$
 ^doc$
 ^Meta$
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^dev$
+^\.claude$
+^\.github$
+^cran-comments\.md$
+^netkit_.*\.tar\.gz$
+^\.Rhistory$
+^\.DS_Store$
