@@ -136,10 +136,21 @@ robustness_analysis <- function(graph,
       }
 
       if ("efficiency" %in% metrics) {
-        sp <- distances(g_tmp)
-        inv_sp <- 1 / sp
-        inv_sp[is.infinite(inv_sp)] <- 0
-        row$efficiency <- sum(inv_sp) / (vcount(g_tmp)^2 - vcount(g_tmp))
+        n_tmp <- vcount(g_tmp)
+        if (n_tmp < 2) {
+          # Global efficiency averages 1/d over ordered pairs, and a graph with
+          # fewer than two vertices has none: the n(n-1) denominator is 0, so
+          # computing it directly yields NaN. With the default steps = 50 the
+          # removal loop reaches a single remaining vertex for any graph of about
+          # 51 nodes or fewer, and that NaN then propagated into the AUC. A
+          # collapsed network has no paths left, so report 0.
+          row$efficiency <- 0
+        } else {
+          sp <- distances(g_tmp)
+          inv_sp <- 1 / sp
+          inv_sp[is.infinite(inv_sp)] <- 0
+          row$efficiency <- sum(inv_sp) / (n_tmp^2 - n_tmp)
+        }
       }
 
       if ("n_components" %in% metrics) {
@@ -187,7 +198,7 @@ robustness_analysis <- function(graph,
       summary[[metric]]
     }
 
-    metric_vec <- metric_vec / max(metric_vec, na.rm = TRUE)
+    metric_vec <- normalize_metric(metric_vec)
     auc_val <- pracma::trapz(summary$removed_frac, metric_vec)
     auc_list[[metric]] <- auc_val
   }
@@ -202,33 +213,35 @@ robustness_analysis <- function(graph,
     if ("lcc_size" %in% metrics) {
       if ("lcc_size_mean" %in% names(summary)) {
         p <- p +
-          geom_line(aes(y = lcc_size_mean / max(lcc_size_mean, na.rm = TRUE), color = "LCC Size"))
+          geom_line(aes(y = normalize_metric(lcc_size_mean), color = "LCC Size"))
       } else {
-        p <- p + geom_line(aes(y = lcc_size / max(lcc_size, na.rm = TRUE), color = "LCC Size"))
+        p <- p + geom_line(aes(y = normalize_metric(lcc_size), color = "LCC Size"))
       }
     }
 
     if ("efficiency" %in% metrics) {
       if ("efficiency_mean" %in% names(summary)) {
         p <- p +
-          geom_line(aes(y = efficiency_mean / max(efficiency_mean, na.rm = TRUE), color = "Efficiency"))
+          geom_line(aes(y = normalize_metric(efficiency_mean), color = "Efficiency"))
       } else {
-        p <- p + geom_line(aes(y = efficiency / max(efficiency, na.rm = TRUE), color = "Efficiency"))
+        p <- p + geom_line(aes(y = normalize_metric(efficiency), color = "Efficiency"))
       }
     }
 
     if ("n_components" %in% metrics) {
       if ("n_components_mean" %in% names(summary)) {
         p <- p +
-          geom_line(aes(y = n_components_mean / max(n_components_mean, na.rm = TRUE), color = "Components"))
+          geom_line(aes(y = normalize_metric(n_components_mean), color = "Components"))
       } else {
-        p <- p + geom_line(aes(y = n_components / max(n_components, na.rm = TRUE), color = "Components"))
+        p <- p + geom_line(aes(y = normalize_metric(n_components), color = "Components"))
       }
     }
 
     p <- p +
       scale_color_manual(values = c("LCC Size" = "steelblue", "Efficiency" = "darkgreen", "Components" = "red")) +
-      labs(color = "Metric", fill = "Metric")
+      # No fill aesthetic is mapped, so naming one made ggplot2 report
+      # "Ignoring unknown labels: fill".
+      labs(color = "Metric")
 
   } else {
 

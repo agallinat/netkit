@@ -54,6 +54,29 @@ test_that("isolated vertices are counted and bound the LCC", {
   expect_equal(m$LCC_percent, 5 / 7)
 })
 
+test_that("degenerate graphs return NaN only for genuinely undefined metrics", {
+  # These NaNs come from igraph/ineq and are correct: an edgeless graph has no
+  # paths, no connected triples, no degree variance and a zero mean degree. The
+  # test exists so that the set cannot silently grow -- a new NaN column would be a
+  # netkit bug, as auc$efficiency was.
+  g <- igraph::make_empty_graph(10, directed = FALSE)
+  igraph::V(g)$name <- paste0("v", seq_len(10))
+
+  m <- suppressWarnings(summarize_graph_metrics(g))
+  numeric_cols <- m[vapply(m, is.numeric, logical(1))]
+  not_finite <- names(numeric_cols)[!vapply(numeric_cols, is.finite, logical(1))]
+
+  expect_setequal(not_finite, c("Average_path_length", "Clustering_coefficient",
+                                "Degree_assortativity", "Gini_degree", "Modularity"))
+
+  # Everything structural is still exact.
+  expect_equal(m$Nodes, 10L)
+  expect_equal(m$Edges, 0L)
+  expect_equal(m$Components, 10L)
+  expect_equal(m$Single_nodes, 10L)
+  expect_equal(m$Avg_degree, 0)
+})
+
 test_that("Avg_betweenness is skipped above the 5000-node guard", {
   # The guard exists because exact betweenness is the one metric that does not
   # scale; this asserts the cheap path is taken, not the value.

@@ -6,7 +6,14 @@
 #'
 #' @param graph An `igraph` object or a data frame with columns `from` and `to` representing an edge list.
 #'
-#' @return A tibble with one row and multiple columns, each representing a graph-level metric.
+#' @return A one-row `data.frame`, each column a graph-level metric.
+#'
+#'   Metrics that are mathematically undefined for the input are `NaN` rather than
+#'   substituted values, as returned by the underlying \pkg{igraph} and \pkg{ineq}
+#'   functions. On degenerate graphs this is expected: an edgeless graph has no paths
+#'   (`Average_path_length`), no connected triples (`Clustering_coefficient`), no
+#'   degree variance (`Degree_assortativity`) and a zero mean degree
+#'   (`Gini_degree`).
 #'
 #' @details
 #' Metrics computed:

@@ -10,7 +10,14 @@ summarize_graph_metrics(graph)
 \item{graph}{An \code{igraph} object or a data frame with columns \code{from} and \code{to} representing an edge list.}
 }
 \value{
-A tibble with one row and multiple columns, each representing a graph-level metric.
+A one-row \code{data.frame}, each column a graph-level metric.
+
+Metrics that are mathematically undefined for the input are \code{NaN} rather than
+substituted values, as returned by the underlying \pkg{igraph} and \pkg{ineq}
+functions. On degenerate graphs this is expected: an edgeless graph has no paths
+(\code{Average_path_length}), no connected triples (\code{Clustering_coefficient}), no
+degree variance (\code{Degree_assortativity}) and a zero mean degree
+(\code{Gini_degree}).
 }
 \description{
 Computes a comprehensive set of global topological metrics for an input graph,
