@@ -2,6 +2,14 @@ url: https://agallinat.github.io/netkit
 destination: docs
 template:
   bootstrap: 5
+  # Without an og:image, a link to the site shared on Slack, Mastodon or
+  # Bluesky renders as a bare text card.
+  opengraph:
+    image:
+      src: man/figures/README-hero.png
+      alt: >
+        A 120-node network drawn by netkit, coloured into five communities
+        with node size mapped to degree.
 
 reference:
 - title: Package overview

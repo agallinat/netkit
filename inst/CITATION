@@ -1,0 +1,10 @@
+citHeader("To cite netkit in publications, please use:")
+
+bibentry(
+  bibtype = "Manual",
+  title   = "{netkit}: Network Topology, Diffusion and Robustness Analysis",
+  author  = person("Alex", "Gallinat"),
+  year    = "2026",
+  note    = paste("R package version", meta$Version),
+  url     = "https://agallinat.github.io/netkit"
+)
