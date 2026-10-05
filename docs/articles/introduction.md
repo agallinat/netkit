@@ -245,37 +245,12 @@ plot_CCDF(g, show_PL = TRUE, PL_exponents = c(1.5))
 
 # Same analyses to compare two networks
 compare_networks(g, g2)
-#> $plot
+#> <netkit result: compare_networks()>
+#> $plot             <ggplot> print(x$plot) to draw
+#> $global_topology  <data.frame> 2 x 20 | Nodes, Edges, Is_directed, Is_weighted, Densi...
+#> $similarity       <data.frame> 1 x 3 | jaccard_similarity, node_overlap, edge_overlap
+#> $ks_test          <ks.test [6]> statistic, p.value, alternative, method, data...
 ```
-
-![](introduction_files/figure-html/topology-2.png)
-
-    #> 
-    #> $global_topology
-    #>   Nodes Edges Is_directed Is_weighted   Density Diameter Average_path_length
-    #> 1   100    99       FALSE       FALSE 0.0200000       10            5.027273
-    #> 2   100   183        TRUE       FALSE 0.0369697        8            3.583333
-    #>   Clustering_coefficient Degree_assortativity Avg_degree Avg_strength
-    #> 1             0.00000000           -0.4943885       1.98         1.98
-    #> 2             0.03725598            0.1039542       3.66         3.66
-    #>   Avg_betweenness Components Single_nodes LCC_size LCC_percent
-    #> 1          199.35          1            0      100        1.00
-    #> 2          117.80          4            2       96        0.96
-    #>   Algebraic_connectivity Degree_entropy Gini_degree Modularity
-    #> 1           1.500655e-02       1.504678   0.4341414  0.7809917
-    #> 2           3.560702e-18       2.824170   0.2796721  0.4884589
-    #> 
-    #> $similarity
-    #>   jaccard_similarity node_overlap edge_overlap
-    #> 1        0.003558719            1   0.01010101
-    #> 
-    #> $ks_test
-    #> 
-    #>  Asymptotic two-sample Kolmogorov-Smirnov test
-    #> 
-    #> data:  deg1 and deg2
-    #> D = 0.62, p-value < 2.2e-16
-    #> alternative hypothesis: two-sided
 
 ### 3.2. Node-level metrics
 
@@ -352,10 +327,10 @@ contrast.
 
 ``` r
 
-# n_null is kept small here for speed; use 100 or more in practice.
+# n is kept small here for speed; use 100 or more in practice.
 sig <- metric_significance(g, metrics = c("Clustering_coefficient", "Modularity",
                                           "Degree_assortativity"),
-                           n_null = 30, seed = 1)
+                           n = 30, seed = 1)
 sig$result
 #> # A tibble: 3 × 8
 #>   metric          observed null_mean null_sd     z p_empirical ci_lower ci_upper
@@ -393,7 +368,7 @@ organization.
 
 ``` r
 
-small_worldness(sample_smallworld(1, 100, 4, 0.05), n_null = 20, seed = 1)$result
+small_worldness(sample_smallworld(1, 100, 4, 0.05), n = 20, seed = 1)$result
 #> # A tibble: 1 × 6
 #>   sigma     C C_rand     L L_rand n_null
 #>   <dbl> <dbl>  <dbl> <dbl>  <dbl>  <int>
@@ -433,69 +408,24 @@ summarized data frame (with mean and SD) is returned as summary.
 
 # Robustness analysis
 robustness_analysis(g, removal_strategy = "betweenness")
-#> $plot
+#> <netkit result: robustness_analysis()>
+#> 
+#> $result
+#> # A tibble: 50 × 6
+#>     rep removed removed_frac lcc_size efficiency n_components
+#>   <int>   <int>        <dbl>    <dbl>      <dbl>        <dbl>
+#> 1     1       1       0.0101       54     0.107            17
+#> 2     1       2       0.0202       20     0.0587           23
+#> 3     1       4       0.0404       18     0.0411           37
+#> 4     1       6       0.0606        8     0.0140           58
+#> 5     1       8       0.0808        7     0.0130           58
+#> # ℹ 45 more rows
+#> 
+#> $plot         <ggplot> print(x$plot) to draw
+#> $all_results  <tbl_df> 50 x 6 | rep, removed, removed_frac, lcc_size, efficie...
+#> $summary      <tbl_df> 50 x 6 | rep, removed, removed_frac, lcc_size, efficie...
+#> $auc          <list [3]> lcc_size, efficiency, n_components
 ```
-
-![](introduction_files/figure-html/robustness-1.png)
-
-    #> 
-    #> $result
-    #> # A tibble: 50 × 6
-    #>      rep removed removed_frac lcc_size efficiency n_components
-    #>    <int>   <int>        <dbl>    <dbl>      <dbl>        <dbl>
-    #>  1     1       1       0.0101       54    0.107             17
-    #>  2     1       2       0.0202       20    0.0587            23
-    #>  3     1       4       0.0404       18    0.0411            37
-    #>  4     1       6       0.0606        8    0.0140            58
-    #>  5     1       8       0.0808        7    0.0130            58
-    #>  6     1      10       0.101         6    0.0103            62
-    #>  7     1      12       0.121         4    0.00705           67
-    #>  8     1      14       0.141         4    0.00492           71
-    #>  9     1      16       0.162         3    0.00387           72
-    #> 10     1      18       0.182         3    0.00256           74
-    #> # ℹ 40 more rows
-    #> 
-    #> $all_results
-    #> # A tibble: 50 × 6
-    #>      rep removed removed_frac lcc_size efficiency n_components
-    #>    <int>   <int>        <dbl>    <dbl>      <dbl>        <dbl>
-    #>  1     1       1       0.0101       54    0.107             17
-    #>  2     1       2       0.0202       20    0.0587            23
-    #>  3     1       4       0.0404       18    0.0411            37
-    #>  4     1       6       0.0606        8    0.0140            58
-    #>  5     1       8       0.0808        7    0.0130            58
-    #>  6     1      10       0.101         6    0.0103            62
-    #>  7     1      12       0.121         4    0.00705           67
-    #>  8     1      14       0.141         4    0.00492           71
-    #>  9     1      16       0.162         3    0.00387           72
-    #> 10     1      18       0.182         3    0.00256           74
-    #> # ℹ 40 more rows
-    #> 
-    #> $summary
-    #> # A tibble: 50 × 6
-    #>      rep removed removed_frac lcc_size efficiency n_components
-    #>    <int>   <int>        <dbl>    <dbl>      <dbl>        <dbl>
-    #>  1     1       1       0.0101       54    0.107             17
-    #>  2     1       2       0.0202       20    0.0587            23
-    #>  3     1       4       0.0404       18    0.0411            37
-    #>  4     1       6       0.0606        8    0.0140            58
-    #>  5     1       8       0.0808        7    0.0130            58
-    #>  6     1      10       0.101         6    0.0103            62
-    #>  7     1      12       0.121         4    0.00705           67
-    #>  8     1      14       0.141         4    0.00492           71
-    #>  9     1      16       0.162         3    0.00387           72
-    #> 10     1      18       0.182         3    0.00256           74
-    #> # ℹ 40 more rows
-    #> 
-    #> $auc
-    #> $auc$lcc_size
-    #> [1] 0.04638982
-    #> 
-    #> $auc$efficiency
-    #> [1] 0.03235174
-    #> 
-    #> $auc$n_components
-    #> [1] 0.5862681
 
 ### 3.5. Hubs
 
@@ -514,44 +444,24 @@ find_hubs(g, method = "zscore",
           degree_threshold = 2.5, 
           betweenness_threshold = 1,
           hub_names = TRUE) # to display hub nodes' label in the diagnostic plot
+#> <netkit result: find_hubs()>
+#> Method: Hub nodes identified by method: zscore with Degree metric threshold =
+#>   2.5 and Betweenness metric threshold = 1 (unweighted)
+#> 
+#> $result
+#> # A tibble: 100 × 7
+#>   node  degree strength betweenness degree_metric betweenness_metric is_hub
+#>   <chr>  <dbl>    <dbl>       <dbl>         <dbl>              <dbl> <lgl> 
+#> 1 1          7        7       0.662         2.42                4.84 FALSE 
+#> 2 2          3        3       0.543         0.977               4.08 FALSE 
+#> 3 3          2        2       0.287         0.377               2.23 FALSE 
+#> 4 4         14       14       0.298         3.73                2.31 TRUE  
+#> 5 5         17       17       0.669         4.11                4.88 TRUE  
+#> # ℹ 95 more rows
+#> 
+#> $plot   <ggExtraPlot> print(x$plot) to draw
+#> $graph  <igraph> 100 nodes, 99 edges, undirected | vertex attrs: name, category, score, is_hub
 ```
-
-![](introduction_files/figure-html/hubs-1.png)
-
-    #> $plot
-    #> 
-    #> $method
-    #> [1] "Hub nodes identified by method: zscore with Degree metric threshold = 2.5 and Betweenness metric threshold = 1 (unweighted)"
-    #> 
-    #> $result
-    #> # A tibble: 100 × 7
-    #>    node  degree strength betweenness degree_metric betweenness_metric is_hub
-    #>    <chr>  <dbl>    <dbl>       <dbl>         <dbl>              <dbl> <lgl> 
-    #>  1 1          7        7      0.662          2.42               4.84  FALSE 
-    #>  2 2          3        3      0.543          0.977              4.08  FALSE 
-    #>  3 3          2        2      0.287          0.377              2.23  FALSE 
-    #>  4 4         14       14      0.298          3.73               2.31  TRUE  
-    #>  5 5         17       17      0.669          4.11               4.88  TRUE  
-    #>  6 6          4        4      0.0794         1.44               0.424 FALSE 
-    #>  7 7          1        1      0             -0.469             -0.358 FALSE 
-    #>  8 8         16       16      0.348          4.00               2.70  TRUE  
-    #>  9 9          2        2      0.0202         0.377             -0.153 FALSE 
-    #> 10 10         2        2      0.0202         0.377             -0.153 FALSE 
-    #> # ℹ 90 more rows
-    #> 
-    #> $graph
-    #> IGRAPH c1a435b UN-- 100 99 -- Barabasi graph
-    #> + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm
-    #> | (g/c), name (v/c), category (v/c), score (v/n), is_hub (v/l),
-    #> | edge_score (e/n)
-    #> + edges from c1a435b (vertex names):
-    #>  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11
-    #> [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21
-    #> [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31
-    #> [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41
-    #> [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51
-    #> [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61
-    #> + ... omitted several edges
 
 The diagnostic plot is generated using `ggplot2` with a `ggExtra` layer.
 Additional `ggplot2` parameters or layers should be added before the
@@ -604,45 +514,25 @@ rendering, to allow full plot customization.
 # Bottlenecks detection
 find_bottlenecks(g, 
                  method = "zscore") 
+#> <netkit result: find_bottlenecks()>
+#> Method: Bottlenecks identified by method: zscore with Degree metric threshold
+#>   = -1 and Betweenness metric threshold = 1 (unweighted)
+#> 
+#> $result
+#> # A tibble: 100 × 7
+#>   node  degree strength betweenness degree_metric betweenness_metric
+#>   <chr>  <dbl>    <dbl>       <dbl>         <dbl>              <dbl>
+#> 1 1          7        7       0.662         2.42                4.84
+#> 2 2          3        3       0.543         0.977               4.08
+#> 3 3          2        2       0.287         0.377               2.23
+#> 4 4         14       14       0.298         3.73                2.31
+#> 5 5         17       17       0.669         4.11                4.88
+#> # ℹ 95 more rows
+#> # ℹ 1 more variable: is_bottleneck <lgl>
+#> 
+#> $plot   <ggExtraPlot> print(x$plot) to draw
+#> $graph  <igraph> 100 nodes, 99 edges, undirected | vertex attrs: name, category, score, is_bottleneck
 ```
-
-![](introduction_files/figure-html/bottlenecks-1.png)
-
-    #> $plot
-    #> 
-    #> $method
-    #> [1] "Bottlenecks identified by method: zscore with Degree metric threshold = -1 and Betweenness metric threshold = 1 (unweighted)"
-    #> 
-    #> $result
-    #> # A tibble: 100 × 7
-    #>    node  degree strength betweenness degree_metric betweenness_metric
-    #>    <chr>  <dbl>    <dbl>       <dbl>         <dbl>              <dbl>
-    #>  1 1          7        7      0.662          2.42               4.84 
-    #>  2 2          3        3      0.543          0.977              4.08 
-    #>  3 3          2        2      0.287          0.377              2.23 
-    #>  4 4         14       14      0.298          3.73               2.31 
-    #>  5 5         17       17      0.669          4.11               4.88 
-    #>  6 6          4        4      0.0794         1.44               0.424
-    #>  7 7          1        1      0             -0.469             -0.358
-    #>  8 8         16       16      0.348          4.00               2.70 
-    #>  9 9          2        2      0.0202         0.377             -0.153
-    #> 10 10         2        2      0.0202         0.377             -0.153
-    #> # ℹ 90 more rows
-    #> # ℹ 1 more variable: is_bottleneck <lgl>
-    #> 
-    #> $graph
-    #> IGRAPH c1a435b UN-- 100 99 -- Barabasi graph
-    #> + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm
-    #> | (g/c), name (v/c), category (v/c), score (v/n), is_bottleneck (v/l),
-    #> | edge_score (e/n)
-    #> + edges from c1a435b (vertex names):
-    #>  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11
-    #> [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21
-    #> [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31
-    #> [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41
-    #> [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51
-    #> [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61
-    #> + ... omitted several edges
 
 ### 3.7. Calculate Roles
 
@@ -675,54 +565,26 @@ plot is fully customizable with `ggplot2`.
 calculate_roles(g,
                 label.size = 15,
                 label_region = c("R3", "R6")) # to display the label of nodes with roles 'R1' and 'R2' in the plot.
-#> $plot
+#> <netkit result: calculate_roles()>
+#> Method: Guimera-Amaral roles from modules detected by 'spinglass'
+#>   (unweighted); hub z-score threshold = 2.5; participation boundaries R1/R2 =
+#>   0.05, R2/R3 = 0.62, R3/R4 = 0.8, R5/R6 = 0.3, R6/R7 = 0.75
+#> 
+#> $result
+#> # A tibble: 100 × 5
+#>   node  module      z     p role 
+#>   <chr>  <int>  <dbl> <dbl> <chr>
+#> 1 1          1  2.27  0.245 R2   
+#> 2 2          1 -0.378 0.667 R3   
+#> 3 3          1 -0.378 0.5   R2   
+#> 4 4          3  3.85  0.133 R5   
+#> 5 5          5  3.33  0.484 R6   
+#> # ℹ 95 more rows
+#> 
+#> $plot               <ggplot> print(x$plot) to draw
+#> $graph              <igraph> 100 nodes, 99 edges, undirected | vertex attrs: name, category, score, module, role_z, role_p...
+#> $roles_definitions  <data.frame> 7 x 3 | Name, Description, Condition
 ```
-
-![](introduction_files/figure-html/roles-1.png)
-
-    #> 
-    #> $result
-    #> # A tibble: 100 × 5
-    #>    node  module       z     p role 
-    #>    <chr>  <int>   <dbl> <dbl> <chr>
-    #>  1 1          4  2.04   0.449 R2   
-    #>  2 2          2 -0.671  0.667 R3   
-    #>  3 3          4 -0.408  0.5   R2   
-    #>  4 4          8  3.85   0.133 R5   
-    #>  5 5          1  3.33   0.484 R6   
-    #>  6 6          7  1.57   0.375 R2   
-    #>  7 7          7 -0.671  0     R1   
-    #>  8 8         13  3.86   0.227 R5   
-    #>  9 9          8  0.0407 0     R1   
-    #> 10 10        13  0.0375 0     R1   
-    #> # ℹ 90 more rows
-    #> 
-    #> $graph
-    #> IGRAPH c1a435b UN-- 100 99 -- Barabasi graph
-    #> + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm
-    #> | (g/c), name (v/c), category (v/c), score (v/n), module (v/n), role_z
-    #> | (v/n), role_p (v/n), role (v/c), edge_score (e/n)
-    #> + edges from c1a435b (vertex names):
-    #>  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11
-    #> [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21
-    #> [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31
-    #> [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41
-    #> [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51
-    #> [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61
-    #> + ... omitted several edges
-    #> 
-    #> $method
-    #> [1] "Guimera-Amaral roles from modules detected by 'spinglass' (unweighted); hub z-score threshold = 2.5; participation boundaries R1/R2 = 0.05, R2/R3 = 0.62, R3/R4 = 0.8, R5/R6 = 0.3, R6/R7 = 0.75"
-    #> 
-    #> $roles_definitions
-    #>   Name                Description                      Condition
-    #> 1   R1 Ultra-peripheral (non-hub)            z < 2.5 & P <= 0.05
-    #> 2   R2       Peripheral (non-hub) z < 2.5 & 0.05 < P & P <= 0.62
-    #> 3   R3          Non-hub connector  z < 2.5 & 0.62 < P & P <= 0.8
-    #> 4   R4            Non-hub kinless              z < 2.5 & P > 0.8
-    #> 5   R5             Provincial hub            z >= 2.5 & P <= 0.3
-    #> 6   R6              Connector hub z >= 2.5 & 0.3 < P & P <= 0.75
-    #> 7   R7                Kinless hub            z >= 2.5 & P > 0.75
 
 ### 3.8. Modules
 
@@ -746,60 +608,24 @@ find_modules(g,
 
 ![](introduction_files/figure-html/modules-1.png)
 
+    #> <netkit result: find_modules()>
+    #> Method: louvain
+    #> 
     #> $result
     #> # A tibble: 100 × 2
-    #>    node  module
-    #>    <chr>  <int>
-    #>  1 1          1
-    #>  2 2          1
-    #>  3 3          1
-    #>  4 4          2
-    #>  5 5          3
-    #>  6 6          4
-    #>  7 7          4
-    #>  8 8          5
-    #>  9 9          2
-    #> 10 10         5
-    #> # ℹ 90 more rows
+    #>   node  module
+    #>   <chr>  <int>
+    #> 1 1          1
+    #> 2 2          1
+    #> 3 3          1
+    #> 4 4          2
+    #> 5 5          3
+    #> # ℹ 95 more rows
     #> 
-    #> $module_table
-    #> # A tibble: 100 × 2
-    #>    node  module
-    #>    <chr>  <int>
-    #>  1 1          1
-    #>  2 2          1
-    #>  3 3          1
-    #>  4 4          2
-    #>  5 5          3
-    #>  6 6          4
-    #>  7 7          4
-    #>  8 8          5
-    #>  9 9          2
-    #> 10 10         5
-    #> # ℹ 90 more rows
-    #> 
-    #> $n_modules
-    #> [1] 8
-    #> 
-    #> $subgraphs
-    #> NULL
-    #> 
-    #> $method
-    #> [1] "louvain"
-    #> 
-    #> $graph
-    #> IGRAPH c1a435b UN-- 100 99 -- Barabasi graph
-    #> + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm
-    #> | (g/c), name (v/c), category (v/c), score (v/n), module (v/n), color
-    #> | (v/c), label (v/c), edge_score (e/n)
-    #> + edges from c1a435b (vertex names):
-    #>  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11
-    #> [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21
-    #> [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31
-    #> [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41
-    #> [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51
-    #> [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61
-    #> + ... omitted several edges
+    #> $module_table  <tbl_df> 100 x 2 | node, module
+    #> $n_modules     8
+    #> $subgraphs     NULL
+    #> $graph         <igraph> 100 nodes, 99 edges, undirected | vertex attrs: name, category, score, module, color, label
 
 ## 4. Extracting a subnetwork
 
@@ -930,16 +756,16 @@ network_diffusion(g, seed_nodes = seed_nodes, method = "laplacian")
 #> # A tibble: 100 × 2
 #>    node   score
 #>    <chr>  <dbl>
-#>  1 51    0.868 
-#>  2 83    0.868 
-#>  3 43    0.856 
-#>  4 3     0.776 
-#>  5 38    0.531 
-#>  6 67    0.138 
-#>  7 69    0.138 
-#>  8 71    0.138 
-#>  9 5     0.0927
-#> 10 4     0.0838
+#>  1 57    0.833 
+#>  2 89    0.745 
+#>  3 10    0.690 
+#>  4 41    0.649 
+#>  5 5     0.321 
+#>  6 85    0.231 
+#>  7 50    0.229 
+#>  8 86    0.215 
+#>  9 6     0.102 
+#> 10 12    0.0797
 #> # ℹ 90 more rows
 
 network_diffusion_with_pvalues(g, seed_nodes = seed_nodes, method = "laplacian")
@@ -948,16 +774,16 @@ network_diffusion_with_pvalues(g, seed_nodes = seed_nodes, method = "laplacian")
 #> # A tibble: 100 × 3
 #>    node   score p_empirical
 #>    <chr>  <dbl>       <dbl>
-#>  1 51    0.868     0.000999
-#>  2 83    0.868     0.000999
-#>  3 43    0.856     0.000999
-#>  4 3     0.776     0.000999
-#>  5 38    0.531     0.000999
-#>  6 67    0.138     0.000999
-#>  7 69    0.138     0.000999
-#>  8 71    0.138     0.000999
-#>  9 4     0.0838    0.000999
-#> 10 1     0.0671    0.000999
+#>  1 57    0.833     0.000999
+#>  2 89    0.745     0.000999
+#>  3 10    0.690     0.000999
+#>  4 41    0.649     0.000999
+#>  5 5     0.321     0.000999
+#>  6 85    0.231     0.000999
+#>  7 50    0.229     0.000999
+#>  8 86    0.215     0.000999
+#>  9 11    0.0466    0.000999
+#> 10 21    0.0466    0.000999
 #> # ℹ 90 more rows
 ```
 
@@ -1005,22 +831,12 @@ applied analyses.
 target_nodes <- sample(vertex_attr(g, "name"), 5)
 
 greedy_seed_selection(g, target_nodes = target_nodes, k = 20, method = "laplacian")
-#> $selected_seeds
-#>  [1] "33" "75" "24" "27" "29" "57" "77" "25" "4"  "38" "26" "5"  "32" "43" "47"
-#> [16] "48" "56" "59" "64" "87"
-#> 
-#> $final_target_score
-#> [1] 1.042074
-#> 
-#> $scores_at_each_step
-#>  [1] 0.1805418 0.3610836 0.4524841 0.5438846 0.6352851 0.7266856 0.8180861
-#>  [8] 0.8711484 0.9221078 0.9516645 0.9692330 0.9778248 0.9858560 0.9938871
-#> [15] 1.0019183 1.0099494 1.0179806 1.0260117 1.0340429 1.0420740
-#> 
-#> $plot
+#> <netkit result: greedy_seed_selection()>
+#> $selected_seeds       <character [20]> 8 , 5 , 15, 44, 45
+#> $final_target_score   0.5421242
+#> $scores_at_each_step  <double [20]> 0.1408368, 0.2329819, 0.2539576, 0.2749333, 0...
+#> $plot                 <ggplot> print(x$plot) to draw
 ```
-
-![](introduction_files/figure-html/reverse-diffusion-1.png)
 
 The generated plot is also a `ggplot2` object, and thus, fully
 customizable.

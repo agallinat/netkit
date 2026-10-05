@@ -1,5 +1,11 @@
 # Package index
 
+## Package overview
+
+- [`netkit`](https://agallinat.github.io/netkit/reference/netkit-package.md)
+  [`netkit-package`](https://agallinat.github.io/netkit/reference/netkit-package.md)
+  : netkit: Network Analysis and Visualization Toolkit
+
 ## Graph input and annotation
 
 Getting data into a graph and metadata onto it. Every function in netkit
@@ -90,3 +96,14 @@ graphics rather than returning a ggplot object.
   : Highlight Nodes in a Network Plot
 - [`layout_horizontal_tree()`](https://agallinat.github.io/netkit/reference/layout_horizontal_tree.md)
   : Horizontal Tree Layout for Graph Visualization
+
+## Printing
+
+How netkit’s results display at the console. Nothing here needs to be
+called directly.
+
+- [`print(`*`<netkit_result>`*`)`](https://agallinat.github.io/netkit/reference/netkit-print.md)
+  [`print(`*`<netkit_null>`*`)`](https://agallinat.github.io/netkit/reference/netkit-print.md)
+  [`` `[`( ``*`<netkit_null>`*`)`](https://agallinat.github.io/netkit/reference/netkit-print.md)
+  [`print(`*`<netkit_kernel>`*`)`](https://agallinat.github.io/netkit/reference/netkit-print.md)
+  : Printing netkit objects

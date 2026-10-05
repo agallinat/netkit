@@ -9,7 +9,7 @@ clustering and path length against a degree-matched random ensemble."></head><bo
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,7 +49,7 @@ clustering and path length against a degree-matched random ensemble.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">small_worldness</span><span class="op">(</span></span>
 <span>  <span class="va">graph</span>,</span>
-<span>  n_null <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  n <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rewire"</span>, <span class="st">"configuration"</span>, <span class="st">"erdos_renyi"</span><span class="op">)</span>,</span>
 <span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  weight_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strength"</span>, <span class="st">"distance"</span><span class="op">)</span>,</span>
@@ -65,7 +65,7 @@ clustering and path length against a degree-matched random ensemble.</p>
 <dd><p>An <code>igraph</code> object or a data frame edge list.</p></dd>
 
 
-<dt id="arg-n-null">n_null<a class="anchor" aria-label="anchor" href="#arg-n-null"></a></dt>
+<dt id="arg-n">n<a class="anchor" aria-label="anchor" href="#arg-n"></a></dt>
 <dd><p>Integer. Number of null graphs. Default is <code>100</code>.</p></dd>
 
 
@@ -128,8 +128,8 @@ networks. <em>Nature</em>, 393(6684), 440-442. <a href="https://doi.org/10.1038/
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/sample_smallworld.html" class="external-link">sample_smallworld</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">60</span>, <span class="fl">4</span>, <span class="fl">0.05</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># `n_null` is small here to keep the example fast.</span></span></span>
-<span class="r-in"><span><span class="va">sw</span> <span class="op">&lt;-</span> <span class="fu">small_worldness</span><span class="op">(</span><span class="va">g</span>, n_null <span class="op">=</span> <span class="fl">10</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># `n` is small here to keep the example fast.</span></span></span>
+<span class="r-in"><span><span class="va">sw</span> <span class="op">&lt;-</span> <span class="fu">small_worldness</span><span class="op">(</span><span class="va">g</span>, n <span class="op">=</span> <span class="fl">10</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">sw</span><span class="op">$</span><span class="va">result</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 6</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   sigma     C C_rand     L L_rand n_null</span>

@@ -1,15 +1,12 @@
 # Changelog
 
-## netkit 0.1.0.9000 (development version)
+## netkit 0.1.0
 
-Not yet released. The fourth version component (`.9000`) marks this as a
-development build; drop it, and update this heading to the release
-version, at submission time.
+First CRAN release.
 
-Note the heading must keep a parseable version number. R’s NEWS.md
-parser needs one, and a bare `# netkit (development version)` heading
-makes `R CMD check --as-cran` report
-`Problems with news in 'NEWS.md': No news entries found.`
+The “Breaking changes” below are relative to 0.0.1.9000, which was a
+development build and was never released, so nothing here changes
+behavior anyone could have depended on.
 
 ### Breaking changes
 
@@ -59,6 +56,17 @@ makes `R CMD check --as-cran` report
   R2/R3 participation boundary is corrected** from 0.60 to the 0.62
   published by Guimerà and Amaral (2005), and the R5/R6 boundary is now
   0.30 everywhere. Some nodes near those boundaries change role.
+
+- **[`metric_significance()`](https://agallinat.github.io/netkit/reference/metric_significance.md)
+  and
+  [`small_worldness()`](https://agallinat.github.io/netkit/reference/small_worldness.md)
+  take `n` rather than `n_null`**, matching `null_model(n =)`. The old
+  name was not just inconsistent: with formals called `null` and
+  `n_null` side by side, `metric_significance(g, n = 20)` partially
+  matched both and failed with
+  `argument 3 matches multiple formal arguments`. With `n` a formal, it
+  is an exact match. The `n_null` column of `small_worldness()$result`
+  keeps its name.
 
 ### New features
 
@@ -114,6 +122,27 @@ makes `R CMD check --as-cran` report
 
 - `robustness_analysis(removal_strategy = "strength")`.
 
+- [`print()`](https://rdrr.io/r/base/print.html) methods for every
+  object netkit returns, so that a result at the console is a summary
+  rather than a dump. The default method printed the whole annotated
+  graph and every row of the result table; a 100-graph
+  [`null_model()`](https://agallinat.github.io/netkit/reference/null_model.md)
+  ensemble ran to over 1400 lines. Analysis results now print their
+  `method` line, the head of `result`, and a one-line description of
+  each remaining element;
+  [`null_model()`](https://agallinat.github.io/netkit/reference/null_model.md)
+  ensembles and
+  [`prepare_diffusion()`](https://agallinat.github.io/netkit/reference/prepare_diffusion.md)
+  kernels print their shape. Only printing changes — the objects are
+  still plain lists, and
+  [`unclass()`](https://rdrr.io/r/base/class.html) restores the old
+  output. See
+  [`?"netkit-print"`](https://agallinat.github.io/netkit/reference/netkit-print.md).
+
+- A package-level help page:
+  [`?netkit`](https://agallinat.github.io/netkit/reference/netkit-package.md)
+  gives the function map and the shared return vocabulary.
+
 - `calculate_roles(thresholds =)` — override the
   participation-coefficient boundaries between roles.
 
@@ -162,7 +191,7 @@ makes `R CMD check --as-cran` report
   vocabulary has no exceptions. The old names are kept and are
   deprecated.
 
-- The test suite has grown from 425 to 815 expectations across 18 files.
+- The test suite has grown from 425 to 894 expectations across 19 files.
 
 ## netkit 0.0.1.9000
 

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -254,34 +254,11 @@ input, and computes the same metrics on both, and their associated
 <code class="sourceCode R"><span></span>
 <span><span class="co"># Same analyses to compare two networks</span></span>
 <span><span class="fu"><a href="../reference/compare_networks.html">compare_networks</a></span><span class="op">(</span><span class="va">g</span>, <span class="va">g2</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $plot</span></span></code></pre></div>
-<p><img src="introduction_files/figure-html/topology-2.png" class="r-plt" width="576"></p>
-<pre><code><span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $global_topology</span></span>
-<span><span class="co">#&gt;   Nodes Edges Is_directed Is_weighted   Density Diameter Average_path_length</span></span>
-<span><span class="co">#&gt; 1   100    99       FALSE       FALSE 0.0200000       10            5.027273</span></span>
-<span><span class="co">#&gt; 2   100   183        TRUE       FALSE 0.0369697        8            3.583333</span></span>
-<span><span class="co">#&gt;   Clustering_coefficient Degree_assortativity Avg_degree Avg_strength</span></span>
-<span><span class="co">#&gt; 1             0.00000000           -0.4943885       1.98         1.98</span></span>
-<span><span class="co">#&gt; 2             0.03725598            0.1039542       3.66         3.66</span></span>
-<span><span class="co">#&gt;   Avg_betweenness Components Single_nodes LCC_size LCC_percent</span></span>
-<span><span class="co">#&gt; 1          199.35          1            0      100        1.00</span></span>
-<span><span class="co">#&gt; 2          117.80          4            2       96        0.96</span></span>
-<span><span class="co">#&gt;   Algebraic_connectivity Degree_entropy Gini_degree Modularity</span></span>
-<span><span class="co">#&gt; 1           1.500655e-02       1.504678   0.4341414  0.7809917</span></span>
-<span><span class="co">#&gt; 2           3.560702e-18       2.824170   0.2796721  0.4884589</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $similarity</span></span>
-<span><span class="co">#&gt;   jaccard_similarity node_overlap edge_overlap</span></span>
-<span><span class="co">#&gt; 1        0.003558719            1   0.01010101</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $ks_test</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;  Asymptotic two-sample Kolmogorov-Smirnov test</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; data:  deg1 and deg2</span></span>
-<span><span class="co">#&gt; D = 0.62, p-value &lt; 2.2e-16</span></span>
-<span><span class="co">#&gt; alternative hypothesis: two-sided</span></span></code></pre>
+<span><span class="co">#&gt; &lt;netkit result: compare_networks()&gt;</span></span>
+<span><span class="co">#&gt; $plot             &lt;ggplot&gt; print(x$plot) to draw</span></span>
+<span><span class="co">#&gt; $global_topology  &lt;data.frame&gt; 2 x 20 | Nodes, Edges, Is_directed, Is_weighted, Densi...</span></span>
+<span><span class="co">#&gt; $similarity       &lt;data.frame&gt; 1 x 3 | jaccard_similarity, node_overlap, edge_overlap</span></span>
+<span><span class="co">#&gt; $ks_test          &lt;ks.test [6]&gt; statistic, p.value, alternative, method, data...</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="node-level-metrics">3.2. Node-level metrics<a class="anchor" aria-label="anchor" href="#node-level-metrics"></a>
@@ -296,7 +273,7 @@ vertex attribute.</p>
 accepts a numeric vertex attribute — <code>plot_Net(color = )</code>,
 <code>robustness_analysis(removal_strategy = )</code> — can use the
 results directly.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/node_metrics.html">node_metrics</a></span><span class="op">(</span><span class="va">g</span>, plot <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">nm</span><span class="op">$</span><span class="va">result</span><span class="op">)</span></span>
@@ -321,7 +298,7 @@ with a table like this is to read the columns as independent evidence,
 when on many networks betweenness, eigenvector centrality and PageRank
 all correlate with degree above 0.9 — so a node that looks important by
 four measures may be important by one.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/node_metrics.html">node_metrics</a></span><span class="op">(</span><span class="va">g</span>, metrics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"degree"</span>, <span class="st">"betweenness"</span>, <span class="st">"pagerank"</span>, <span class="st">"coreness"</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">plot</span></span></code></pre></div>
 <p><img src="introduction_files/figure-html/node-metrics-plot-1.png" class="r-plt" width="576"></p>
 <p>Set <code>plot_type = "ranking"</code> for a faceted bar chart of the
@@ -342,11 +319,11 @@ partly determined by the degree sequence, so a null that does not hold
 it fixed mostly rediscovers that the graph is heavy-tailed.
 <code>"erdos_renyi"</code> matches only the vertex and edge counts and
 is included as the deliberate weak contrast.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># n_null is kept small here for speed; use 100 or more in practice.</span></span>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># n is kept small here for speed; use 100 or more in practice.</span></span>
 <span><span class="va">sig</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/metric_significance.html">metric_significance</a></span><span class="op">(</span><span class="va">g</span>, metrics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Clustering_coefficient"</span>, <span class="st">"Modularity"</span>,</span>
 <span>                                          <span class="st">"Degree_assortativity"</span><span class="op">)</span>,</span>
-<span>                           n_null <span class="op">=</span> <span class="fl">30</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span>                           n <span class="op">=</span> <span class="fl">30</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">sig</span><span class="op">$</span><span class="va">result</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 8</span></span></span>
 <span><span class="co">#&gt;   metric          observed null_mean null_sd     z p_empirical ci_lower ci_upper</span></span>
@@ -359,19 +336,19 @@ is included as the deliberate weak contrast.</p>
 30 null graphs the smallest attainable value is
 <code>1/31 ≈ 0.032</code>, and no effect however large can beat it. The
 <code>method</code> element says so explicitly:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sig</span><span class="op">$</span><span class="va">method</span></span>
 <span><span class="co">#&gt; [1] "Metric significance against 30 null graphs (model 'rewire'); unweighted; two-sided empirical p-values with the (r+1)/(n+1) convention, so the smallest attainable p-value is 0.0323"</span></span></code></pre></div>
 <p>The accompanying plot shows each null distribution with the observed
 value marked:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sig</span><span class="op">$</span><span class="va">plot</span></span></code></pre></div>
 <p><img src="introduction_files/figure-html/null-plot-1.png" class="r-plt" width="672"></p>
 <p><code><a href="../reference/small_worldness.html">small_worldness()</a></code> is the classic application of the same
 machinery, reporting sigma = (C/C_rand)/(L/L_rand). Values appreciably
 above 1 indicate small-world organization.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/small_worldness.html">small_worldness</a></span><span class="op">(</span><span class="fu"><a href="https://r.igraph.org/reference/sample_smallworld.html" class="external-link">sample_smallworld</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">100</span>, <span class="fl">4</span>, <span class="fl">0.05</span><span class="op">)</span>, n_null <span class="op">=</span> <span class="fl">20</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">$</span><span class="va">result</span></span>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/small_worldness.html">small_worldness</a></span><span class="op">(</span><span class="fu"><a href="https://r.igraph.org/reference/sample_smallworld.html" class="external-link">sample_smallworld</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">100</span>, <span class="fl">4</span>, <span class="fl">0.05</span><span class="op">)</span>, n <span class="op">=</span> <span class="fl">20</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">$</span><span class="va">result</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 6</span></span></span>
 <span><span class="co">#&gt;   sigma     C C_rand     L L_rand n_null</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
@@ -404,69 +381,26 @@ disproportionately affect system integrity.</p>
 <p>If the removal strategy is set to <code>"random"</code> and
 <code>n_reps &gt; 1</code>, a summarized data frame (with mean and SD)
 is returned as summary.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Robustness analysis</span></span>
 <span><span class="fu"><a href="../reference/robustness_analysis.html">robustness_analysis</a></span><span class="op">(</span><span class="va">g</span>, removal_strategy <span class="op">=</span> <span class="st">"betweenness"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $plot</span></span></code></pre></div>
-<p><img src="introduction_files/figure-html/robustness-1.png" class="r-plt" width="576"></p>
-<pre><code><span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; &lt;netkit result: robustness_analysis()&gt;</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $result</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 50 × 6</span></span></span>
-<span><span class="co">#&gt;      rep removed removed_frac lcc_size efficiency n_components</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1       1       0.010<span style="text-decoration: underline;">1</span>       54    0.107             17</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1       2       0.020<span style="text-decoration: underline;">2</span>       20    0.058<span style="text-decoration: underline;">7</span>            23</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1       4       0.040<span style="text-decoration: underline;">4</span>       18    0.041<span style="text-decoration: underline;">1</span>            37</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1       6       0.060<span style="text-decoration: underline;">6</span>        8    0.014<span style="text-decoration: underline;">0</span>            58</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     1       8       0.080<span style="text-decoration: underline;">8</span>        7    0.013<span style="text-decoration: underline;">0</span>            58</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     1      10       0.101         6    0.010<span style="text-decoration: underline;">3</span>            62</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     1      12       0.121         4    0.007<span style="text-decoration: underline;">05</span>           67</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     1      14       0.141         4    0.004<span style="text-decoration: underline;">92</span>           71</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     1      16       0.162         3    0.003<span style="text-decoration: underline;">87</span>           72</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     1      18       0.182         3    0.002<span style="text-decoration: underline;">56</span>           74</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 40 more rows</span></span></span>
+<span><span class="co">#&gt;     rep removed removed_frac lcc_size efficiency n_components</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     1       1       0.010<span style="text-decoration: underline;">1</span>       54     0.107            17</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     1       2       0.020<span style="text-decoration: underline;">2</span>       20     0.058<span style="text-decoration: underline;">7</span>           23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     1       4       0.040<span style="text-decoration: underline;">4</span>       18     0.041<span style="text-decoration: underline;">1</span>           37</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     1       6       0.060<span style="text-decoration: underline;">6</span>        8     0.014<span style="text-decoration: underline;">0</span>           58</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     1       8       0.080<span style="text-decoration: underline;">8</span>        7     0.013<span style="text-decoration: underline;">0</span>           58</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 45 more rows</span></span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $all_results</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 50 × 6</span></span></span>
-<span><span class="co">#&gt;      rep removed removed_frac lcc_size efficiency n_components</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1       1       0.010<span style="text-decoration: underline;">1</span>       54    0.107             17</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1       2       0.020<span style="text-decoration: underline;">2</span>       20    0.058<span style="text-decoration: underline;">7</span>            23</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1       4       0.040<span style="text-decoration: underline;">4</span>       18    0.041<span style="text-decoration: underline;">1</span>            37</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1       6       0.060<span style="text-decoration: underline;">6</span>        8    0.014<span style="text-decoration: underline;">0</span>            58</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     1       8       0.080<span style="text-decoration: underline;">8</span>        7    0.013<span style="text-decoration: underline;">0</span>            58</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     1      10       0.101         6    0.010<span style="text-decoration: underline;">3</span>            62</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     1      12       0.121         4    0.007<span style="text-decoration: underline;">05</span>           67</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     1      14       0.141         4    0.004<span style="text-decoration: underline;">92</span>           71</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     1      16       0.162         3    0.003<span style="text-decoration: underline;">87</span>           72</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     1      18       0.182         3    0.002<span style="text-decoration: underline;">56</span>           74</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 40 more rows</span></span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $summary</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 50 × 6</span></span></span>
-<span><span class="co">#&gt;      rep removed removed_frac lcc_size efficiency n_components</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span>     1       1       0.010<span style="text-decoration: underline;">1</span>       54    0.107             17</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span>     1       2       0.020<span style="text-decoration: underline;">2</span>       20    0.058<span style="text-decoration: underline;">7</span>            23</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span>     1       4       0.040<span style="text-decoration: underline;">4</span>       18    0.041<span style="text-decoration: underline;">1</span>            37</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span>     1       6       0.060<span style="text-decoration: underline;">6</span>        8    0.014<span style="text-decoration: underline;">0</span>            58</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span>     1       8       0.080<span style="text-decoration: underline;">8</span>        7    0.013<span style="text-decoration: underline;">0</span>            58</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span>     1      10       0.101         6    0.010<span style="text-decoration: underline;">3</span>            62</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span>     1      12       0.121         4    0.007<span style="text-decoration: underline;">05</span>           67</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span>     1      14       0.141         4    0.004<span style="text-decoration: underline;">92</span>           71</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span>     1      16       0.162         3    0.003<span style="text-decoration: underline;">87</span>           72</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span>     1      18       0.182         3    0.002<span style="text-decoration: underline;">56</span>           74</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 40 more rows</span></span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $auc</span></span>
-<span><span class="co">#&gt; $auc$lcc_size</span></span>
-<span><span class="co">#&gt; [1] 0.04638982</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $auc$efficiency</span></span>
-<span><span class="co">#&gt; [1] 0.03235174</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $auc$n_components</span></span>
-<span><span class="co">#&gt; [1] 0.5862681</span></span></code></pre>
+<span><span class="co">#&gt; $plot         &lt;ggplot&gt; print(x$plot) to draw</span></span>
+<span><span class="co">#&gt; $all_results  &lt;tbl_df&gt; 50 x 6 | rep, removed, removed_frac, lcc_size, efficie...</span></span>
+<span><span class="co">#&gt; $summary      &lt;tbl_df&gt; 50 x 6 | rep, removed, removed_frac, lcc_size, efficie...</span></span>
+<span><span class="co">#&gt; $auc          &lt;list [3]&gt; lcc_size, efficiency, n_components</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="hubs">3.5. Hubs<a class="anchor" aria-label="anchor" href="#hubs"></a>
@@ -477,54 +411,36 @@ high degree and betweenness centrality. Using the function
 z-score or quantile thresholds for degree and betweenness centrality.
 The function generates a diagnostic plot to visualize the classification
 using a scatter plot with marginal histograms.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Hubs detection</span></span>
 <span><span class="fu"><a href="../reference/find_hubs.html">find_hubs</a></span><span class="op">(</span><span class="va">g</span>, method <span class="op">=</span> <span class="st">"zscore"</span>, </span>
 <span>          degree_threshold <span class="op">=</span> <span class="fl">2.5</span>, </span>
 <span>          betweenness_threshold <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>          hub_names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># to display hub nodes' label in the diagnostic plot</span></span></code></pre></div>
-<p><img src="introduction_files/figure-html/hubs-1.png" class="r-plt" width="480"></p>
-<pre><code><span><span class="co">#&gt; $plot</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $method</span></span>
-<span><span class="co">#&gt; [1] "Hub nodes identified by method: zscore with Degree metric threshold = 2.5 and Betweenness metric threshold = 1 (unweighted)"</span></span>
+<span>          hub_names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># to display hub nodes' label in the diagnostic plot</span></span>
+<span><span class="co">#&gt; &lt;netkit result: find_hubs()&gt;</span></span>
+<span><span class="co">#&gt; Method: Hub nodes identified by method: zscore with Degree metric threshold =</span></span>
+<span><span class="co">#&gt;   2.5 and Betweenness metric threshold = 1 (unweighted)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $result</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 7</span></span></span>
-<span><span class="co">#&gt;    node  degree strength betweenness degree_metric betweenness_metric is_hub</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1          7        7      0.662          2.42               4.84  FALSE </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2          3        3      0.543          0.977              4.08  FALSE </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3          2        2      0.287          0.377              2.23  FALSE </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4         14       14      0.298          3.73               2.31  TRUE  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5         17       17      0.669          4.11               4.88  TRUE  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6          4        4      0.079<span style="text-decoration: underline;">4</span>         1.44               0.424 FALSE </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7          1        1      0             -<span style="color: #BB0000;">0.469</span>             -<span style="color: #BB0000;">0.358</span> FALSE </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8         16       16      0.348          4.00               2.70  TRUE  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9          2        2      0.020<span style="text-decoration: underline;">2</span>         0.377             -<span style="color: #BB0000;">0.153</span> FALSE </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10         2        2      0.020<span style="text-decoration: underline;">2</span>         0.377             -<span style="color: #BB0000;">0.153</span> FALSE </span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
+<span><span class="co">#&gt;   node  degree strength betweenness degree_metric betweenness_metric is_hub</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 1          7        7       0.662         2.42                4.84 FALSE </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 2          3        3       0.543         0.977               4.08 FALSE </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 3          2        2       0.287         0.377               2.23 FALSE </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 4         14       14       0.298         3.73                2.31 TRUE  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 5         17       17       0.669         4.11                4.88 TRUE  </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 95 more rows</span></span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $graph</span></span>
-<span><span class="co">#&gt; IGRAPH c1a435b UN-- 100 99 -- Barabasi graph</span></span>
-<span><span class="co">#&gt; + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm</span></span>
-<span><span class="co">#&gt; | (g/c), name (v/c), category (v/c), score (v/n), is_hub (v/l),</span></span>
-<span><span class="co">#&gt; | edge_score (e/n)</span></span>
-<span><span class="co">#&gt; + edges from c1a435b (vertex names):</span></span>
-<span><span class="co">#&gt;  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11</span></span>
-<span><span class="co">#&gt; [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21</span></span>
-<span><span class="co">#&gt; [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31</span></span>
-<span><span class="co">#&gt; [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41</span></span>
-<span><span class="co">#&gt; [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51</span></span>
-<span><span class="co">#&gt; [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61</span></span>
-<span><span class="co">#&gt; + ... omitted several edges</span></span></code></pre>
+<span><span class="co">#&gt; $plot   &lt;ggExtraPlot&gt; print(x$plot) to draw</span></span>
+<span><span class="co">#&gt; $graph  &lt;igraph&gt; 100 nodes, 99 edges, undirected | vertex attrs: name, category, score, is_hub</span></span></code></pre></div>
 <p>The diagnostic plot is generated using <code>ggplot2</code> with a
 <code>ggExtra</code> layer. Additional <code>ggplot2</code> parameters
 or layers should be added before the plot is rendered. For this reason,
 the function includes the argument <code>gg_extra = list()</code> which
 passes comma-separated <code>ggplot2</code> parameters and layers to the
 plot before rendering, as follows:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># First we need to load `ggplot2` library for</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages</a></span><span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: package 'ggplot2' was built under R version 4.4.3</span></span>
@@ -558,46 +474,28 @@ histograms.</p>
 <code>gg_extra = list()</code> which passes comma-separated
 <code>ggplot2</code> parameters and layers to the plot before rendering,
 to allow full plot customization.</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Bottlenecks detection</span></span>
 <span><span class="fu"><a href="../reference/find_bottlenecks.html">find_bottlenecks</a></span><span class="op">(</span><span class="va">g</span>, </span>
-<span>                 method <span class="op">=</span> <span class="st">"zscore"</span><span class="op">)</span> </span></code></pre></div>
-<p><img src="introduction_files/figure-html/bottlenecks-1.png" class="r-plt" width="480"></p>
-<pre><code><span><span class="co">#&gt; $plot</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $method</span></span>
-<span><span class="co">#&gt; [1] "Bottlenecks identified by method: zscore with Degree metric threshold = -1 and Betweenness metric threshold = 1 (unweighted)"</span></span>
+<span>                 method <span class="op">=</span> <span class="st">"zscore"</span><span class="op">)</span> </span>
+<span><span class="co">#&gt; &lt;netkit result: find_bottlenecks()&gt;</span></span>
+<span><span class="co">#&gt; Method: Bottlenecks identified by method: zscore with Degree metric threshold</span></span>
+<span><span class="co">#&gt;   = -1 and Betweenness metric threshold = 1 (unweighted)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $result</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 7</span></span></span>
-<span><span class="co">#&gt;    node  degree strength betweenness degree_metric betweenness_metric</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1          7        7      0.662          2.42               4.84 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2          3        3      0.543          0.977              4.08 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3          2        2      0.287          0.377              2.23 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4         14       14      0.298          3.73               2.31 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5         17       17      0.669          4.11               4.88 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6          4        4      0.079<span style="text-decoration: underline;">4</span>         1.44               0.424</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7          1        1      0             -<span style="color: #BB0000;">0.469</span>             -<span style="color: #BB0000;">0.358</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8         16       16      0.348          4.00               2.70 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9          2        2      0.020<span style="text-decoration: underline;">2</span>         0.377             -<span style="color: #BB0000;">0.153</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10         2        2      0.020<span style="text-decoration: underline;">2</span>         0.377             -<span style="color: #BB0000;">0.153</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
+<span><span class="co">#&gt;   node  degree strength betweenness degree_metric betweenness_metric</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 1          7        7       0.662         2.42                4.84</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 2          3        3       0.543         0.977               4.08</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 3          2        2       0.287         0.377               2.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 4         14       14       0.298         3.73                2.31</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 5         17       17       0.669         4.11                4.88</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 95 more rows</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: is_bottleneck &lt;lgl&gt;</span></span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $graph</span></span>
-<span><span class="co">#&gt; IGRAPH c1a435b UN-- 100 99 -- Barabasi graph</span></span>
-<span><span class="co">#&gt; + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm</span></span>
-<span><span class="co">#&gt; | (g/c), name (v/c), category (v/c), score (v/n), is_bottleneck (v/l),</span></span>
-<span><span class="co">#&gt; | edge_score (e/n)</span></span>
-<span><span class="co">#&gt; + edges from c1a435b (vertex names):</span></span>
-<span><span class="co">#&gt;  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11</span></span>
-<span><span class="co">#&gt; [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21</span></span>
-<span><span class="co">#&gt; [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31</span></span>
-<span><span class="co">#&gt; [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41</span></span>
-<span><span class="co">#&gt; [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51</span></span>
-<span><span class="co">#&gt; [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61</span></span>
-<span><span class="co">#&gt; + ... omitted several edges</span></span></code></pre>
+<span><span class="co">#&gt; $plot   &lt;ggExtraPlot&gt; print(x$plot) to draw</span></span>
+<span><span class="co">#&gt; $graph  &lt;igraph&gt; 100 nodes, 99 edges, undirected | vertex attrs: name, category, score, is_bottleneck</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="calculate-roles">3.7. Calculate Roles<a class="anchor" aria-label="anchor" href="#calculate-roles"></a>
@@ -621,56 +519,30 @@ peripheral nodes — providing insight into how individual elements
 contribute to local and global network organization.</p>
 <p>The function generates a classic <code>ggplot2</code> object, thus,
 the resulting plot is fully customizable with <code>ggplot2</code>.</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Hubs detection</span></span>
 <span><span class="fu"><a href="../reference/calculate_roles.html">calculate_roles</a></span><span class="op">(</span><span class="va">g</span>,</span>
 <span>                label.size <span class="op">=</span> <span class="fl">15</span>,</span>
 <span>                label_region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"R3"</span>, <span class="st">"R6"</span><span class="op">)</span><span class="op">)</span> <span class="co"># to display the label of nodes with roles 'R1' and 'R2' in the plot.</span></span>
-<span><span class="co">#&gt; $plot</span></span></code></pre></div>
-<p><img src="introduction_files/figure-html/roles-1.png" class="r-plt" width="480"></p>
-<pre><code><span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; &lt;netkit result: calculate_roles()&gt;</span></span>
+<span><span class="co">#&gt; Method: Guimera-Amaral roles from modules detected by 'spinglass'</span></span>
+<span><span class="co">#&gt;   (unweighted); hub z-score threshold = 2.5; participation boundaries R1/R2 =</span></span>
+<span><span class="co">#&gt;   0.05, R2/R3 = 0.62, R3/R4 = 0.8, R5/R6 = 0.3, R6/R7 = 0.75</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $result</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 5</span></span></span>
-<span><span class="co">#&gt;    node  module       z     p role </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1          4  2.04   0.449 R2   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2          2 -<span style="color: #BB0000;">0.671</span>  0.667 R3   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3          4 -<span style="color: #BB0000;">0.408</span>  0.5   R2   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4          8  3.85   0.133 R5   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5          1  3.33   0.484 R6   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6          7  1.57   0.375 R2   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7          7 -<span style="color: #BB0000;">0.671</span>  0     R1   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8         13  3.86   0.227 R5   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9          8  0.040<span style="text-decoration: underline;">7</span> 0     R1   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10        13  0.037<span style="text-decoration: underline;">5</span> 0     R1   </span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
+<span><span class="co">#&gt;   node  module      z     p role </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 1          1  2.27  0.245 R2   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 2          1 -<span style="color: #BB0000;">0.378</span> 0.667 R3   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 3          1 -<span style="color: #BB0000;">0.378</span> 0.5   R2   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 4          3  3.85  0.133 R5   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 5          5  3.33  0.484 R6   </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 95 more rows</span></span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $graph</span></span>
-<span><span class="co">#&gt; IGRAPH c1a435b UN-- 100 99 -- Barabasi graph</span></span>
-<span><span class="co">#&gt; + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm</span></span>
-<span><span class="co">#&gt; | (g/c), name (v/c), category (v/c), score (v/n), module (v/n), role_z</span></span>
-<span><span class="co">#&gt; | (v/n), role_p (v/n), role (v/c), edge_score (e/n)</span></span>
-<span><span class="co">#&gt; + edges from c1a435b (vertex names):</span></span>
-<span><span class="co">#&gt;  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11</span></span>
-<span><span class="co">#&gt; [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21</span></span>
-<span><span class="co">#&gt; [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31</span></span>
-<span><span class="co">#&gt; [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41</span></span>
-<span><span class="co">#&gt; [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51</span></span>
-<span><span class="co">#&gt; [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61</span></span>
-<span><span class="co">#&gt; + ... omitted several edges</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $method</span></span>
-<span><span class="co">#&gt; [1] "Guimera-Amaral roles from modules detected by 'spinglass' (unweighted); hub z-score threshold = 2.5; participation boundaries R1/R2 = 0.05, R2/R3 = 0.62, R3/R4 = 0.8, R5/R6 = 0.3, R6/R7 = 0.75"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $roles_definitions</span></span>
-<span><span class="co">#&gt;   Name                Description                      Condition</span></span>
-<span><span class="co">#&gt; 1   R1 Ultra-peripheral (non-hub)            z &lt; 2.5 &amp; P &lt;= 0.05</span></span>
-<span><span class="co">#&gt; 2   R2       Peripheral (non-hub) z &lt; 2.5 &amp; 0.05 &lt; P &amp; P &lt;= 0.62</span></span>
-<span><span class="co">#&gt; 3   R3          Non-hub connector  z &lt; 2.5 &amp; 0.62 &lt; P &amp; P &lt;= 0.8</span></span>
-<span><span class="co">#&gt; 4   R4            Non-hub kinless              z &lt; 2.5 &amp; P &gt; 0.8</span></span>
-<span><span class="co">#&gt; 5   R5             Provincial hub            z &gt;= 2.5 &amp; P &lt;= 0.3</span></span>
-<span><span class="co">#&gt; 6   R6              Connector hub z &gt;= 2.5 &amp; 0.3 &lt; P &amp; P &lt;= 0.75</span></span>
-<span><span class="co">#&gt; 7   R7                Kinless hub            z &gt;= 2.5 &amp; P &gt; 0.75</span></span></code></pre>
+<span><span class="co">#&gt; $plot               &lt;ggplot&gt; print(x$plot) to draw</span></span>
+<span><span class="co">#&gt; $graph              &lt;igraph&gt; 100 nodes, 99 edges, undirected | vertex attrs: name, category, score, module, role_z, role_p...</span></span>
+<span><span class="co">#&gt; $roles_definitions  &lt;data.frame&gt; 7 x 3 | Name, Description, Condition</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="modules">3.8. Modules<a class="anchor" aria-label="anchor" href="#modules"></a>
@@ -683,66 +555,30 @@ modules, visualizes the detected modules, and returns induced subgraphs
 for each module.</p>
 <p>Additional parameters are passed through the <code><a href="../reference/plot_Net.html">plot_Net()</a></code>
 function, allowing full customization of the network plot.</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Find modules</span></span>
 <span><span class="fu"><a href="../reference/find_modules.html">find_modules</a></span><span class="op">(</span><span class="va">g</span>, </span>
 <span>             method <span class="op">=</span> <span class="st">"louvain"</span>,</span>
 <span>             edge.width.factor <span class="op">=</span> <span class="fl">0.3</span>, node.size.factor <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="introduction_files/figure-html/modules-1.png" class="r-plt" width="384"></p>
-<pre><code><span><span class="co">#&gt; $result</span></span>
+<pre><code><span><span class="co">#&gt; &lt;netkit result: find_modules()&gt;</span></span>
+<span><span class="co">#&gt; Method: louvain</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $result</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 2</span></span></span>
-<span><span class="co">#&gt;    node  module</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1          1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2          1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3          1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4          2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5          3</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6          4</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7          4</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8          5</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9          2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10         5</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
+<span><span class="co">#&gt;   node  module</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 1          1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 2          1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 3          1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 4          2</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 5          3</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 95 more rows</span></span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $module_table</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 2</span></span></span>
-<span><span class="co">#&gt;    node  module</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 1          1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 2          1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 3          1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 4          2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5          3</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 6          4</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 7          4</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 8          5</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 9          2</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 10         5</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $n_modules</span></span>
-<span><span class="co">#&gt; [1] 8</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $subgraphs</span></span>
-<span><span class="co">#&gt; NULL</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $method</span></span>
-<span><span class="co">#&gt; [1] "louvain"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $graph</span></span>
-<span><span class="co">#&gt; IGRAPH c1a435b UN-- 100 99 -- Barabasi graph</span></span>
-<span><span class="co">#&gt; + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm</span></span>
-<span><span class="co">#&gt; | (g/c), name (v/c), category (v/c), score (v/n), module (v/n), color</span></span>
-<span><span class="co">#&gt; | (v/c), label (v/c), edge_score (e/n)</span></span>
-<span><span class="co">#&gt; + edges from c1a435b (vertex names):</span></span>
-<span><span class="co">#&gt;  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11</span></span>
-<span><span class="co">#&gt; [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21</span></span>
-<span><span class="co">#&gt; [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31</span></span>
-<span><span class="co">#&gt; [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41</span></span>
-<span><span class="co">#&gt; [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51</span></span>
-<span><span class="co">#&gt; [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61</span></span>
-<span><span class="co">#&gt; + ... omitted several edges</span></span></code></pre>
+<span><span class="co">#&gt; $module_table  &lt;tbl_df&gt; 100 x 2 | node, module</span></span>
+<span><span class="co">#&gt; $n_modules     8</span></span>
+<span><span class="co">#&gt; $subgraphs     NULL</span></span>
+<span><span class="co">#&gt; $graph         &lt;igraph&gt; 100 nodes, 99 edges, undirected | vertex attrs: name, category, score, module, color, label</span></span></code></pre>
 </div>
 </div>
 <div class="section level2">
@@ -753,7 +589,7 @@ expressed genes, known disease genes, a set of drug targets — and the
 question of how they relate to one another.
 <code><a href="../reference/extract_subnetwork.html">extract_subnetwork()</a></code> answers that with five strategies of
 increasing ambition.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">seeds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1"</span>, <span class="st">"5"</span>, <span class="st">"20"</span>, <span class="st">"40"</span>, <span class="st">"60"</span><span class="op">)</span></span></code></pre></div>
 <p><code>"induced"</code> keeps only the seeds and whatever edges run
 between them: usually almost nothing, but it is the baseline the others
@@ -761,7 +597,7 @@ should be compared against. <code>"neighbors"</code> adds the
 surrounding neighborhood, with <code>max_degree</code> available to
 exclude promiscuous hubs — without that cap, first-neighbor expansion on
 a hub-dominated network returns most of the network.</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/extract_subnetwork.html">extract_subnetwork</a></span><span class="op">(</span><span class="va">g</span>, <span class="va">seeds</span>, method <span class="op">=</span> <span class="st">"neighbors"</span>, order <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>                   edge.width.factor <span class="op">=</span> <span class="fl">0.3</span>, node.size.factor <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">$</span><span class="va">method</span></span>
 <span><span class="co">#&gt; Vertex attribute 'label' is missing, using 'name' for labels.</span></span></code></pre></div>
@@ -774,12 +610,12 @@ tree: the smallest <em>tree</em> that connects them all, via the
 Kou–Markowsky–Berman heuristic. The union keeps every equally short
 route and so grows quickly; the tree keeps one connecting structure and
 is far easier to read, which usually makes it the better figure.</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">st</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/extract_subnetwork.html">extract_subnetwork</a></span><span class="op">(</span><span class="va">g</span>, <span class="va">seeds</span>, method <span class="op">=</span> <span class="st">"steiner"</span>,</span>
 <span>                         edge.width.factor <span class="op">=</span> <span class="fl">0.3</span>, node.size.factor <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Vertex attribute 'label' is missing, using 'name' for labels.</span></span></code></pre></div>
 <p><img src="introduction_files/figure-html/subnetwork-steiner-1.png" class="r-plt" width="480"></p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="co"># Always a tree: vcount - 1 edges, and no leaf that is not a seed.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nodes <span class="op">=</span> <span class="fu"><a href="https://r.igraph.org/reference/gorder.html" class="external-link">vcount</a></span><span class="op">(</span><span class="va">st</span><span class="op">$</span><span class="va">graph</span><span class="op">)</span>, edges <span class="op">=</span> <span class="fu"><a href="https://r.igraph.org/reference/gsize.html" class="external-link">ecount</a></span><span class="op">(</span><span class="va">st</span><span class="op">$</span><span class="va">graph</span><span class="op">)</span><span class="op">)</span></span>
@@ -800,7 +636,7 @@ is far easier to read, which usually makes it the better figure.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">8</span> 60    seed    TRUE       <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
 <p><code>"diffusion"</code> reuses the diffusion machinery of the next
 section, keeping the top-scoring vertices instead:</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/extract_subnetwork.html">extract_subnetwork</a></span><span class="op">(</span><span class="va">g</span>, <span class="va">seeds</span>, method <span class="op">=</span> <span class="st">"diffusion"</span>, top_n <span class="op">=</span> <span class="fl">20</span>, plot <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">method</span></span>
 <span><span class="co">#&gt; [1] "Subnetwork around 5 node(s) by method 'diffusion' (rwr, top_n = 20); unweighted; 20 nodes and 17 edges"</span></span></code></pre></div>
 <p>Unlike most of netkit, these return no <code>plot</code> element:
@@ -836,7 +672,7 @@ same size).</p>
 <p>These tools are useful for identifying nodes most impacted by a set
 of sources, such as disease genes, drug targets, or signaling
 proteins.</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Diffusion analysis</span></span>
 <span><span class="co"># Select random genes as seed nodes</span></span>
 <span><span class="va">seed_nodes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://r.igraph.org/reference/vertex_attr.html" class="external-link">vertex_attr</a></span><span class="op">(</span><span class="va">g</span>, <span class="st">"name"</span><span class="op">)</span>, <span class="fl">5</span><span class="op">)</span></span>
@@ -845,16 +681,16 @@ proteins.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 2</span></span></span>
 <span><span class="co">#&gt;    node   score</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 51    0.868 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 83    0.868 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 43    0.856 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 3     0.776 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 38    0.531 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 67    0.138 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 69    0.138 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 71    0.138 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 5     0.092<span style="text-decoration: underline;">7</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 4     0.083<span style="text-decoration: underline;">8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 57    0.833 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 89    0.745 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 10    0.690 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 41    0.649 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5     0.321 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 85    0.231 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 50    0.229 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 86    0.215 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 6     0.102 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 12    0.079<span style="text-decoration: underline;">7</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/network_diffusion_with_pvalues.html">network_diffusion_with_pvalues</a></span><span class="op">(</span><span class="va">g</span>, seed_nodes <span class="op">=</span> <span class="va">seed_nodes</span>, method <span class="op">=</span> <span class="st">"laplacian"</span><span class="op">)</span></span>
@@ -863,16 +699,16 @@ proteins.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 100 × 3</span></span></span>
 <span><span class="co">#&gt;    node   score p_empirical</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 51    0.868     0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 83    0.868     0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 43    0.856     0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 3     0.776     0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 38    0.531     0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 67    0.138     0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 69    0.138     0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 71    0.138     0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 4     0.083<span style="text-decoration: underline;">8</span>    0.000<span style="text-decoration: underline;">999</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 1     0.067<span style="text-decoration: underline;">1</span>    0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 57    0.833     0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 89    0.745     0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 10    0.690     0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 41    0.649     0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 5     0.321     0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 85    0.231     0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 50    0.229     0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 86    0.215     0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 11    0.046<span style="text-decoration: underline;">6</span>    0.000<span style="text-decoration: underline;">999</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 21    0.046<span style="text-decoration: underline;">6</span>    0.000<span style="text-decoration: underline;">999</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 90 more rows</span></span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -911,25 +747,16 @@ added in each iteration (one at a time). This is an heuristic approach
 that while does not guarantee the absolute best seed set, it performs
 very well in real-world networks and lapses a reasonable time, making it
 ideal for exploratory and applied analyses.</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Select random genes as target nodes</span></span>
 <span><span class="va">target_nodes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fu"><a href="https://r.igraph.org/reference/vertex_attr.html" class="external-link">vertex_attr</a></span><span class="op">(</span><span class="va">g</span>, <span class="st">"name"</span><span class="op">)</span>, <span class="fl">5</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/greedy_seed_selection.html">greedy_seed_selection</a></span><span class="op">(</span><span class="va">g</span>, target_nodes <span class="op">=</span> <span class="va">target_nodes</span>, k <span class="op">=</span> <span class="fl">20</span>, method <span class="op">=</span> <span class="st">"laplacian"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $selected_seeds</span></span>
-<span><span class="co">#&gt;  [1] "33" "75" "24" "27" "29" "57" "77" "25" "4"  "38" "26" "5"  "32" "43" "47"</span></span>
-<span><span class="co">#&gt; [16] "48" "56" "59" "64" "87"</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $final_target_score</span></span>
-<span><span class="co">#&gt; [1] 1.042074</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $scores_at_each_step</span></span>
-<span><span class="co">#&gt;  [1] 0.1805418 0.3610836 0.4524841 0.5438846 0.6352851 0.7266856 0.8180861</span></span>
-<span><span class="co">#&gt;  [8] 0.8711484 0.9221078 0.9516645 0.9692330 0.9778248 0.9858560 0.9938871</span></span>
-<span><span class="co">#&gt; [15] 1.0019183 1.0099494 1.0179806 1.0260117 1.0340429 1.0420740</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $plot</span></span></code></pre></div>
-<p><img src="introduction_files/figure-html/reverse-diffusion-1.png" class="r-plt" width="576"></p>
+<span><span class="co">#&gt; &lt;netkit result: greedy_seed_selection()&gt;</span></span>
+<span><span class="co">#&gt; $selected_seeds       &lt;character [20]&gt; 8 , 5 , 15, 44, 45</span></span>
+<span><span class="co">#&gt; $final_target_score   0.5421242</span></span>
+<span><span class="co">#&gt; $scores_at_each_step  &lt;double [20]&gt; 0.1408368, 0.2329819, 0.2539576, 0.2749333, 0...</span></span>
+<span><span class="co">#&gt; $plot                 &lt;ggplot&gt; print(x$plot) to draw</span></span></code></pre></div>
 <p>The generated plot is also a <code>ggplot2</code> object, and thus,
 fully customizable.</p>
 </div>

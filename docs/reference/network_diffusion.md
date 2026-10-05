@@ -191,34 +191,34 @@ network_diffusion(g, seed_nodes, method = "laplacian")
 #> # A tibble: 80 × 2
 #>    node   score
 #>    <chr>  <dbl>
-#>  1 1     0.704 
-#>  2 5     0.685 
-#>  3 2     0.623 
-#>  4 4     0.605 
-#>  5 3     0.567 
-#>  6 60    0.162 
-#>  7 77    0.135 
-#>  8 75    0.0839
-#>  9 12    0.0812
-#> 10 69    0.0805
+#>  1 5     0.702 
+#>  2 1     0.646 
+#>  3 4     0.645 
+#>  4 2     0.611 
+#>  5 3     0.608 
+#>  6 79    0.134 
+#>  7 16    0.124 
+#>  8 78    0.0933
+#>  9 45    0.0886
+#> 10 39    0.0686
 #> # ℹ 70 more rows
 
 # Reuse a precomputed kernel across repeated calls.
 kernel <- prepare_diffusion(g, method = "rwr")
 network_diffusion(g, seed_nodes, method = "rwr", precompute = kernel)
 #> # A tibble: 80 × 2
-#>    node  score
-#>    <chr> <dbl>
-#>  1 2     0.429
-#>  2 3     0.417
-#>  3 5     0.398
-#>  4 4     0.393
-#>  5 1     0.353
-#>  6 60    0.300
-#>  7 77    0.292
-#>  8 12    0.137
-#>  9 50    0.134
-#> 10 27    0.104
+#>    node   score
+#>    <chr>  <dbl>
+#>  1 1     0.397 
+#>  2 2     0.381 
+#>  3 4     0.371 
+#>  4 5     0.367 
+#>  5 3     0.360 
+#>  6 79    0.146 
+#>  7 16    0.138 
+#>  8 78    0.125 
+#>  9 45    0.117 
+#> 10 39    0.0952
 #> # ℹ 70 more rows
 
 # Diffuse along edge strengths rather than treating every edge alike.
@@ -227,16 +227,16 @@ network_diffusion(g, seed_nodes, method = "rwr", weights = "confidence")
 #> # A tibble: 80 × 2
 #>    node  score
 #>    <chr> <dbl>
-#>  1 2     0.463
-#>  2 3     0.422
-#>  3 4     0.396
-#>  4 5     0.393
-#>  5 1     0.344
-#>  6 60    0.324
-#>  7 77    0.296
-#>  8 12    0.154
-#>  9 50    0.146
-#> 10 75    0.107
+#>  1 1     0.409
+#>  2 4     0.399
+#>  3 2     0.398
+#>  4 5     0.377
+#>  5 3     0.358
+#>  6 78    0.177
+#>  7 79    0.158
+#>  8 45    0.158
+#>  9 16    0.132
+#> 10 37    0.128
 #> # ℹ 70 more rows
 
 # Start from a continuous signal instead of set membership.
@@ -245,15 +245,15 @@ network_diffusion(g, seed_nodes, method = "rwr",
 #> # A tibble: 80 × 2
 #>    node  score
 #>    <chr> <dbl>
-#>  1 4     1.05 
-#>  2 1     0.824
-#>  3 12    0.360
-#>  4 3     0.298
-#>  5 5     0.243
-#>  6 77    0.209
-#>  7 36    0.192
-#>  8 69    0.177
-#>  9 54    0.162
-#> 10 38    0.153
+#>  1 4     1.06 
+#>  2 1     0.775
+#>  3 78    0.326
+#>  4 3     0.259
+#>  5 45    0.257
+#>  6 27    0.182
+#>  7 8     0.171
+#>  8 79    0.170
+#>  9 5     0.120
+#> 10 62    0.114
 #> # ℹ 70 more rows
 ```

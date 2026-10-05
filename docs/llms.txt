@@ -72,6 +72,12 @@ g <- find_modules(g)$graph        # plus module
 robustness_analysis(g, removal_strategy = "pagerank")
 ```
 
+At the console those results print as a summary — what was computed, the
+head of the table, and the shape of everything else — rather than as a
+dump of the whole graph. The objects are still plain lists;
+[`unclass()`](https://rdrr.io/r/base/class.html) restores the default
+output.
+
 ## Edge weights
 
 Every function that can use edge weights takes `weights` and a
@@ -120,10 +126,8 @@ Or online:
 
 - [Introduction to
   netkit](https://agallinat.github.io/netkit/articles/introduction.html)
-
-(The “Weighted networks” article is in the package —
-[`vignette("weighted-networks")`](https://agallinat.github.io/netkit/articles/weighted-networks.md)
-— and appears online once the pkgdown site is next rebuilt.)
+- [Weighted networks: strength or
+  distance?](https://agallinat.github.io/netkit/articles/weighted-networks.html)
 
 ## Contributing
 
@@ -136,6 +140,12 @@ request at:
 For larger changes, feel free to open a discussion first.
 
 # Package index
+
+## Package overview
+
+- [`netkit`](https://agallinat.github.io/netkit/reference/netkit-package.md)
+  [`netkit-package`](https://agallinat.github.io/netkit/reference/netkit-package.md)
+  : netkit: Network Analysis and Visualization Toolkit
 
 ## Graph input and annotation
 
@@ -227,6 +237,17 @@ graphics rather than returning a ggplot object.
   : Highlight Nodes in a Network Plot
 - [`layout_horizontal_tree()`](https://agallinat.github.io/netkit/reference/layout_horizontal_tree.md)
   : Horizontal Tree Layout for Graph Visualization
+
+## Printing
+
+How netkit’s results display at the console. Nothing here needs to be
+called directly.
+
+- [`print(`*`<netkit_result>`*`)`](https://agallinat.github.io/netkit/reference/netkit-print.md)
+  [`print(`*`<netkit_null>`*`)`](https://agallinat.github.io/netkit/reference/netkit-print.md)
+  [`` `[`( ``*`<netkit_null>`*`)`](https://agallinat.github.io/netkit/reference/netkit-print.md)
+  [`print(`*`<netkit_kernel>`*`)`](https://agallinat.github.io/netkit/reference/netkit-print.md)
+  : Printing netkit objects
 
 # Articles
 

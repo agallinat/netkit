@@ -72,6 +72,12 @@ g <- find_modules(g)$graph        # plus module
 robustness_analysis(g, removal_strategy = "pagerank")
 ```
 
+At the console those results print as a summary — what was computed, the
+head of the table, and the shape of everything else — rather than as a
+dump of the whole graph. The objects are still plain lists;
+[`unclass()`](https://rdrr.io/r/base/class.html) restores the default
+output.
+
 ## Edge weights
 
 Every function that can use edge weights takes `weights` and a
@@ -120,10 +126,8 @@ Or online:
 
 - [Introduction to
   netkit](https://agallinat.github.io/netkit/articles/introduction.html)
-
-(The “Weighted networks” article is in the package —
-[`vignette("weighted-networks")`](https://agallinat.github.io/netkit/articles/weighted-networks.md)
-— and appears online once the pkgdown site is next rebuilt.)
+- [Weighted networks: strength or
+  distance?](https://agallinat.github.io/netkit/articles/weighted-networks.html)
 
 ## Contributing
 

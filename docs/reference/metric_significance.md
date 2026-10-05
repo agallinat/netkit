@@ -11,7 +11,7 @@ metric_significance(
   graph,
   null = NULL,
   metrics = NULL,
-  n_null = 100,
+  n = 100,
   model = c("rewire", "configuration", "erdos_renyi"),
   weights = NULL,
   weight_type = c("strength", "distance"),
@@ -31,7 +31,7 @@ metric_significance(
 
   A list of null graphs, as produced by
   [`null_model()`](https://agallinat.github.io/netkit/reference/null_model.md).
-  If `NULL` (default), an ensemble is generated internally with `n_null`
+  If `NULL` (default), an ensemble is generated internally with `n`
   graphs under `model`.
 
 - metrics:
@@ -41,10 +41,13 @@ metric_significance(
   If `NULL` (default), every numeric metric that varies across the
   ensemble is used.
 
-- n_null:
+- n:
 
-  Integer. Number of null graphs when `null` is `NULL`. Default is
-  `100`.
+  Integer. Number of null graphs to generate when `null` is `NULL`.
+  Default is `100`. Named `n` rather than `n_null` so that it matches
+  [`null_model()`](https://agallinat.github.io/netkit/reference/null_model.md)
+  and so that `n =` is an exact argument match – with a formal called
+  `n_null` alongside `null`, `n =` is ambiguous and errors.
 
 - model:
 
@@ -101,8 +104,7 @@ A list with:
 where `r` counts null values at least as extreme as the observed one. It
 is therefore never exactly zero: with `n` nulls the smallest attainable
 p-value is `1 / (n + 1)`, so testing against 20 nulls cannot produce
-evidence at `p < 0.05` however large the effect. Choose `n_null`
-accordingly.
+evidence at `p < 0.05` however large the effect. Choose `n` accordingly.
 
 `z` is `NA` when the null distribution has zero variance – which happens
 legitimately for metrics the null model holds fixed, such as `Nodes`,
@@ -122,11 +124,11 @@ for the metrics themselves.
 ``` r
 g <- igraph::sample_pa(60, power = 1.5, directed = FALSE)
 
-# `n_null` is small here to keep the example fast. Note the floor this puts
+# `n` is small here to keep the example fast. Note the floor this puts
 # on the attainable p-value: 1 / (10 + 1).
 res <- metric_significance(g, metrics = c("Clustering_coefficient",
                                           "Modularity"),
-                           n_null = 10, seed = 1, plot = FALSE)
+                           n = 10, seed = 1, plot = FALSE)
 res$result
 #> # A tibble: 2 × 8
 #>   metric          observed null_mean null_sd     z p_empirical ci_lower ci_upper

@@ -9,7 +9,7 @@ takes over a null ensemble, and reports the z-score and empirical p-value."></he
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,7 +51,7 @@ takes over a null ensemble, and reports the z-score and empirical p-value.</p>
 <span>  <span class="va">graph</span>,</span>
 <span>  null <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  metrics <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  n_null <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  n <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rewire"</span>, <span class="st">"configuration"</span>, <span class="st">"erdos_renyi"</span><span class="op">)</span>,</span>
 <span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  weight_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strength"</span>, <span class="st">"distance"</span><span class="op">)</span>,</span>
@@ -72,7 +72,7 @@ netkit.</p></dd>
 
 <dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
 <dd><p>A list of null graphs, as produced by <code><a href="null_model.html">null_model()</a></code>. If <code>NULL</code>
-(default), an ensemble is generated internally with <code>n_null</code> graphs under
+(default), an ensemble is generated internally with <code>n</code> graphs under
 <code>model</code>.</p></dd>
 
 
@@ -82,9 +82,11 @@ netkit.</p></dd>
 varies across the ensemble is used.</p></dd>
 
 
-<dt id="arg-n-null">n_null<a class="anchor" aria-label="anchor" href="#arg-n-null"></a></dt>
-<dd><p>Integer. Number of null graphs when <code>null</code> is <code>NULL</code>. Default is
-<code>100</code>.</p></dd>
+<dt id="arg-n">n<a class="anchor" aria-label="anchor" href="#arg-n"></a></dt>
+<dd><p>Integer. Number of null graphs to generate when <code>null</code> is <code>NULL</code>.
+Default is <code>100</code>. Named <code>n</code> rather than <code>n_null</code> so that it matches
+<code><a href="null_model.html">null_model()</a></code> and so that <code>n =</code> is an exact argument match – with a
+formal called <code>n_null</code> alongside <code>null</code>, <code>n =</code> is ambiguous and errors.</p></dd>
 
 
 <dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>
@@ -134,7 +136,7 @@ distribution with the observed value marked, or <code>NULL</code> when
 <code>r</code> counts null values at least as extreme as the observed one. It is
 therefore never exactly zero: with <code>n</code> nulls the smallest attainable p-value
 is <code>1 / (n + 1)</code>, so testing against 20 nulls cannot produce evidence at
-<code>p &lt; 0.05</code> however large the effect. Choose <code>n_null</code> accordingly.</p>
+<code>p &lt; 0.05</code> however large the effect. Choose <code>n</code> accordingly.</p>
 <p><code>z</code> is <code>NA</code> when the null distribution has zero variance – which happens
 legitimately for metrics the null model holds fixed, such as <code>Nodes</code>, <code>Edges</code>
 and <code>Density</code> under a degree-preserving model. Those metrics are excluded from
@@ -151,11 +153,11 @@ metrics themselves.</p></div>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/sample_pa.html" class="external-link">sample_pa</a></span><span class="op">(</span><span class="fl">60</span>, power <span class="op">=</span> <span class="fl">1.5</span>, directed <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># `n_null` is small here to keep the example fast. Note the floor this puts</span></span></span>
+<span class="r-in"><span><span class="co"># `n` is small here to keep the example fast. Note the floor this puts</span></span></span>
 <span class="r-in"><span><span class="co"># on the attainable p-value: 1 / (10 + 1).</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">metric_significance</span><span class="op">(</span><span class="va">g</span>, metrics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Clustering_coefficient"</span>,</span></span>
 <span class="r-in"><span>                                          <span class="st">"Modularity"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                           n_null <span class="op">=</span> <span class="fl">10</span>, seed <span class="op">=</span> <span class="fl">1</span>, plot <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>                           n <span class="op">=</span> <span class="fl">10</span>, seed <span class="op">=</span> <span class="fl">1</span>, plot <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">result</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 2 × 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   metric          observed null_mean null_sd     z p_empirical ci_lower ci_upper</span>

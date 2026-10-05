@@ -8,7 +8,7 @@ clustering and path length against a degree-matched random ensemble.
 ``` r
 small_worldness(
   graph,
-  n_null = 100,
+  n = 100,
   model = c("rewire", "configuration", "erdos_renyi"),
   weights = NULL,
   weight_type = c("strength", "distance"),
@@ -22,7 +22,7 @@ small_worldness(
 
   An `igraph` object or a data frame edge list.
 
-- n_null:
+- n:
 
   Integer. Number of null graphs. Default is `100`.
 
@@ -98,8 +98,8 @@ Watts, D. J., & Strogatz, S. H. (1998). Collective dynamics of
 ``` r
 g <- igraph::sample_smallworld(1, 60, 4, 0.05)
 
-# `n_null` is small here to keep the example fast.
-sw <- small_worldness(g, n_null = 10, seed = 1)
+# `n` is small here to keep the example fast.
+sw <- small_worldness(g, n = 10, seed = 1)
 sw$result
 #> # A tibble: 1 × 6
 #>   sigma     C C_rand     L L_rand n_null
