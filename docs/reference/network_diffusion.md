@@ -15,7 +15,10 @@ network_diffusion(
   t = 1,
   restart_prob = 0.3,
   normalize = TRUE,
-  precompute = NULL
+  precompute = NULL,
+  weights = NULL,
+  weight_type = c("strength", "distance"),
+  seed_weights = NULL
 )
 ```
 
@@ -72,11 +75,34 @@ network_diffusion(
   Cholesky factor, or transition matrix). Use
   [`prepare_diffusion()`](https://agallinat.github.io/netkit/reference/prepare_diffusion.md)
   to generate this object and avoid redundant computations when calling
-  this function repeatedly (e.g., in greedy optimization).
+  this function repeatedly (e.g., in greedy optimization). A kernel
+  built with different edge weights than requested is rejected rather
+  than reused.
+
+- weights:
+
+  Optional edge weights: `NULL` (default) to ignore them, the name of an
+  edge attribute, or a numeric vector of length `igraph::ecount(graph)`.
+  Signal propagates along edge *strengths*. See
+  [netkit-weights](https://agallinat.github.io/netkit/reference/netkit-weights.md).
+
+- weight_type:
+
+  Either `"strength"` (default) or `"distance"`. See
+  [netkit-weights](https://agallinat.github.io/netkit/reference/netkit-weights.md).
+
+- seed_weights:
+
+  Optional numeric vector of initial values for the seeds, replacing the
+  default binary indicator. Either named (matched to `seed_nodes` by
+  name) or unnamed and parallel to `seed_nodes`. Use this to diffuse
+  from a continuous signal – log fold changes, scores, prior
+  probabilities – rather than from set membership, which is what the
+  propagation literature generally assumes.
 
 ## Value
 
-A data frame with two columns:
+A tibble with two columns, sorted by descending score:
 
 - node:
 
@@ -103,6 +129,45 @@ For `"laplacian"` and `"heat"`, the graph Laplacian is computed from the
 applications, precompute Laplacian and Cholesky decomposition using
 [`prepare_diffusion()`](https://agallinat.github.io/netkit/reference/prepare_diffusion.md).
 
+## Edge weights
+
+Functions that can use edge weights take two arguments:
+
+- `weights`:
+
+  `NULL` (the default) to ignore edge weights; the name of an edge
+  attribute, such as `"weight"`; or a numeric vector with one value per
+  edge, in `igraph::E(graph)` order.
+
+- `weight_type`:
+
+  `"strength"` (the default) if a larger value means a more tightly
+  connected pair – confidence scores, correlations, co-expression, read
+  counts, interaction scores. `"distance"` if a larger value means
+  further apart – costs, dissimilarities, reaction times.
+
+Declaring which you have is not bookkeeping. igraph reads the `weight`
+attribute implicitly and gives it *opposite* meanings in different
+functions: a cost in
+[`igraph::betweenness()`](https://r.igraph.org/reference/betweenness.html),
+[`igraph::distances()`](https://r.igraph.org/reference/distances.html),
+[`igraph::diameter()`](https://r.igraph.org/reference/diameter.html) and
+[`igraph::mean_distance()`](https://r.igraph.org/reference/distances.html),
+but a strength in
+[`igraph::cluster_louvain()`](https://r.igraph.org/reference/cluster_louvain.html)
+and the other community detection algorithms. Attaching a confidence
+score and letting that happen implicitly therefore inverts every
+path-based metric – a high-confidence interaction is treated as a long
+distance – while community detection reads the same numbers the way you
+intended.
+
+netkit resolves `weights` and `weight_type` once per call and derives
+both a strength and a distance vector from them, so each metric receives
+the one it needs. A `"strength"` is converted to a distance by
+reciprocal (\\1/w\\); a `"distance"` is converted to a strength by
+reflection (\\\max(w) - w + \min(w)\\), which keeps a zero distance
+finite.
+
 ## References
 
 Köhler S, Bauer S, Horn D, Robinson PN. Walking the interactome for
@@ -126,16 +191,16 @@ network_diffusion(g, seed_nodes, method = "laplacian")
 #> # A tibble: 80 × 2
 #>    node   score
 #>    <chr>  <dbl>
-#>  1 1     0.700 
-#>  2 4     0.616 
-#>  3 2     0.616 
-#>  4 3     0.536 
-#>  5 5     0.512 
-#>  6 74    0.112 
-#>  7 65    0.109 
-#>  8 45    0.100 
-#>  9 77    0.0926
-#> 10 35    0.0902
+#>  1 1     0.704 
+#>  2 5     0.685 
+#>  3 2     0.623 
+#>  4 4     0.605 
+#>  5 3     0.567 
+#>  6 60    0.162 
+#>  7 77    0.135 
+#>  8 75    0.0839
+#>  9 12    0.0812
+#> 10 69    0.0805
 #> # ℹ 70 more rows
 
 # Reuse a precomputed kernel across repeated calls.
@@ -144,15 +209,51 @@ network_diffusion(g, seed_nodes, method = "rwr", precompute = kernel)
 #> # A tibble: 80 × 2
 #>    node  score
 #>    <chr> <dbl>
-#>  1 1     0.422
-#>  2 3     0.386
-#>  3 5     0.383
-#>  4 4     0.381
-#>  5 2     0.360
-#>  6 65    0.161
-#>  7 61    0.159
-#>  8 45    0.147
-#>  9 51    0.137
-#> 10 74    0.134
+#>  1 2     0.429
+#>  2 3     0.417
+#>  3 5     0.398
+#>  4 4     0.393
+#>  5 1     0.353
+#>  6 60    0.300
+#>  7 77    0.292
+#>  8 12    0.137
+#>  9 50    0.134
+#> 10 27    0.104
+#> # ℹ 70 more rows
+
+# Diffuse along edge strengths rather than treating every edge alike.
+igraph::E(g)$confidence <- runif(igraph::ecount(g), 0.1, 1)
+network_diffusion(g, seed_nodes, method = "rwr", weights = "confidence")
+#> # A tibble: 80 × 2
+#>    node  score
+#>    <chr> <dbl>
+#>  1 2     0.463
+#>  2 3     0.422
+#>  3 4     0.396
+#>  4 5     0.393
+#>  5 1     0.344
+#>  6 60    0.324
+#>  7 77    0.296
+#>  8 12    0.154
+#>  9 50    0.146
+#> 10 75    0.107
+#> # ℹ 70 more rows
+
+# Start from a continuous signal instead of set membership.
+network_diffusion(g, seed_nodes, method = "rwr",
+                  seed_weights = c(2.4, -1.1, 0.7, 3.0, 0.2))
+#> # A tibble: 80 × 2
+#>    node  score
+#>    <chr> <dbl>
+#>  1 4     1.05 
+#>  2 1     0.824
+#>  3 12    0.360
+#>  4 3     0.298
+#>  5 5     0.243
+#>  6 77    0.209
+#>  7 36    0.192
+#>  8 69    0.177
+#>  9 54    0.162
+#> 10 38    0.153
 #> # ℹ 70 more rows
 ```

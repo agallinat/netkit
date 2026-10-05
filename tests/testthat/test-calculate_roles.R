@@ -106,7 +106,7 @@ test_that("every vertex receives a role", {
 
 test_that("the participation coefficient is unaffected by module-size filtering", {
   # Regression guard for a silent numerical bug. When a module was discarded, its
-  # nodes' membership became NA; table() dropped those NAs from a neighbour's tally
+  # nodes' membership became NA; table() dropped those NAs from a neighbor's tally
   # while the node's full degree was still used as the denominator, so P came out
   # too high for *retained* nodes. On a 150-node graph with walktrap this gave 18
   # wrong coefficients and 7 wrong roles.
@@ -177,4 +177,91 @@ test_that("a membership vector containing NAs is handled rather than erroring", 
   # Undefined inputs propagate to an undefined role rather than a wrong one.
   expect_true(all(is.na(res$result$role[is.na(res$result$module)])))
   expect_true(all(res$result$p >= 0 & res$result$p <= 1, na.rm = TRUE))
+})
+
+# --- Regression: one source of truth for the role thresholds ----------------
+#
+# The five participation-coefficient boundaries used to be written out three
+# times -- in the classifier, in the roles_definitions table handed to the
+# caller, and in the shaded bands of the plot -- and had drifted: the R5/R6
+# boundary was 0.30 in the classifier but 0.25 in the other two. So the shaded
+# "provincial hub" region disagreed with the classification it illustrated, and
+# the table documented a threshold the code did not use. Both now read the same
+# vector, and these tests pin that they agree.
+
+test_that("roles_definitions reports the boundaries the classifier actually used", {
+  res <- calculate_roles(test_graph(), cluster.method = "louvain", plot = FALSE)
+  conds <- res$roles_definitions$Condition
+
+  # The published hub boundary is 0.30, and this is the one that had drifted.
+  expect_match(conds[5], "P <= 0.3", fixed = TRUE)
+  expect_match(conds[6], "0.3 < P", fixed = TRUE)
+  expect_false(any(grepl("0.25", conds, fixed = TRUE)))
+
+  # Non-hub boundaries, as published in Guimera & Amaral (2005).
+  expect_match(conds[1], "P <= 0.05", fixed = TRUE)
+  expect_match(conds[2], "0.05 < P & P <= 0.62", fixed = TRUE)
+  expect_match(conds[3], "0.62 < P & P <= 0.8", fixed = TRUE)
+})
+
+test_that("the classifier honours overridden thresholds", {
+  g <- test_graph()
+
+  # Push every non-hub node into R1 by moving the R1/R2 boundary near its
+  # maximum. The boundaries must stay strictly increasing for each role to
+  # remain reachable, hence 0.98/0.99/1 rather than three copies of 1.
+  res <- calculate_roles(g, cluster.method = "louvain", plot = FALSE,
+                         thresholds = c(R1_R2 = 0.98, R2_R3 = 0.99, R3_R4 = 1))
+  non_hub <- res$result[!is.na(res$result$z) & res$result$z < 2.5 &
+                          !is.na(res$result$p), ]
+  expect_true(all(non_hub$role == "R1"))
+
+  # And that the reported definitions move with them.
+  expect_match(res$roles_definitions$Condition[1], "P <= 0.98", fixed = TRUE)
+})
+
+test_that("invalid thresholds are rejected eagerly", {
+  g <- test_graph()
+  expect_error(calculate_roles(g, cluster.method = "louvain", plot = FALSE,
+                               thresholds = c(nonsense = 0.5)),
+               "Unknown 'thresholds' name")
+  expect_error(calculate_roles(g, cluster.method = "louvain", plot = FALSE,
+                               thresholds = c(R1_R2 = 1.5)),
+               "within \\[0, 1\\]")
+  expect_error(calculate_roles(g, cluster.method = "louvain", plot = FALSE,
+                               thresholds = c(R1_R2 = 0.9, R2_R3 = 0.1)),
+               "unreachable")
+  expect_error(calculate_roles(g, cluster.method = "louvain", plot = FALSE,
+                               thresholds = 0.5),
+               "named numeric vector")
+})
+
+# --- Regression: the return contract ----------------------------------------
+
+test_that("calculate_roles() returns the full plot/result/graph/method shape", {
+  res <- calculate_roles(test_graph(), cluster.method = "louvain", plot = FALSE)
+  expect_true(all(c("plot", "result", "graph", "method") %in% names(res)))
+  expect_s3_class(res$graph, "igraph")
+  expect_type(res$method, "character")
+  expect_length(res$method, 1)
+})
+
+test_that("the returned graph carries the classification and chains onward", {
+  g <- test_graph()
+  res <- calculate_roles(g, cluster.method = "louvain", plot = FALSE)
+
+  expect_true(all(c("module", "role_z", "role_p", "role") %in%
+                    igraph::vertex_attr_names(res$graph)))
+  expect_type(igraph::V(res$graph)$role, "character")
+
+  # Attributes are keyed by name, not by position: the graph attribute must
+  # agree with the result table row for the same node, not merely be the same
+  # length. Shuffling the table would break a positional assignment.
+  ord <- match(igraph::V(res$graph)$name, res$result$node)
+  expect_equal(igraph::V(res$graph)$role, res$result$role[ord])
+  expect_equal(igraph::V(res$graph)$role_p, res$result$p[ord])
+
+  # Pre-existing attributes survive, so the graph can keep chaining.
+  expect_true("score" %in% igraph::vertex_attr_names(res$graph))
+  expect_silent(find_hubs(res$graph, plot = FALSE))
 })

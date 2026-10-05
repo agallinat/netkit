@@ -47,6 +47,14 @@
 #' res$scores_at_each_step
 #'
 #' @importFrom igraph is_igraph vertex_attr vertex_attr<- vcount
+#' @param weights Optional edge weights: `NULL` (default) to ignore them, the
+#'   name of an edge attribute, or a numeric vector of length
+#'   `igraph::ecount(graph)`. See [netkit-weights].
+#' @param weight_type Either `"strength"` (default) or `"distance"`. See
+#'   [netkit-weights].
+#'
+#' @inheritSection netkit-weights Edge weights
+#'
 #' @importFrom progress progress_bar
 #' @importFrom ggplot2 ggplot aes geom_line geom_point scale_x_continuous labs theme_minimal
 #'
@@ -58,10 +66,13 @@ greedy_seed_selection <- function(graph,
                                   alpha = 0.7, t = 1, restart_prob = 0.3,
                                   k = 5,
                                   normalize = TRUE,
-                                  plot = TRUE) {
+                                  plot = TRUE,
+                                  weights = NULL,
+                                  weight_type = c("strength", "distance")) {
 
   # --- Input validation ---
   method <- match.arg(method)
+  weight_type <- match.arg(weight_type)
 
   graph <- as_netkit_graph(graph, backfill_names = TRUE)
 
@@ -85,7 +96,9 @@ greedy_seed_selection <- function(graph,
     alpha = alpha,
     t = t,
     restart_prob = restart_prob,
-    normalize = normalize
+    normalize = normalize,
+    weights = weights,
+    weight_type = weight_type
   )
 
   # --- Progress bar ---
@@ -104,7 +117,9 @@ greedy_seed_selection <- function(graph,
       t = t,
       restart_prob = restart_prob,
       normalize = normalize,
-      precompute = precomp
+      precompute = precomp,
+      weights = weights,
+      weight_type = weight_type
     )
     sum(scores$score[scores$node %in% target_nodes])
   }

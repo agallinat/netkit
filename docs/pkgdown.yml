@@ -3,7 +3,8 @@ pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   introduction: introduction.html
-last_built: 2026-10-03T16:47Z
+  weighted-networks: weighted-networks.html
+last_built: 2026-10-05T15:00Z
 urls:
   reference: https://agallinat.github.io/netkit/reference
   article: https://agallinat.github.io/netkit/articles

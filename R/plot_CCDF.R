@@ -26,7 +26,16 @@
 #' # Compare against reference power-law slopes.
 #' plot_CCDF(g, PL_exponents = c(2, 2.5, 3))
 #'
-#' @importFrom igraph is_igraph degree induced_subgraph
+#' @param weights Optional edge weights: `NULL` (default) to plot the degree
+#'   distribution, or the name of an edge attribute / a numeric vector of length
+#'   `igraph::ecount(graph)` to plot the vertex *strength* distribution instead.
+#'   See [netkit-weights].
+#' @param weight_type Either `"strength"` (default) or `"distance"`. See
+#'   [netkit-weights].
+#'
+#' @inheritSection netkit-weights Edge weights
+#'
+#' @importFrom igraph is_igraph degree induced_subgraph strength
 #' @importFrom ggplot2 ggplot aes geom_line scale_color_manual labs coord_cartesian theme_minimal scale_y_log10 scale_x_continuous
 #' @importFrom scales trans_breaks trans_format math_format label_math hue_pal
 #' @importFrom stats setNames
@@ -40,7 +49,9 @@ plot_CCDF <- function(graph,
                       show_PL = TRUE,
                       PL_exponents = c(2, 3),
                       colors = c("#000831","#e41a1c","darkgreen", "#9c52f2", "#b8b8ff"),
-                      label.size = 12) {
+                      label.size = 12,
+                      weights = NULL,
+                      weight_type = c("strength", "distance")) {
 
   # An edge-list data.frame is read as directed only when the caller asked to keep
   # direction; an igraph input keeps its own directedness either way.
@@ -56,9 +67,19 @@ plot_CCDF <- function(graph,
 
   deg <- igraph::degree(graph, mode = "all")
 
+  # Attach the resolved strengths to the graph so every compute_ccdf() call below
+  # -- including the in/out ones, which subset -- reads the same aligned values.
+  w <- as_netkit_weights(graph, weights, weight_type)
+  weight_attr <- NULL
+  if (w$weighted) {
+    weight_attr <- ".netkit_s"
+    graph <- igraph::set_edge_attr(graph, weight_attr, value = w$strength)
+  }
+
   result <- compute_ccdf(graph,
                          mode = "all",
-                         remove_singles = remove_singles)
+                         remove_singles = remove_singles,
+                         weight_attr = weight_attr)
 
   if(0 %in% deg) {
     cat(paste0(round(100*(1-result$ccdf[1]), digits = 4), "% of single nodes find in the network.\n",
@@ -69,13 +90,15 @@ plot_CCDF <- function(graph,
 
     result_in <- compute_ccdf(graph,
                               mode = "in",
-                              remove_singles = remove_singles)
+                              remove_singles = remove_singles,
+                              weight_attr = weight_attr)
 
     colnames(result_in) <- c("degree", "ccdf_in")
 
     result_out <- compute_ccdf(graph,
                                mode = "out",
-                               remove_singles = remove_singles)
+                               remove_singles = remove_singles,
+                               weight_attr = weight_attr)
 
     colnames(result_out) <- c("degree", "ccdf_out")
 
@@ -141,9 +164,12 @@ plot_CCDF <- function(graph,
     scale_x_continuous(
       transform = "log2"
     )+
-    labs(x = "Degree, k", y = "Pr(K > k)", color = "") +
+    labs(x = if (w$weighted) "Strength, s" else "Degree, k",
+         y = if (w$weighted) "Pr(S > s)" else "Pr(K > k)", color = "") +
     scale_color_manual(values = colors_vec) +
-    coord_cartesian(ylim = c(min(result$ccdf), NA),
+    # An edgeless graph yields no positive-degree classes, so `result` is empty and
+    # min() would be Inf (with a warning). Leave the limit to ggplot2 in that case.
+    coord_cartesian(ylim = c(if (nrow(result) > 0) min(result$ccdf) else NA, NA),
                     xlim = c(1, NA)) +
     theme_minimal(base_size = label.size)
 
@@ -175,7 +201,8 @@ plot_CCDF <- function(graph,
 #'
 compute_ccdf <- function(graph,
                          mode = c("all", "in", "out"),
-                         remove_singles = FALSE) {
+                         remove_singles = FALSE,
+                         weight_attr = NULL) {
 
   mode <- match.arg(mode)
 
@@ -183,10 +210,43 @@ compute_ccdf <- function(graph,
 
   if (remove_singles) {
     deg_all <- igraph::degree(graph, mode = "all")
+    # Weights ride along as an edge attribute precisely so that this subsetting
+    # cannot desynchronise them from the edges.
     graph <- induced_subgraph(graph, vids = which(deg_all > 0))
   }
 
+  # A strength distribution is continuous, so it cannot use the integer-degree
+  # tabulation below: factor(levels = 0:max) would need one level per distinct
+  # value and max() is not an integer. Evaluate the CCDF on the observed values
+  # instead, which is the same definition without the binning assumption.
+  if (!is.null(weight_attr)) {
+    s_vals <- igraph::strength(graph, mode = mode,
+                               weights = igraph::edge_attr(graph, weight_attr))
+    n_v <- length(s_vals)
+    if (n_v == 0) {
+      return(data.frame(degree = numeric(0), ccdf = numeric(0)))
+    }
+    vals <- sort(unique(s_vals[s_vals > 0]))
+    if (length(vals) == 0) {
+      return(data.frame(degree = numeric(0), ccdf = numeric(0)))
+    }
+    # Divided by the same n_v the values came from, matching the unweighted path,
+    # which divides by sum(deg_tab) rather than by a separately derived total.
+    ccdf_vals <- vapply(vals, function(v) sum(s_vals >= v) / n_v, numeric(1))
+    return(data.frame(degree = vals, ccdf = ccdf_vals))
+  }
+
   deg <- igraph::degree(graph, mode = mode)
+
+  # A graph with no vertices, or no edges, has no positive-degree classes and so
+  # no degree distribution to describe. Returning the empty table rather than
+  # erroring matches summarize_graph_metrics(), which reports NaN on degenerate
+  # input instead of refusing it. max() of an empty vector would be -Inf and make
+  # the factor levels invalid, so the length guard comes first.
+  if (length(deg) == 0 || max(deg) == 0) {
+    return(data.frame(degree = integer(0), ccdf = numeric(0)))
+  }
+
   deg_tab <- table(factor(deg, levels = 0:max(deg)))
   deg_vals <- as.integer(names(deg_tab))
   ccdf_vals <- rev(cumsum(rev(as.numeric(deg_tab)))) / sum(deg_tab)

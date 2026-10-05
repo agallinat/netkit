@@ -224,14 +224,14 @@ their associated (CCDF).
 
 # Global topology analysis
 summarize_graph_metrics(g)
-#>   Nodes Edges Is_directed Density Diameter Average_path_length
-#> 1   100    99       FALSE    0.02       10            5.027273
-#>   Clustering_coefficient Degree_assortativity Avg_degree Avg_betweenness
-#> 1                      0           -0.4943885       1.98          199.35
-#>   Components Single_nodes LCC_size LCC_percent Algebraic_connectivity
-#> 1          1            0      100           1             0.01500655
-#>   Degree_entropy Gini_degree Modularity
-#> 1       1.504678   0.4341414  0.7809917
+#>   Nodes Edges Is_directed Is_weighted Density Diameter Average_path_length
+#> 1   100    99       FALSE       FALSE    0.02       10            5.027273
+#>   Clustering_coefficient Degree_assortativity Avg_degree Avg_strength
+#> 1                      0           -0.4943885       1.98         1.98
+#>   Avg_betweenness Components Single_nodes LCC_size LCC_percent
+#> 1          199.35          1            0      100           1
+#>   Algebraic_connectivity Degree_entropy Gini_degree Modularity
+#> 1             0.01500655       1.504678   0.4341414  0.7809917
 
 # Complementary cumulative degree distribution
 # It optionally shows a power law reference distribution of chosen gamma.
@@ -252,22 +252,22 @@ compare_networks(g, g2)
 
     #> 
     #> $global_topology
-    #>   Nodes Edges Is_directed   Density Diameter Average_path_length
-    #> 1   100    99       FALSE 0.0200000       10            5.027273
-    #> 2   100   183        TRUE 0.0369697        8            3.583333
-    #>   Clustering_coefficient Degree_assortativity Avg_degree Avg_betweenness
-    #> 1             0.00000000           -0.4943885       1.98          199.35
-    #> 2             0.03725598            0.1039542       3.66          117.80
-    #>   Components Single_nodes LCC_size LCC_percent Algebraic_connectivity
-    #> 1          1            0      100        1.00           1.500655e-02
-    #> 2          4            2       96        0.96           3.560702e-18
-    #>   Degree_entropy Gini_degree Modularity
-    #> 1       1.504678   0.4341414  0.7809917
-    #> 2       2.824170   0.2796721  0.4884589
+    #>   Nodes Edges Is_directed Is_weighted   Density Diameter Average_path_length
+    #> 1   100    99       FALSE       FALSE 0.0200000       10            5.027273
+    #> 2   100   183        TRUE       FALSE 0.0369697        8            3.583333
+    #>   Clustering_coefficient Degree_assortativity Avg_degree Avg_strength
+    #> 1             0.00000000           -0.4943885       1.98         1.98
+    #> 2             0.03725598            0.1039542       3.66         3.66
+    #>   Avg_betweenness Components Single_nodes LCC_size LCC_percent
+    #> 1          199.35          1            0      100        1.00
+    #> 2          117.80          4            2       96        0.96
+    #>   Algebraic_connectivity Degree_entropy Gini_degree Modularity
+    #> 1           1.500655e-02       1.504678   0.4341414  0.7809917
+    #> 2           3.560702e-18       2.824170   0.2796721  0.4884589
     #> 
     #> $similarity
     #>   jaccard_similarity node_overlap edge_overlap
-    #> 1        0.003558719            1  0.003558719
+    #> 1        0.003558719            1   0.01010101
     #> 
     #> $ks_test
     #> 
@@ -277,7 +277,130 @@ compare_networks(g, g2)
     #> D = 0.62, p-value < 2.2e-16
     #> alternative hypothesis: two-sided
 
-### 3.2. Robustness Analysis
+### 3.2. Node-level metrics
+
+While
+[`summarize_graph_metrics()`](https://agallinat.github.io/netkit/reference/summarize_graph_metrics.md)
+describes the graph as a whole,
+[`node_metrics()`](https://agallinat.github.io/netkit/reference/node_metrics.md)
+describes its vertices: it computes degree, strength, betweenness,
+harmonic centrality, eigenvector centrality, PageRank, coreness, local
+clustering, Burt’s constraint and eccentricity in a single call, and
+attaches each one to the graph as a vertex attribute.
+
+That last part is what makes it chain. Any netkit function that accepts
+a numeric vertex attribute — `plot_Net(color = )`,
+`robustness_analysis(removal_strategy = )` — can use the results
+directly.
+
+``` r
+
+nm <- node_metrics(g, plot = FALSE)
+
+head(nm$result)
+#> # A tibble: 6 × 11
+#>   node  degree strength betweenness harmonic eigenvector pagerank coreness
+#>   <chr>  <dbl>    <dbl>       <dbl>    <dbl>       <dbl>    <dbl>    <dbl>
+#> 1 1     0.0707        7      0.662     0.376      0.152   0.0301         1
+#> 2 2     0.0303        3      0.543     0.358      0.283   0.0130         1
+#> 3 3     0.0202        2      0.287     0.309      0.0429  0.00911        1
+#> 4 4     0.141        14      0.298     0.327      0.0332  0.0653         1
+#> 5 5     0.172        17      0.669     0.427      1       0.0750         1
+#> 6 6     0.0404        4      0.0794    0.304      0.276   0.0194         1
+#> # ℹ 3 more variables: clustering <dbl>, constraint <dbl>, eccentricity <dbl>
+
+# Every metric is now on the graph.
+setdiff(vertex_attr_names(nm$graph), c("name", "category", "score"))
+#>  [1] "degree"       "strength"     "betweenness"  "harmonic"     "eigenvector" 
+#>  [6] "pagerank"     "coreness"     "clustering"   "constraint"   "eccentricity"
+```
+
+The default diagnostic plot is a Spearman correlation heatmap of the
+metrics rather than a ranking, and deliberately so. The usual mistake
+with a table like this is to read the columns as independent evidence,
+when on many networks betweenness, eigenvector centrality and PageRank
+all correlate with degree above 0.9 — so a node that looks important by
+four measures may be important by one.
+
+``` r
+
+node_metrics(g, metrics = c("degree", "betweenness", "pagerank", "coreness"))$plot
+```
+
+![](introduction_files/figure-html/node-metrics-plot-1.png)
+
+Set `plot_type = "ranking"` for a faceted bar chart of the top-scoring
+nodes per metric instead.
+
+### 3.3. Is any of this surprising?
+
+A clustering coefficient of 0.4 or a modularity of 0.42 means nothing on
+its own: random graphs with the same degree sequence routinely reach
+similar values.
+[`null_model()`](https://agallinat.github.io/netkit/reference/null_model.md)
+builds a matched random ensemble and
+[`metric_significance()`](https://agallinat.github.io/netkit/reference/metric_significance.md)
+scores the observed graph against it.
+
+The `"rewire"` default preserves the degree sequence *exactly* by making
+double-edge swaps, which is almost always the right null for a
+topological claim — nearly every network metric is partly determined by
+the degree sequence, so a null that does not hold it fixed mostly
+rediscovers that the graph is heavy-tailed. `"erdos_renyi"` matches only
+the vertex and edge counts and is included as the deliberate weak
+contrast.
+
+``` r
+
+# n_null is kept small here for speed; use 100 or more in practice.
+sig <- metric_significance(g, metrics = c("Clustering_coefficient", "Modularity",
+                                          "Degree_assortativity"),
+                           n_null = 30, seed = 1)
+sig$result
+#> # A tibble: 3 × 8
+#>   metric          observed null_mean null_sd     z p_empirical ci_lower ci_upper
+#>   <chr>              <dbl>     <dbl>   <dbl> <dbl>       <dbl>    <dbl>    <dbl>
+#> 1 Clustering_coe…    0         0.101  0.0447 -2.26      0.0645   0.0277    0.176
+#> 2 Modularity         0.781     0.697  0.0150  5.62      0.0323   0.673     0.725
+#> 3 Degree_assorta…   -0.494    -0.216  0.0422 -6.60      0.0323  -0.292    -0.141
+```
+
+Note the floor on the p-value. Empirical p-values use the
+`(r + 1) / (n + 1)` convention and so are never zero — with 30 null
+graphs the smallest attainable value is `1/31 ≈ 0.032`, and no effect
+however large can beat it. The `method` element says so explicitly:
+
+``` r
+
+sig$method
+#> [1] "Metric significance against 30 null graphs (model 'rewire'); unweighted; two-sided empirical p-values with the (r+1)/(n+1) convention, so the smallest attainable p-value is 0.0323"
+```
+
+The accompanying plot shows each null distribution with the observed
+value marked:
+
+``` r
+
+sig$plot
+```
+
+![](introduction_files/figure-html/null-plot-1.png)
+
+[`small_worldness()`](https://agallinat.github.io/netkit/reference/small_worldness.md)
+is the classic application of the same machinery, reporting sigma =
+(C/C_rand)/(L/L_rand). Values appreciably above 1 indicate small-world
+organization.
+
+``` r
+
+small_worldness(sample_smallworld(1, 100, 4, 0.05), n_null = 20, seed = 1)$result
+#> # A tibble: 1 × 6
+#>   sigma     C C_rand     L L_rand n_null
+#>   <dbl> <dbl>  <dbl> <dbl>  <dbl>  <int>
+#> 1  5.95 0.482 0.0643  3.05   2.42     20
+```
+
+### 3.4. Robustness Analysis
 
 The package implements
 [`robustness_analysis()`](https://agallinat.github.io/netkit/reference/robustness_analysis.md)
@@ -315,6 +438,22 @@ robustness_analysis(g, removal_strategy = "betweenness")
 
 ![](introduction_files/figure-html/robustness-1.png)
 
+    #> 
+    #> $result
+    #> # A tibble: 50 × 6
+    #>      rep removed removed_frac lcc_size efficiency n_components
+    #>    <int>   <int>        <dbl>    <dbl>      <dbl>        <dbl>
+    #>  1     1       1       0.0101       54    0.107             17
+    #>  2     1       2       0.0202       20    0.0587            23
+    #>  3     1       4       0.0404       18    0.0411            37
+    #>  4     1       6       0.0606        8    0.0140            58
+    #>  5     1       8       0.0808        7    0.0130            58
+    #>  6     1      10       0.101         6    0.0103            62
+    #>  7     1      12       0.121         4    0.00705           67
+    #>  8     1      14       0.141         4    0.00492           71
+    #>  9     1      16       0.162         3    0.00387           72
+    #> 10     1      18       0.182         3    0.00256           74
+    #> # ℹ 40 more rows
     #> 
     #> $all_results
     #> # A tibble: 50 × 6
@@ -358,7 +497,7 @@ robustness_analysis(g, removal_strategy = "betweenness")
     #> $auc$n_components
     #> [1] 0.5862681
 
-### 3.3. Hubs
+### 3.5. Hubs
 
 **Hub nodes** are defined as nodes with a particularly high degree and
 betweenness centrality. Using the function
@@ -382,30 +521,30 @@ find_hubs(g, method = "zscore",
     #> $plot
     #> 
     #> $method
-    #> [1] "Hub nodes identified by method: zscore with Degree metric threshold = 2.5 and Betweenness metric threshold = 1"
+    #> [1] "Hub nodes identified by method: zscore with Degree metric threshold = 2.5 and Betweenness metric threshold = 1 (unweighted)"
     #> 
     #> $result
-    #> # A tibble: 100 × 6
-    #>    node  degree betweenness degree_metric betweenness_metric is_hub
-    #>    <chr>  <dbl>       <dbl>         <dbl>              <dbl> <lgl> 
-    #>  1 1          7      0.662          2.42               4.84  FALSE 
-    #>  2 2          3      0.543          0.977              4.08  FALSE 
-    #>  3 3          2      0.287          0.377              2.23  FALSE 
-    #>  4 4         14      0.298          3.73               2.31  TRUE  
-    #>  5 5         17      0.669          4.11               4.88  TRUE  
-    #>  6 6          4      0.0794         1.44               0.424 FALSE 
-    #>  7 7          1      0             -0.469             -0.358 FALSE 
-    #>  8 8         16      0.348          4.00               2.70  TRUE  
-    #>  9 9          2      0.0202         0.377             -0.153 FALSE 
-    #> 10 10         2      0.0202         0.377             -0.153 FALSE 
+    #> # A tibble: 100 × 7
+    #>    node  degree strength betweenness degree_metric betweenness_metric is_hub
+    #>    <chr>  <dbl>    <dbl>       <dbl>         <dbl>              <dbl> <lgl> 
+    #>  1 1          7        7      0.662          2.42               4.84  FALSE 
+    #>  2 2          3        3      0.543          0.977              4.08  FALSE 
+    #>  3 3          2        2      0.287          0.377              2.23  FALSE 
+    #>  4 4         14       14      0.298          3.73               2.31  TRUE  
+    #>  5 5         17       17      0.669          4.11               4.88  TRUE  
+    #>  6 6          4        4      0.0794         1.44               0.424 FALSE 
+    #>  7 7          1        1      0             -0.469             -0.358 FALSE 
+    #>  8 8         16       16      0.348          4.00               2.70  TRUE  
+    #>  9 9          2        2      0.0202         0.377             -0.153 FALSE 
+    #> 10 10         2        2      0.0202         0.377             -0.153 FALSE 
     #> # ℹ 90 more rows
     #> 
     #> $graph
-    #> IGRAPH a237de8 UN-- 100 99 -- Barabasi graph
+    #> IGRAPH c1a435b UN-- 100 99 -- Barabasi graph
     #> + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm
     #> | (g/c), name (v/c), category (v/c), score (v/n), is_hub (v/l),
     #> | edge_score (e/n)
-    #> + edges from a237de8 (vertex names):
+    #> + edges from c1a435b (vertex names):
     #>  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11
     #> [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21
     #> [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31
@@ -442,7 +581,7 @@ hubs_result$plot
 
 ![](introduction_files/figure-html/hubs-2-1.png)
 
-### 3.4. Bottlenecks
+### 3.6. Bottlenecks
 
 **Bottlenecks** are defined as nodes with a particularly high
 betweenness centrality but low degree. Similarly to the
@@ -472,30 +611,31 @@ find_bottlenecks(g,
     #> $plot
     #> 
     #> $method
-    #> [1] "Bottlenecks identified by method: zscore with Degree metric threshold = -1 and Betweenness metric threshold = 1"
+    #> [1] "Bottlenecks identified by method: zscore with Degree metric threshold = -1 and Betweenness metric threshold = 1 (unweighted)"
     #> 
     #> $result
-    #> # A tibble: 100 × 6
-    #>    node  degree betweenness degree_metric betweenness_metric is_bottleneck
-    #>    <chr>  <dbl>       <dbl>         <dbl>              <dbl> <lgl>        
-    #>  1 1          7      0.662          2.42               4.84  FALSE        
-    #>  2 2          3      0.543          0.977              4.08  FALSE        
-    #>  3 3          2      0.287          0.377              2.23  FALSE        
-    #>  4 4         14      0.298          3.73               2.31  FALSE        
-    #>  5 5         17      0.669          4.11               4.88  FALSE        
-    #>  6 6          4      0.0794         1.44               0.424 FALSE        
-    #>  7 7          1      0             -0.469             -0.358 FALSE        
-    #>  8 8         16      0.348          4.00               2.70  FALSE        
-    #>  9 9          2      0.0202         0.377             -0.153 FALSE        
-    #> 10 10         2      0.0202         0.377             -0.153 FALSE        
+    #> # A tibble: 100 × 7
+    #>    node  degree strength betweenness degree_metric betweenness_metric
+    #>    <chr>  <dbl>    <dbl>       <dbl>         <dbl>              <dbl>
+    #>  1 1          7        7      0.662          2.42               4.84 
+    #>  2 2          3        3      0.543          0.977              4.08 
+    #>  3 3          2        2      0.287          0.377              2.23 
+    #>  4 4         14       14      0.298          3.73               2.31 
+    #>  5 5         17       17      0.669          4.11               4.88 
+    #>  6 6          4        4      0.0794         1.44               0.424
+    #>  7 7          1        1      0             -0.469             -0.358
+    #>  8 8         16       16      0.348          4.00               2.70 
+    #>  9 9          2        2      0.0202         0.377             -0.153
+    #> 10 10         2        2      0.0202         0.377             -0.153
     #> # ℹ 90 more rows
+    #> # ℹ 1 more variable: is_bottleneck <lgl>
     #> 
     #> $graph
-    #> IGRAPH a237de8 UN-- 100 99 -- Barabasi graph
+    #> IGRAPH c1a435b UN-- 100 99 -- Barabasi graph
     #> + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm
     #> | (g/c), name (v/c), category (v/c), score (v/n), is_bottleneck (v/l),
     #> | edge_score (e/n)
-    #> + edges from a237de8 (vertex names):
+    #> + edges from c1a435b (vertex names):
     #>  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11
     #> [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21
     #> [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31
@@ -504,7 +644,7 @@ find_bottlenecks(g,
     #> [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61
     #> + ... omitted several edges
 
-### 3.5. Calculate Roles
+### 3.7. Calculate Roles
 
 Beyond classical hubs and bottlenecks, the package implements the
 function
@@ -541,33 +681,50 @@ calculate_roles(g,
 ![](introduction_files/figure-html/roles-1.png)
 
     #> 
-    #> $roles_definitions
-    #>   Name                Description                       Condition
-    #> 1   R1 Ultra-peripheral (non-hub)             z < 2.5 & P <= 0.05
-    #> 2   R2       Peripheral (non-hub)   z < 2.5 & 0.05 < P & P <= 0.6
-    #> 3   R3          Non-hub connector    z < 2.5 & 0.6 < P & P <= 0.8
-    #> 4   R4            Non-hub kinless               z < 2.5 & P > 0.8
-    #> 5   R5             Provincial hub            z >= 2.5 & P <= 0.25
-    #> 6   R6              Connector hub z >= 2.5 & 0.25 < P & P <= 0.75
-    #> 7   R7                Kinless hub             z >= 2.5 & P > 0.75
-    #> 
     #> $result
     #> # A tibble: 100 × 5
     #>    node  module       z     p role 
     #>    <chr>  <int>   <dbl> <dbl> <chr>
-    #>  1 1          5  2.43   0.449 R2   
-    #>  2 2          5  0.152  0.444 R2   
-    #>  3 3          5 -0.608  0.5   R2   
-    #>  4 4          3  3.46   0.255 R5   
-    #>  5 5          6  3.33   0.484 R6   
-    #>  6 6          9  1.57   0.375 R2   
-    #>  7 7          9 -0.671  0     R1   
-    #>  8 8          2  3.86   0.227 R5   
-    #>  9 9          3  0.0487 0     R1   
-    #> 10 10         2  0.0375 0     R1   
+    #>  1 1          4  2.04   0.449 R2   
+    #>  2 2          2 -0.671  0.667 R3   
+    #>  3 3          4 -0.408  0.5   R2   
+    #>  4 4          8  3.85   0.133 R5   
+    #>  5 5          1  3.33   0.484 R6   
+    #>  6 6          7  1.57   0.375 R2   
+    #>  7 7          7 -0.671  0     R1   
+    #>  8 8         13  3.86   0.227 R5   
+    #>  9 9          8  0.0407 0     R1   
+    #> 10 10        13  0.0375 0     R1   
     #> # ℹ 90 more rows
+    #> 
+    #> $graph
+    #> IGRAPH c1a435b UN-- 100 99 -- Barabasi graph
+    #> + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm
+    #> | (g/c), name (v/c), category (v/c), score (v/n), module (v/n), role_z
+    #> | (v/n), role_p (v/n), role (v/c), edge_score (e/n)
+    #> + edges from c1a435b (vertex names):
+    #>  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11
+    #> [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21
+    #> [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31
+    #> [31] 4 --32 30--33 28--34 17--35 23--36 1 --37 12--38 22--39 5 --40 6 --41
+    #> [41] 5 --42 4 --43 8 --44 8 --45 8 --46 4 --47 4 --48 5 --49 10--50 5 --51
+    #> [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61
+    #> + ... omitted several edges
+    #> 
+    #> $method
+    #> [1] "Guimera-Amaral roles from modules detected by 'spinglass' (unweighted); hub z-score threshold = 2.5; participation boundaries R1/R2 = 0.05, R2/R3 = 0.62, R3/R4 = 0.8, R5/R6 = 0.3, R6/R7 = 0.75"
+    #> 
+    #> $roles_definitions
+    #>   Name                Description                      Condition
+    #> 1   R1 Ultra-peripheral (non-hub)            z < 2.5 & P <= 0.05
+    #> 2   R2       Peripheral (non-hub) z < 2.5 & 0.05 < P & P <= 0.62
+    #> 3   R3          Non-hub connector  z < 2.5 & 0.62 < P & P <= 0.8
+    #> 4   R4            Non-hub kinless              z < 2.5 & P > 0.8
+    #> 5   R5             Provincial hub            z >= 2.5 & P <= 0.3
+    #> 6   R6              Connector hub z >= 2.5 & 0.3 < P & P <= 0.75
+    #> 7   R7                Kinless hub            z >= 2.5 & P > 0.75
 
-### 3.6. Modules
+### 3.8. Modules
 
 The package also implements a function to identify **modules**
 (communities) in a network using a variety of community detection
@@ -589,6 +746,22 @@ find_modules(g,
 
 ![](introduction_files/figure-html/modules-1.png)
 
+    #> $result
+    #> # A tibble: 100 × 2
+    #>    node  module
+    #>    <chr>  <int>
+    #>  1 1          1
+    #>  2 2          1
+    #>  3 3          1
+    #>  4 4          2
+    #>  5 5          3
+    #>  6 6          4
+    #>  7 7          4
+    #>  8 8          5
+    #>  9 9          2
+    #> 10 10         5
+    #> # ℹ 90 more rows
+    #> 
     #> $module_table
     #> # A tibble: 100 × 2
     #>    node  module
@@ -615,11 +788,11 @@ find_modules(g,
     #> [1] "louvain"
     #> 
     #> $graph
-    #> IGRAPH a237de8 UN-- 100 99 -- Barabasi graph
+    #> IGRAPH c1a435b UN-- 100 99 -- Barabasi graph
     #> + attr: name (g/c), power (g/n), m (g/n), zero.appeal (g/n), algorithm
     #> | (g/c), name (v/c), category (v/c), score (v/n), module (v/n), color
     #> | (v/c), label (v/c), edge_score (e/n)
-    #> + edges from a237de8 (vertex names):
+    #> + edges from c1a435b (vertex names):
     #>  [1] 1 --2  1 --3  3 --4  2 --5  5 --6  6 --7  1 --8  4 --9  8 --10 5 --11
     #> [11] 5 --12 12--13 5 --14 8 --15 6 --16 2 --17 14--18 4 --19 1 --20 5 --21
     #> [21] 20--22 19--23 12--24 12--25 25--26 12--27 14--28 12--29 12--30 5 --31
@@ -628,7 +801,94 @@ find_modules(g,
     #> [51] 35--52 1 --53 8 --54 30--55 4 --56 12--57 5 --58 4 --59 28--60 46--61
     #> + ... omitted several edges
 
-## 4. Information flow
+## 4. Extracting a subnetwork
+
+A very common starting point is a list of nodes — differentially
+expressed genes, known disease genes, a set of drug targets — and the
+question of how they relate to one another.
+[`extract_subnetwork()`](https://agallinat.github.io/netkit/reference/extract_subnetwork.md)
+answers that with five strategies of increasing ambition.
+
+``` r
+
+seeds <- c("1", "5", "20", "40", "60")
+```
+
+`"induced"` keeps only the seeds and whatever edges run between them:
+usually almost nothing, but it is the baseline the others should be
+compared against. `"neighbors"` adds the surrounding neighborhood, with
+`max_degree` available to exclude promiscuous hubs — without that cap,
+first-neighbor expansion on a hub-dominated network returns most of the
+network.
+
+``` r
+
+extract_subnetwork(g, seeds, method = "neighbors", order = 1,
+                   edge.width.factor = 0.3, node.size.factor = 2)$method
+#> Vertex attribute 'label' is missing, using 'name' for labels.
+```
+
+![](introduction_files/figure-html/subnetwork-neighbors-1.png)
+
+    #> [1] "Subnetwork around 5 node(s) by method 'neighbors' (order = 1); unweighted; 28 nodes and 27 edges"
+
+`"shortest_paths"` takes the union of every shortest path between every
+pair of seeds — the classic “connect my gene list”. `"steiner"` instead
+finds an approximate minimum Steiner tree: the smallest *tree* that
+connects them all, via the Kou–Markowsky–Berman heuristic. The union
+keeps every equally short route and so grows quickly; the tree keeps one
+connecting structure and is far easier to read, which usually makes it
+the better figure.
+
+``` r
+
+st <- extract_subnetwork(g, seeds, method = "steiner",
+                         edge.width.factor = 0.3, node.size.factor = 2)
+#> Vertex attribute 'label' is missing, using 'name' for labels.
+```
+
+![](introduction_files/figure-html/subnetwork-steiner-1.png)
+
+``` r
+
+
+# Always a tree: vcount - 1 edges, and no leaf that is not a seed.
+c(nodes = vcount(st$graph), edges = ecount(st$graph))
+#> nodes edges 
+#>     8     7
+
+st$result
+#> # A tibble: 8 × 4
+#>   node  reason  is_seed score
+#>   <chr> <chr>   <lgl>   <dbl>
+#> 1 1     seed    TRUE       NA
+#> 2 2     steiner FALSE      NA
+#> 3 5     seed    TRUE       NA
+#> 4 14    steiner FALSE      NA
+#> 5 20    seed    TRUE       NA
+#> 6 28    steiner FALSE      NA
+#> 7 40    seed    TRUE       NA
+#> 8 60    seed    TRUE       NA
+```
+
+`"diffusion"` reuses the diffusion machinery of the next section,
+keeping the top-scoring vertices instead:
+
+``` r
+
+extract_subnetwork(g, seeds, method = "diffusion", top_n = 20, plot = FALSE)$method
+#> [1] "Subnetwork around 5 node(s) by method 'diffusion' (rwr, top_n = 20); unweighted; 20 nodes and 17 edges"
+```
+
+Unlike most of netkit, these return no `plot` element: like
+[`plot_Net()`](https://agallinat.github.io/netkit/reference/plot_Net.md),
+[`find_modules()`](https://agallinat.github.io/netkit/reference/find_modules.md)
+and
+[`highlight_nodes()`](https://agallinat.github.io/netkit/reference/highlight_nodes.md),
+they render through base graphics and so have no plot object to hand
+back.
+
+## 5. Information flow
 
 Understanding how signals propagate across a network is a key step in
 many systems-level analyses. Information flow analysis allows users to
@@ -639,7 +899,7 @@ for pathway reconstruction, to associate nodes (genes/proteins) to
 molecular functions or diseases, and to prioritize candidate drugs for a
 given target.
 
-### 4.1. Network Diffusion
+### 5.1. Network Diffusion
 
 The functions
 [`network_diffusion()`](https://agallinat.github.io/netkit/reference/network_diffusion.md)
@@ -670,16 +930,16 @@ network_diffusion(g, seed_nodes = seed_nodes, method = "laplacian")
 #> # A tibble: 100 × 2
 #>    node   score
 #>    <chr>  <dbl>
-#>  1 100   0.850 
-#>  2 24    0.832 
-#>  3 17    0.783 
-#>  4 86    0.740 
-#>  5 35    0.657 
-#>  6 41    0.214 
-#>  7 52    0.189 
-#>  8 73    0.189 
-#>  9 2     0.147 
-#> 10 12    0.0729
+#>  1 51    0.868 
+#>  2 83    0.868 
+#>  3 43    0.856 
+#>  4 3     0.776 
+#>  5 38    0.531 
+#>  6 67    0.138 
+#>  7 69    0.138 
+#>  8 71    0.138 
+#>  9 5     0.0927
+#> 10 4     0.0838
 #> # ℹ 90 more rows
 
 network_diffusion_with_pvalues(g, seed_nodes = seed_nodes, method = "laplacian")
@@ -688,20 +948,20 @@ network_diffusion_with_pvalues(g, seed_nodes = seed_nodes, method = "laplacian")
 #> # A tibble: 100 × 3
 #>    node   score p_empirical
 #>    <chr>  <dbl>       <dbl>
-#>  1 100   0.850     0.000999
-#>  2 24    0.832     0.000999
-#>  3 17    0.783     0.000999
-#>  4 86    0.740     0.000999
-#>  5 35    0.657     0.000999
-#>  6 41    0.214     0.000999
-#>  7 52    0.189     0.000999
-#>  8 73    0.189     0.000999
-#>  9 2     0.147     0.000999
-#> 10 12    0.0729    0.000999
+#>  1 51    0.868     0.000999
+#>  2 83    0.868     0.000999
+#>  3 43    0.856     0.000999
+#>  4 3     0.776     0.000999
+#>  5 38    0.531     0.000999
+#>  6 67    0.138     0.000999
+#>  7 69    0.138     0.000999
+#>  8 71    0.138     0.000999
+#>  9 4     0.0838    0.000999
+#> 10 1     0.0671    0.000999
 #> # ℹ 90 more rows
 ```
 
-### 4.2. Reverse Network Diffusion
+### 5.2. Reverse Network Diffusion
 
 The function
 [`greedy_seed_selection()`](https://agallinat.github.io/netkit/reference/greedy_seed_selection.md)
@@ -746,16 +1006,16 @@ target_nodes <- sample(vertex_attr(g, "name"), 5)
 
 greedy_seed_selection(g, target_nodes = target_nodes, k = 20, method = "laplacian")
 #> $selected_seeds
-#>  [1] "28" "1"  "15" "44" "45" "54" "62" "65" "68" "79" "81" "88" "95" "97" "5" 
-#> [16] "34" "84" "96" "10" "85"
+#>  [1] "33" "75" "24" "27" "29" "57" "77" "25" "4"  "38" "26" "5"  "32" "43" "47"
+#> [16] "48" "56" "59" "64" "87"
 #> 
 #> $final_target_score
-#> [1] 1.103483
+#> [1] 1.042074
 #> 
 #> $scores_at_each_step
-#>  [1] 0.1970166 0.3041547 0.3513997 0.3986447 0.4458897 0.4931347 0.5403796
-#>  [8] 0.5876246 0.6348696 0.6821146 0.7293596 0.7766046 0.8238495 0.8710945
-#> [15] 0.9181542 0.9619427 1.0057313 1.0495198 1.0765012 1.1034826
+#>  [1] 0.1805418 0.3610836 0.4524841 0.5438846 0.6352851 0.7266856 0.8180861
+#>  [8] 0.8711484 0.9221078 0.9516645 0.9692330 0.9778248 0.9858560 0.9938871
+#> [15] 1.0019183 1.0099494 1.0179806 1.0260117 1.0340429 1.0420740
 #> 
 #> $plot
 ```
@@ -765,7 +1025,7 @@ greedy_seed_selection(g, target_nodes = target_nodes, k = 20, method = "laplacia
 The generated plot is also a `ggplot2` object, and thus, fully
 customizable.
 
-## 5. Credits and Contributions
+## 6. Credits and Contributions
 
 `netkit` has been developed, and is maintained, by Alex Gallinat, PhD.
 

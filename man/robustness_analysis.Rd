@@ -6,12 +6,14 @@
 \usage{
 robustness_analysis(
   graph,
-  removal_strategy = c("random", "degree", "betweenness"),
+  removal_strategy = c("random", "degree", "betweenness", "strength"),
   steps = 50,
   metrics = c("lcc_size", "efficiency", "n_components"),
   n_reps = 50,
   plot = TRUE,
-  seed = NULL
+  seed = NULL,
+  weights = NULL,
+  weight_type = c("strength", "distance")
 )
 }
 \arguments{
@@ -21,8 +23,10 @@ columns are considered as edge attributes. Must be undirected; directed graphs
 will be converted.}
 
 \item{removal_strategy}{Character. Strategy used for node removal. Options are:
-\code{"random"}, \code{"degree"}, \code{"betweenness"}, or the name of a numeric vertex attribute.
-Custom attributes are interpreted as priority scores (higher = removed first).}
+\code{"random"}, \code{"degree"}, \code{"betweenness"}, \code{"strength"},
+or the name of a numeric vertex attribute.
+Custom attributes are interpreted as priority scores (higher = removed first).
+\code{"strength"} requires \code{weights} and errors without them.}
 
 \item{steps}{Integer. Number of removal steps (default: 50).}
 
@@ -34,6 +38,16 @@ Options include: \code{"lcc_size"}, \code{"efficiency"}, and \code{"n_components
 \item{plot}{Logical. If \code{TRUE}, a robustness plot is generated.}
 
 \item{seed}{Integer or NULL. Random seed for reproducibility.}
+
+\item{weights}{Optional edge weights: \code{NULL} (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+\code{igraph::ecount(graph)}. When supplied, global efficiency is computed over
+weighted path lengths, \code{removal_strategy = "betweenness"} uses cost-based
+betweenness, and \code{removal_strategy = "strength"} becomes available. See
+\link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
+\link{netkit-weights}.}
 }
 \value{
 A list with:
@@ -42,8 +56,11 @@ A list with:
 metrics as nodes are progressively removed, or \code{NULL} when
 \code{plot = FALSE}. The element is always present, so the return shape does
 not depend on the arguments.}
+\item{\code{result}}{A summarized data frame (mean and SD) if \code{n_reps > 1},
+otherwise raw results.}
 \item{\code{all_results}}{A data frame with simulation results across all steps and repetitions.}
-\item{\code{summary}}{A summarized data frame (mean and SD) if \code{n_reps > 1}, otherwise raw results.}
+\item{\code{summary}}{Deprecated alias for \code{result}, kept for backward
+compatibility.}
 \item{\code{auc}}{Named list of AUC (area under the curve) values for each selected metric.}
 }
 }
@@ -70,6 +87,38 @@ The available metrics are:
 Additionally, Area Under the Curve (AUC) is calculated for each metric, providing a scalar summary
 of robustness. A higher AUC indicates greater resilience (i.e., slower degradation).
 }
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
+}
+
 \examples{
 g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
 

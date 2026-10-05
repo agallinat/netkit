@@ -4,7 +4,7 @@ test_that("find_modules() returns the documented structure", {
   set.seed(1)
   res <- find_modules(g, plot = FALSE)
 
-  expect_named(res, c("module_table", "n_modules", "subgraphs",
+  expect_named(res, c("result", "module_table", "n_modules", "subgraphs",
                       "method", "graph"))
   expect_s3_class(res$module_table, "tbl_df")
   expect_named(res$module_table, c("node", "module"))

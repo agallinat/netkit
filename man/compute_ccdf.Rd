@@ -4,7 +4,12 @@
 \alias{compute_ccdf}
 \title{Compute the Complementary Cumulative Distribution Function (CCDF) of Node Degrees}
 \usage{
-compute_ccdf(graph, mode = c("all", "in", "out"), remove_singles = FALSE)
+compute_ccdf(
+  graph,
+  mode = c("all", "in", "out"),
+  remove_singles = FALSE,
+  weight_attr = NULL
+)
 }
 \arguments{
 \item{graph}{An igraph object representing the graph.}

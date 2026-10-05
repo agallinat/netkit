@@ -12,6 +12,8 @@ find_modules(
   return_subgraphs = FALSE,
   plot = TRUE,
   label = FALSE,
+  weights = NULL,
+  weight_type = c("strength", "distance"),
   ...
 )
 }
@@ -38,12 +40,24 @@ for each detected module.}
 
 \item{label}{Logical. If \code{TRUE}, displays node labels in the plot.}
 
+\item{weights}{Optional edge weights: \code{NULL} (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+\code{igraph::ecount(graph)}. Community detection reads a weight as a
+\emph{strength}, except \code{method = "edge_betweenness"}, which needs costs and is
+given them. \code{method = "fluid_communities"} cannot use weights and warns.
+See \link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
+\link{netkit-weights}.}
+
 \item{...}{Additional parameters passed to the \code{plot_Net()} function for customizing the plot.}
 }
 \value{
 A list with the following components:
 \describe{
-\item{\code{module_table}}{A tibble mapping each node to its module assignment.}
+\item{\code{result}}{A tibble mapping each node to its module assignment.}
+\item{\code{module_table}}{Deprecated alias for \code{result}, kept for
+backward compatibility.}
 \item{\code{n_modules}}{The number of modules that meet the \code{min_size} threshold.}
 \item{\code{subgraphs}}{A named list of subgraphs for each module (only if \code{return_subgraphs = TRUE}).}
 \item{\code{method}}{The community detection method used.}
@@ -62,6 +76,38 @@ including Louvain (\code{cluster_louvain()}), Walktrap, Infomap, Fast Greedy, an
 It simplifies their application and offers optional filtering, visualization via \code{plot_Net()},
 and module subgraph extraction.
 }
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
+}
+
 \examples{
 g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
 res <- find_modules(g, method = "louvain", plot = FALSE)

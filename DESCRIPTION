@@ -1,19 +1,24 @@
 Package: netkit
 Type: Package
 Title: Network Analysis and Visualization Toolkit
-Version: 0.0.1.9000
+Version: 0.1.0.9000
 Authors@R:
     person("Alex", "Gallinat", email = "alex.gaoc@gmail.com",
            role = c("aut", "cre"))
 Description: A collection of tools for analyzing and visualizing networks.
-    Summarizes global topology, identifies hubs, bottlenecks and community
-    structure, and classifies nodes into connectivity roles following
-    Guimera and Amaral (2005) <doi:10.1038/nature03288>. Propagates influence
-    from seed nodes using Laplacian smoothing, heat-kernel and
-    random-walk-with-restart diffusion, with permutation-based empirical
-    p-values, and simulates network robustness under progressive node removal.
-    Matrix operations use sparse representations throughout so that the methods
-    remain usable on large graphs.
+    Summarizes global topology and per-node centrality, identifies hubs,
+    bottlenecks and community structure, and classifies nodes into connectivity
+    roles following Guimera and Amaral (2005) <doi:10.1038/nature03288>.
+    Extracts interpretable subnetworks around a set of nodes, including
+    approximate Steiner trees after Kou, Markowsky and Berman (1981)
+    <doi:10.1007/BF00288961>. Propagates influence from seed nodes using
+    Laplacian smoothing, heat-kernel and random-walk-with-restart diffusion,
+    with degree-matched permutation nulls, and simulates network robustness
+    under progressive node removal. Observed metrics can be tested against
+    degree-preserving random ensembles. Edge weights are supported throughout,
+    with an explicit declaration of whether a weight means strength or
+    distance. Matrix operations use sparse representations throughout so that
+    the methods remain usable on large graphs.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-US

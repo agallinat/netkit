@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,6 +19,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/introduction.html">Introduction to netkit</a></li>
+    <li><a class="dropdown-item" href="../articles/weighted-networks.html">Weighted networks: strength or distance?</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -36,9 +37,9 @@
     </div>
 
     <div class="section level2">
-      <h2 id="all-functions">All functions<a class="anchor" aria-label="anchor" href="#all-functions"></a></h2>
+      <h2 id="graph-input-and-annotation">Graph input and annotation<a class="anchor" aria-label="anchor" href="#graph-input-and-annotation"></a></h2>
 
-
+      <div class="section-desc"><p>Getting data into a graph and metadata onto it. Every function in netkit accepts either an <code>igraph</code> object or a data.frame edge list.</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -54,10 +55,40 @@
 
         <dt>
 
-          <code><a href="calculate_roles.html">calculate_roles()</a></code>
+          <code><a href="netkit-weights.html">netkit-weights</a></code>
 
         </dt>
-        <dd>Calculate Network Roles Based on Within-Module Z-Score and Participation Coefficient</dd>
+        <dd>Edge weights in netkit</dd>
+      </dl></div><div class="section level2">
+      <h2 id="topology">Topology<a class="anchor" aria-label="anchor" href="#topology"></a></h2>
+
+      <div class="section-desc"><p>Global and node-level descriptions of a network’s structure.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="summarize_graph_metrics.html">summarize_graph_metrics()</a></code>
+
+        </dt>
+        <dd>Summarize Topological Properties of a Graph</dd>
+
+        <dt>
+
+          <code><a href="node_metrics.html">node_metrics()</a></code>
+
+        </dt>
+        <dd>Compute a Table of Node-Level Centrality Metrics</dd>
+
+        <dt>
+
+          <code><a href="plot_CCDF.html">plot_CCDF()</a></code>
+
+        </dt>
+        <dd>Plot Complementary Cumulative Degree Distribution (CCDF)</dd>
 
         <dt>
 
@@ -65,6 +96,52 @@
 
         </dt>
         <dd>Compare Two Networks</dd>
+      </dl></div><div class="section level2">
+      <h2 id="statistical-testing">Statistical testing<a class="anchor" aria-label="anchor" href="#statistical-testing"></a></h2>
+
+      <div class="section-desc"><p>Whether an observed value is surprising, judged against a matched random ensemble.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="null_model.html">null_model()</a></code>
+
+        </dt>
+        <dd>Generate Null-Model Graphs for Significance Testing</dd>
+
+        <dt>
+
+          <code><a href="metric_significance.html">metric_significance()</a></code>
+
+        </dt>
+        <dd>Score an Observed Graph Against a Null Ensemble</dd>
+
+        <dt>
+
+          <code><a href="small_worldness.html">small_worldness()</a></code>
+
+        </dt>
+        <dd>Small-World Coefficients</dd>
+      </dl></div><div class="section level2">
+      <h2 id="node-classification">Node classification<a class="anchor" aria-label="anchor" href="#node-classification"></a></h2>
+
+      <div class="section-desc"><p>Picking out structurally distinctive vertices.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="find_hubs.html">find_hubs()</a></code>
+
+        </dt>
+        <dd>Identify Hub Nodes in a Network</dd>
 
         <dt>
 
@@ -75,40 +152,53 @@
 
         <dt>
 
-          <code><a href="find_hubs.html">find_hubs()</a></code>
+          <code><a href="calculate_roles.html">calculate_roles()</a></code>
 
         </dt>
-        <dd>Identify Hub Nodes in a Network</dd>
+        <dd>Calculate Network Roles Based on Within-Module Z-Score and Participation Coefficient</dd>
+      </dl></div><div class="section level2">
+      <h2 id="community-structure">Community structure<a class="anchor" aria-label="anchor" href="#community-structure"></a></h2>
 
-        <dt>
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
 
           <code><a href="find_modules.html">find_modules()</a></code>
 
         </dt>
         <dd>Detect and Visualize Network Modules (Communities)</dd>
+      </dl></div><div class="section level2">
+      <h2 id="subnetwork-extraction">Subnetwork extraction<a class="anchor" aria-label="anchor" href="#subnetwork-extraction"></a></h2>
 
-        <dt>
+      <div class="section-desc"><p>Building an interpretable neighbourhood around a set of nodes.</p></div>
 
-          <code><a href="greedy_seed_selection.html">greedy_seed_selection()</a></code>
+      <dl></dl></div><div class="section level2">
 
-        </dt>
-        <dd>Greedy Seed Node Selection to Maximize Diffusion Toward Target Nodes</dd>
 
-        <dt>
 
-          <code><a href="highlight_nodes.html">highlight_nodes()</a></code>
 
-        </dt>
-        <dd>Highlight Nodes in a Network Plot</dd>
+      <dl><dt>
 
-        <dt>
-
-          <code><a href="layout_horizontal_tree.html">layout_horizontal_tree()</a></code>
+          <code><a href="extract_subnetwork.html">extract_subnetwork()</a></code>
 
         </dt>
-        <dd>Horizontal Tree Layout for Graph Visualization</dd>
+        <dd>Extract an Interpretable Subnetwork Around a Set of Nodes</dd>
+      </dl></div><div class="section level2">
+      <h2 id="diffusion">Diffusion<a class="anchor" aria-label="anchor" href="#diffusion"></a></h2>
 
-        <dt>
+      <div class="section-desc"><p>Propagating a signal from seed nodes, with a permutation null, and the inverse problem of choosing seeds to reach a target set.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
 
           <code><a href="network_diffusion.html">network_diffusion()</a></code>
 
@@ -124,12 +214,44 @@
 
         <dt>
 
-          <code><a href="plot_CCDF.html">plot_CCDF()</a></code>
+          <code><a href="prepare_diffusion.html">prepare_diffusion()</a></code>
 
         </dt>
-        <dd>Plot Complementary Cumulative Degree Distribution (CCDF)</dd>
+        <dd>Prepare Diffusion Matrix</dd>
 
         <dt>
+
+          <code><a href="greedy_seed_selection.html">greedy_seed_selection()</a></code>
+
+        </dt>
+        <dd>Greedy Seed Node Selection to Maximize Diffusion Toward Target Nodes</dd>
+      </dl></div><div class="section level2">
+      <h2 id="robustness">Robustness<a class="anchor" aria-label="anchor" href="#robustness"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="robustness_analysis.html">robustness_analysis()</a></code>
+
+        </dt>
+        <dd>Network Robustness Analysis via Node Removal Simulation</dd>
+      </dl></div><div class="section level2">
+      <h2 id="visualization">Visualization<a class="anchor" aria-label="anchor" href="#visualization"></a></h2>
+
+      <div class="section-desc"><p><code><a href="../reference/plot_Net.html">plot_Net()</a></code> is the central renderer; the others delegate to it. These draw with base graphics rather than returning a ggplot object.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
 
           <code><a href="plot_Net.html">plot_Net()</a></code>
 
@@ -138,19 +260,20 @@
 
         <dt>
 
-          <code><a href="robustness_analysis.html">robustness_analysis()</a></code>
+          <code><a href="highlight_nodes.html">highlight_nodes()</a></code>
 
         </dt>
-        <dd>Network Robustness Analysis via Node Removal Simulation</dd>
+        <dd>Highlight Nodes in a Network Plot</dd>
 
         <dt>
 
-          <code><a href="summarize_graph_metrics.html">summarize_graph_metrics()</a></code>
+          <code><a href="layout_horizontal_tree.html">layout_horizontal_tree()</a></code>
 
         </dt>
-        <dd>Summarize Topological Properties of a Graph</dd>
+        <dd>Horizontal Tree Layout for Graph Visualization</dd>
       </dl></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

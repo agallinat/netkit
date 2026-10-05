@@ -45,6 +45,15 @@
 #' # The returned graph carries an `is_hub` vertex attribute, so results chain.
 #' table(igraph::V(res$graph)$is_hub)
 #'
+#' @param weights Optional edge weights: `NULL` (default) to ignore them, the
+#'   name of an edge attribute, or a numeric vector of length
+#'   `igraph::ecount(graph)`. When supplied, degree becomes vertex *strength* and
+#'   betweenness is computed on edge *costs*. See [netkit-weights].
+#' @param weight_type Either `"strength"` (default) or `"distance"`. See
+#'   [netkit-weights].
+#'
+#' @inheritSection netkit-weights Edge weights
+#'
 #' @importFrom igraph is_igraph degree betweenness vertex_attr_names vertex_attr vertex_attr<- vcount
 #' @importFrom tibble tibble
 #' @importFrom dplyr filter
@@ -66,15 +75,21 @@ find_hubs <- function(graph,
                       label.size = 12,
                       hub_names = TRUE,
                       hub_cex = 3,
-                      gg_extra = list()) {
+                      gg_extra = list(),
+                      weights = NULL,
+                      weight_type = c("strength", "distance")) {
 
   method <- match.arg(method)
 
   graph <- as_netkit_graph(graph, backfill_names = TRUE)
+  w <- as_netkit_weights(graph, weights, weight_type)
 
-  # Compute degree and betweenness
-  deg <- degree(graph)
-  btw <- betweenness(graph, normalized = TRUE)
+  # Compute degree and betweenness. Under weights these become vertex strength
+  # and cost-based betweenness: a "high degree, high betweenness" node in a
+  # weighted graph is one with strong attachments on many shortest paths, which
+  # is not the same set of nodes as the unweighted counts pick out.
+  deg <- if (w$weighted) igraph::strength(graph, weights = w$strength) else degree(graph)
+  btw <- betweenness(graph, normalized = TRUE, weights = w$distance)
 
   # Optional log transform
   deg_val <- if (log_transform) log1p(deg) else deg
@@ -95,9 +110,14 @@ find_hubs <- function(graph,
   }
 
   # Compile result
+  # `degree` always holds the unweighted count and `strength` the weighted sum,
+  # so neither column changes meaning with the arguments -- `degree_metric` is the
+  # one that reflects whichever was actually thresholded. Overloading `degree` to
+  # hold strengths would have made the table silently incomparable between calls.
   result <- tibble(
     node = vertex_attr(graph, "name"),
-    degree = deg,
+    degree = igraph::degree(graph),
+    strength = if (w$weighted) igraph::strength(graph, weights = w$strength) else igraph::degree(graph),
     betweenness = btw,
     degree_metric = deg_score,
     betweenness_metric = btw_score,
@@ -145,7 +165,8 @@ find_hubs <- function(graph,
       plot = p,
       method = paste("Hub nodes identified by method:", method,
                      "with Degree metric threshold =", degree_threshold,
-                     "and Betweenness metric threshold =", betweenness_threshold),
+                     "and Betweenness metric threshold =", betweenness_threshold,
+                     paste0("(", describe_weights(w), ")")),
       result = result,
       graph = graph)
     )

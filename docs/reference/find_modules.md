@@ -16,6 +16,8 @@ find_modules(
   return_subgraphs = FALSE,
   plot = TRUE,
   label = FALSE,
+  weights = NULL,
+  weight_type = c("strength", "distance"),
   ...
 )
 ```
@@ -58,6 +60,20 @@ find_modules(
 
   Logical. If `TRUE`, displays node labels in the plot.
 
+- weights:
+
+  Optional edge weights: `NULL` (default) to ignore them, the name of an
+  edge attribute, or a numeric vector of length `igraph::ecount(graph)`.
+  Community detection reads a weight as a *strength*, except
+  `method = "edge_betweenness"`, which needs costs and is given them.
+  `method = "fluid_communities"` cannot use weights and warns. See
+  [netkit-weights](https://agallinat.github.io/netkit/reference/netkit-weights.md).
+
+- weight_type:
+
+  Either `"strength"` (default) or `"distance"`. See
+  [netkit-weights](https://agallinat.github.io/netkit/reference/netkit-weights.md).
+
 - ...:
 
   Additional parameters passed to the
@@ -68,9 +84,13 @@ find_modules(
 
 A list with the following components:
 
-- `module_table`:
+- `result`:
 
   A tibble mapping each node to its module assignment.
+
+- `module_table`:
+
+  Deprecated alias for `result`, kept for backward compatibility.
 
 - `n_modules`:
 
@@ -102,6 +122,45 @@ optional filtering, visualization via
 [`plot_Net()`](https://agallinat.github.io/netkit/reference/plot_Net.md),
 and module subgraph extraction.
 
+## Edge weights
+
+Functions that can use edge weights take two arguments:
+
+- `weights`:
+
+  `NULL` (the default) to ignore edge weights; the name of an edge
+  attribute, such as `"weight"`; or a numeric vector with one value per
+  edge, in `igraph::E(graph)` order.
+
+- `weight_type`:
+
+  `"strength"` (the default) if a larger value means a more tightly
+  connected pair – confidence scores, correlations, co-expression, read
+  counts, interaction scores. `"distance"` if a larger value means
+  further apart – costs, dissimilarities, reaction times.
+
+Declaring which you have is not bookkeeping. igraph reads the `weight`
+attribute implicitly and gives it *opposite* meanings in different
+functions: a cost in
+[`igraph::betweenness()`](https://r.igraph.org/reference/betweenness.html),
+[`igraph::distances()`](https://r.igraph.org/reference/distances.html),
+[`igraph::diameter()`](https://r.igraph.org/reference/diameter.html) and
+[`igraph::mean_distance()`](https://r.igraph.org/reference/distances.html),
+but a strength in
+[`igraph::cluster_louvain()`](https://r.igraph.org/reference/cluster_louvain.html)
+and the other community detection algorithms. Attaching a confidence
+score and letting that happen implicitly therefore inverts every
+path-based metric – a high-confidence interaction is treated as a long
+distance – while community detection reads the same numbers the way you
+intended.
+
+netkit resolves `weights` and `weight_type` once per call and derives
+both a strength and a distance vector from them, so each metric receives
+the one it needs. A `"strength"` is converted to a distance by
+reciprocal (\\1/w\\); a `"distance"` is converted to a strength by
+reflection (\\\max(w) - w + \min(w)\\), which keeps a zero distance
+finite.
+
 ## References
 
 Csardi G, Nepusz T. The igraph software package for complex network
@@ -113,15 +172,15 @@ research. InterJournal, Complex Systems. 2006;1695. <https://igraph.org>
 g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
 res <- find_modules(g, method = "louvain", plot = FALSE)
 res$n_modules
-#> [1] 6
+#> [1] 8
 head(res$module_table)
 #> # A tibble: 6 × 2
 #>   node  module
 #>   <chr>  <int>
 #> 1 1          1
 #> 2 2          2
-#> 3 3          3
-#> 4 4          4
-#> 5 5          3
-#> 6 6          2
+#> 3 5          5
+#> 4 6          6
+#> 5 8          2
+#> 6 9          6
 ```

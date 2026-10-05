@@ -1,4 +1,4 @@
-# netkit 0.0.1.9000 (development version)
+# netkit 0.1.0.9000 (development version)
 
 Not yet released. The fourth version component (`.9000`) marks this as a
 development build; drop it, and update this heading to the release version, at
@@ -8,6 +8,122 @@ Note the heading must keep a parseable version number. R's NEWS.md parser needs
 one, and a bare `# netkit (development version)` heading makes
 `R CMD check --as-cran` report `Problems with news in 'NEWS.md': No news entries
 found.`
+
+## Breaking changes
+
+* **Edge weights are now ignored unless you ask for them.** Functions that can
+  use edge weights take `weights` and `weight_type` arguments, and `weights =
+  NULL` (the default) ignores edge weights *even when the graph carries a
+  `weight` attribute*, warning that it is doing so. This differs from plain
+  \pkg{igraph}, which picks the attribute up automatically — and that automatic
+  behavior was the problem: igraph reads a weight as a *cost* in
+  `betweenness()`, `distances()`, `diameter()` and `mean_distance()`, but as a
+  *strength* in `cluster_louvain()` and the other community algorithms, while
+  netkit's own matrix code ignored it entirely. Attaching a confidence score
+  therefore inverted every path-based metric, was read correctly by community
+  detection, and vanished from diffusion. See `?"netkit-weights"`.
+
+* **`network_diffusion_with_pvalues()` now defaults to a degree-matched
+  permutation null** (`null = "degree_matched"`). Diffusion scores are strongly
+  degree-dependent, so the previous uniform seed permutation reported much of
+  the degree difference between real and permuted seeds as significance. This
+  changes every p-value the function produces. Pass `null = "uniform"` for the
+  old behavior.
+
+* **`robustness_analysis()` no longer re-seeds the random number generator** on
+  its default call. It previously ran `set.seed(seed)` unconditionally, so the
+  documented default `seed = NULL` became `set.seed(NULL)`, which re-seeds from
+  the clock. Results of a default call therefore change, and a seeded script is
+  now actually reproducible. `network_diffusion_with_pvalues()` had the same
+  defect.
+
+* **`compare_networks()$similarity$edge_overlap` is redefined.** It was the
+  identical expression to `jaccard_similarity` — one number reported twice under
+  two names. It is now the overlap coefficient, `|E1 ∩ E2| / min(|E1|, |E2|)`,
+  which is the informative companion to Jaccard when two networks differ greatly
+  in size.
+
+* **`calculate_roles()`'s R2/R3 participation boundary is corrected** from 0.60
+  to the 0.62 published by Guimerà and Amaral (2005), and the R5/R6 boundary is
+  now 0.30 everywhere. Some nodes near those boundaries change role.
+
+## New features
+
+* `node_metrics()` — the node-level counterpart to `summarize_graph_metrics()`.
+  Computes degree, strength, betweenness, closeness, harmonic centrality,
+  eigenvector centrality, PageRank, coreness, local clustering, Burt's
+  constraint and eccentricity in one call, and attaches each to the graph as a
+  vertex attribute, so `robustness_analysis(removal_strategy = "pagerank")`
+  works without further steps. The default plot is a Spearman correlation
+  heatmap of the metrics, because the usual mistake with such a table is to read
+  highly correlated metrics as independent evidence.
+
+* `extract_subnetwork()` — builds an interpretable subnetwork around a set of
+  nodes, by induced subgraph, neighborhood expansion (with `max_degree` to
+  exclude promiscuous hubs), the union of all shortest paths between seed pairs,
+  an approximate minimum Steiner tree (Kou–Markowsky–Berman), or diffusion-based
+  expansion reusing the existing kernel.
+
+* `null_model()`, `metric_significance()` and `small_worldness()` — matched
+  random ensembles and the tests built on them, which turn
+  `summarize_graph_metrics()` from descriptive into inferential. Empirical
+  p-values use the `(r + 1) / (n + 1)` convention and are never zero.
+
+* Edge weights throughout: `summarize_graph_metrics()`, `node_metrics()`,
+  `prepare_diffusion()`, `network_diffusion()`,
+  `network_diffusion_with_pvalues()`, `greedy_seed_selection()`, `find_hubs()`,
+  `find_bottlenecks()`, `calculate_roles()`, `find_modules()`,
+  `robustness_analysis()`, `compare_networks()`, `plot_CCDF()` and
+  `extract_subnetwork()` all accept `weights` and `weight_type`.
+
+* `network_diffusion(seed_weights =)` — diffuse from a continuous signal (log
+  fold changes, scores, prior probabilities) rather than from set membership.
+
+* `robustness_analysis(removal_strategy = "strength")`.
+
+* `calculate_roles(thresholds =)` — override the participation-coefficient
+  boundaries between roles.
+
+## Bug fixes
+
+* `calculate_roles()` returned `plot`, `roles_definitions` and `result` with no
+  `graph` and no `method`, breaking the shared return vocabulary. It now
+  annotates the graph with `module`, `role_z`, `role_p` and `role`.
+
+* The five role boundaries were written out three times — in the classifier, in
+  the `roles_definitions` table handed to the caller, and in the shaded bands of
+  the plot — and had drifted. The R5/R6 boundary was 0.30 in the classifier but
+  0.25 in the other two, so the shaded "provincial hub" region disagreed with
+  the classification it illustrated. They now come from one place.
+
+* `network_diffusion_with_pvalues()` never called the shared input validator, so
+  the data.frame edge list it documents failed with igraph's own error. It was
+  also counting seeds before intersecting them with the graph's vertices, so any
+  absent seed made every permuted set larger than the real one, inflating the
+  null and biasing every p-value.
+
+* `compare_networks()` crashed on an edgeless graph. `compute_ccdf()` now
+  returns an empty table for degenerate input, matching
+  `summarize_graph_metrics()`, which reports `NaN` rather than refusing.
+
+* Random walk with restart used an absolute convergence threshold, so the
+  precision achieved depended on the magnitude of the seed vector — which now
+  matters, since `seed_weights` lets callers set it. The threshold is relative to
+  `sum(abs(f0))`, and the previously unbounded iteration has a cap.
+
+* `compare_networks()` used `cat()` where `message()` was wanted.
+
+## Other
+
+* `find_modules()$module_table` and `robustness_analysis()$summary` gain
+  `result` aliases, so the `plot`/`result`/`graph`/`method` return vocabulary has
+  no exceptions. The old names are kept and are deprecated.
+
+* The test suite has grown from 425 to 815 expectations across 18 files.
+
+# netkit 0.0.1.9000
+
+First development build. Never released.
 
 netkit provides a toolkit for analyzing and visualizing networks, built on
 [igraph](https://igraph.org) and returning ggplot2 objects rather than drawing

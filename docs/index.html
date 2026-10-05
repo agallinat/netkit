@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Network Analysis and Visualization Toolkit">
-<meta name="description" content="A collection of tools for analyzing and visualizing networks. Summarizes global topology, identifies hubs, bottlenecks and community structure, and classifies nodes into connectivity roles following Guimera and Amaral (2005) &lt;doi:10.1038/nature03288&gt;. Propagates influence from seed nodes using Laplacian smoothing, heat-kernel and random-walk-with-restart diffusion, with permutation-based empirical p-values, and simulates network robustness under progressive node removal. Matrix operations use sparse representations throughout so that the methods remain usable on large graphs.">
-<meta property="og:description" content="A collection of tools for analyzing and visualizing networks. Summarizes global topology, identifies hubs, bottlenecks and community structure, and classifies nodes into connectivity roles following Guimera and Amaral (2005) &lt;doi:10.1038/nature03288&gt;. Propagates influence from seed nodes using Laplacian smoothing, heat-kernel and random-walk-with-restart diffusion, with permutation-based empirical p-values, and simulates network robustness under progressive node removal. Matrix operations use sparse representations throughout so that the methods remain usable on large graphs.">
+<meta name="description" content="A collection of tools for analyzing and visualizing networks. Summarizes global topology and per-node centrality, identifies hubs, bottlenecks and community structure, and classifies nodes into connectivity roles following Guimera and Amaral (2005) &lt;doi:10.1038/nature03288&gt;. Extracts interpretable subnetworks around a set of nodes, including approximate Steiner trees after Kou, Markowsky and Berman (1981) &lt;doi:10.1007/BF00288961&gt;. Propagates influence from seed nodes using Laplacian smoothing, heat-kernel and random-walk-with-restart diffusion, with degree-matched permutation nulls, and simulates network robustness under progressive node removal. Observed metrics can be tested against degree-preserving random ensembles. Edge weights are supported throughout, with an explicit declaration of whether a weight means strength or distance. Matrix operations use sparse representations throughout so that the methods remain usable on large graphs.">
+<meta property="og:description" content="A collection of tools for analyzing and visualizing networks. Summarizes global topology and per-node centrality, identifies hubs, bottlenecks and community structure, and classifies nodes into connectivity roles following Guimera and Amaral (2005) &lt;doi:10.1038/nature03288&gt;. Extracts interpretable subnetworks around a set of nodes, including approximate Steiner trees after Kou, Markowsky and Berman (1981) &lt;doi:10.1007/BF00288961&gt;. Propagates influence from seed nodes using Laplacian smoothing, heat-kernel and random-walk-with-restart diffusion, with degree-matched permutation nulls, and simulates network robustness under progressive node removal. Observed metrics can be tested against degree-preserving random ensembles. Edge weights are supported throughout, with an explicit declaration of whether a weight means strength or distance. Matrix operations use sparse representations throughout so that the methods remain usable on large graphs.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/introduction.html">Introduction to netkit</a></li>
+    <li><a class="dropdown-item" href="articles/weighted-networks.html">Weighted networks: strength or distance?</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -58,14 +59,37 @@
 <!-- badges: start -->
 <!-- badges: end -->
 <p>The goal of <strong>netkit</strong> is to provide a comprehensive and user-friendly toolkit for network-based data analysis, particularly for biological systems analysis. It includes tools for flexible graph annotation, topological analysis, network visualization, and diffusion-based signal propagation.</p>
-<p>Advanced features include a greedy algorithm for reverse diffusion analysis — predicting optimal seed node sets that maximize signal propagation to a specified set of target nodes — and tools for simulating network robustness under targeted or random node removal, following the framework of <a href="https://www.nature.com/articles/35019019" class="external-link">Albert et al., 2000</a>. Additionally, <strong>netkit</strong> implements node role classification based on within-module and between-module connectivity, as described by <a href="https://www.nature.com/articles/nature03288" class="external-link">Guimerà &amp; Amaral, 2005</a>.</p>
-<p>With a special scope to generate high-quality and interpretable figures suitable for publication, most of the functions generate both tabular results and diagnostic plots. The package also offers flexible network visualization options that support node/edge metadata mapping, dynamic sizing, and layout control.</p>
-<p>Altogether, <strong>netkit</strong> is designed to help researchers explore, interpret, and visualize complex networks with minimal friction and maximum insight.</p>
+<div class="section level2">
+<h2 id="what-it-does">What it does<a class="anchor" aria-label="anchor" href="#what-it-does"></a>
+</h2>
+<ul>
+<li><p><strong>Topology</strong> — <code><a href="reference/summarize_graph_metrics.html">summarize_graph_metrics()</a></code> for the graph as a whole and <code><a href="reference/node_metrics.html">node_metrics()</a></code> for its vertices (eleven centrality and position measures in one call), plus <code><a href="reference/plot_CCDF.html">plot_CCDF()</a></code> and <code><a href="reference/compare_networks.html">compare_networks()</a></code>.</p></li>
+<li><p><strong>Statistical testing</strong> — <code><a href="reference/null_model.html">null_model()</a></code> builds degree-preserving random ensembles, and <code><a href="reference/metric_significance.html">metric_significance()</a></code> scores an observed metric against them, so “modularity 0.42” becomes a z-score and an empirical p-value rather than a bare number. <code><a href="reference/small_worldness.html">small_worldness()</a></code> is the classic application.</p></li>
+<li><p><strong>Node classification</strong> — <code><a href="reference/find_hubs.html">find_hubs()</a></code>, <code><a href="reference/find_bottlenecks.html">find_bottlenecks()</a></code>, and <code><a href="reference/calculate_roles.html">calculate_roles()</a></code>, which implements the R1–R7 connectivity cartography of <a href="https://www.nature.com/articles/nature03288" class="external-link">Guimerà &amp; Amaral, 2005</a>.</p></li>
+<li><p><strong>Subnetwork extraction</strong> — <code><a href="reference/extract_subnetwork.html">extract_subnetwork()</a></code> turns a gene list into a readable figure, by induced subgraph, neighborhood expansion, the union of shortest paths, an approximate Steiner tree, or diffusion-based expansion.</p></li>
+<li><p><strong>Information flow</strong> — <code><a href="reference/network_diffusion.html">network_diffusion()</a></code> and <code><a href="reference/network_diffusion_with_pvalues.html">network_diffusion_with_pvalues()</a></code>, the latter with a degree-matched permutation null, since diffusion scores are strongly degree-dependent. <code><a href="reference/greedy_seed_selection.html">greedy_seed_selection()</a></code> solves the inverse problem: given nodes you want to affect, which upstream nodes should you perturb?</p></li>
+<li><p><strong>Robustness</strong> — <code><a href="reference/robustness_analysis.html">robustness_analysis()</a></code> simulates targeted and random node removal following <a href="https://www.nature.com/articles/35019019" class="external-link">Albert et al., 2000</a>.</p></li>
+<li><p><strong>Visualization</strong> — <code><a href="reference/plot_Net.html">plot_Net()</a></code> and friends, with node/edge metadata mapping, dynamic sizing, and layout control.</p></li>
+</ul>
+<p>Analysis functions return a named list with a consistent vocabulary — <code>plot</code>, <code>result</code>, <code>graph</code>, <code>method</code> — which is what lets them chain:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/node_metrics.html">node_metrics</a></span><span class="op">(</span><span class="va">g</span><span class="op">)</span><span class="op">$</span><span class="va">graph</span>        <span class="co"># eleven metrics as vertex attributes</span></span>
+<span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/find_hubs.html">find_hubs</a></span><span class="op">(</span><span class="va">g</span><span class="op">)</span><span class="op">$</span><span class="va">graph</span>           <span class="co"># plus is_hub</span></span>
+<span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/find_modules.html">find_modules</a></span><span class="op">(</span><span class="va">g</span><span class="op">)</span><span class="op">$</span><span class="va">graph</span>        <span class="co"># plus module</span></span>
+<span><span class="fu"><a href="reference/robustness_analysis.html">robustness_analysis</a></span><span class="op">(</span><span class="va">g</span>, removal_strategy <span class="op">=</span> <span class="st">"pagerank"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="edge-weights">Edge weights<a class="anchor" aria-label="anchor" href="#edge-weights"></a>
+</h2>
+<p>Every function that can use edge weights takes <code>weights</code> and a <code>weight_type</code> declaring whether the values are a <strong>strength</strong> (confidence scores, correlations — larger means more tightly connected) or a <strong>distance</strong> (costs, dissimilarities — larger means further apart). netkit ignores edge weights unless asked, and warns when a graph carries a <code>weight</code> attribute it is ignoring.</p>
+<p>That is deliberate, and differs from plain <code>igraph</code>, which reads the attribute automatically while giving it <em>opposite</em> meanings in different functions — a cost in <code>betweenness()</code> and <code>distances()</code>, a strength in <code>cluster_louvain()</code>. See <code><a href="articles/weighted-networks.html">vignette("weighted-networks")</a></code>.</p>
+<p>With a special scope to generate high-quality and interpretable figures suitable for publication, most of the functions generate both tabular results and diagnostic plots. Altogether, <strong>netkit</strong> is designed to help researchers explore, interpret, and visualize complex networks with minimal friction and maximum insight.</p>
+</div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <p>You can install the development version of <strong>netkit</strong> from GitHub using the <code>devtools</code> or <code>remotes</code> package:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># If not already installed:</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"devtools"</span><span class="op">)</span></span>
 <span></span>
@@ -76,12 +100,13 @@
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>
 </h2>
 <p>Full usage examples and tutorial are available in the package vignettes:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/browseVignettes.html" class="external-link">browseVignettes</a></span><span class="op">(</span><span class="st">"netkit"</span><span class="op">)</span></span></code></pre></div>
 <p>Or online:</p>
 <ul>
 <li><a href="https://agallinat.github.io/netkit/articles/introduction.html">Introduction to netkit</a></li>
 </ul>
+<p>(The “Weighted networks” article is in the package — <code><a href="articles/weighted-networks.html">vignette("weighted-networks")</a></code> — and appears online once the pkgdown site is next rebuilt.)</p>
 </div>
 <div class="section level2">
 <h2 id="contributing">Contributing<a class="anchor" aria-label="anchor" href="#contributing"></a>

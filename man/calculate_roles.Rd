@@ -12,7 +12,10 @@ calculate_roles(
   highlight_roles = TRUE,
   hub_z = 2.5,
   label_region = NULL,
-  label.size = 12
+  label.size = 12,
+  thresholds = NULL,
+  weights = NULL,
+  weight_type = c("strength", "distance")
 )
 }
 \arguments{
@@ -33,20 +36,42 @@ considered as edge attributes.}
 \item{label_region}{Optional character vector of role labels (e.g., \code{c("R4", "R7")}) indicating which role regions should have their nodes labeled in the plot. Default is \code{NULL}.}
 
 \item{label.size}{Numeric. Base font size for plot text. Default is \code{12}.}
+
+\item{thresholds}{Optional named numeric vector overriding one or more of the
+participation-coefficient boundaries between roles. Names must be drawn from
+\code{R1_R2}, \code{R2_R3}, \code{R3_R4}, \code{R5_R6} and \code{R6_R7}; unnamed entries, unknown
+names, values outside \verb{[0, 1]} and non-monotonic sets are rejected. \code{NULL}
+(default) uses the published values -- see Details.}
+
+\item{weights}{Optional edge weights: \code{NULL} (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+\code{igraph::ecount(graph)}. When supplied, the within-module z-score is
+computed from strengths and the participation coefficient from summed edge
+strengths per module, which is the weighted generalization given in
+Guimera & Amaral's supplementary material. See \link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
+\link{netkit-weights}.}
 }
 \value{
-A list with three elements:
+A list with five elements:
 \describe{
 \item{\code{plot}}{A \code{ggplot2} object, or \code{NULL} when \code{plot = FALSE}. The element is
 always present, so the return shape does not depend on the arguments.}
-\item{\code{roles_definitions}}{A data frame describing the seven role types and their conditions.}
 \item{\code{result}}{A data frame with node-level information: node name, module,
 z-score, participation coefficient, and assigned role. It has one row per
 graph vertex. The exception is \code{cluster.method = "spinglass"}, which can only
 be run on the largest connected component of a disconnected graph; vertices
 outside it have no module and are absent, which raises a warning. \code{z}, \code{p} and
-\code{role} are \code{NA} for any vertex whose module, or whose neighbours' modules, are
+\code{role} are \code{NA} for any vertex whose module, or whose neighbors' modules, are
 unknown.}
+\item{\code{graph}}{The input graph with \code{module}, \code{role_z}, \code{role_p} and \code{role}
+attached as vertex attributes, so that the classification can be passed
+straight to \code{\link[=plot_Net]{plot_Net()}} or \code{\link[=robustness_analysis]{robustness_analysis()}}.}
+\item{\code{method}}{A human-readable description of the community detection used
+and the thresholds actually applied.}
+\item{\code{roles_definitions}}{A data frame describing the seven role types and
+their conditions, generated from the same thresholds the classifier used.}
 }
 }
 \description{
@@ -62,21 +87,60 @@ When \code{communities} is \code{NULL}, community detection is delegated to
 \code{\link[=find_modules]{find_modules()}} with \code{min_size = 1}, so no module is discarded for being small
 and every vertex receives a role. This matters for correctness as well as
 coverage: the participation coefficient of a node is computed from the module
-memberships of its neighbours, so dropping a neighbour's module silently distorts
+memberships of its neighbors, so dropping a neighbor's module silently distorts
 the coefficient of the node that remains.
 
-The node roles are defined as:
+The node roles are defined as follows, where \code{hub_z} defaults to 2.5 and the
+participation-coefficient boundaries are those published in Guimera & Amaral
+(2005):
 
 \tabular{ll}{
 R1 \tab Ultra-peripheral (non-hub): \eqn{z < 2.5, P <= 0.05} \cr
-R2 \tab Peripheral (non-hub): \eqn{z < 2.5, 0.05 < P <= 0.6} \cr
-R3 \tab Non-hub connector: \eqn{z < 2.5, 0.6 < P <= 0.8} \cr
-R4 \tab Non-hub kinless: \eqn{z < 2.5, P > 0.8} \cr
-R5 \tab Provincial hub: \eqn{z >= 2.5, P <= 0.3} \cr
-R6 \tab Connector hub: \eqn{z >= 2.5, 0.3 < P <= 0.75} \cr
+R2 \tab Peripheral (non-hub): \eqn{z < 2.5, 0.05 < P <= 0.62} \cr
+R3 \tab Non-hub connector: \eqn{z < 2.5, 0.62 < P <= 0.80} \cr
+R4 \tab Non-hub kinless: \eqn{z < 2.5, P > 0.80} \cr
+R5 \tab Provincial hub: \eqn{z >= 2.5, P <= 0.30} \cr
+R6 \tab Connector hub: \eqn{z >= 2.5, 0.30 < P <= 0.75} \cr
 R7 \tab Kinless hub: \eqn{z >= 2.5, P > 0.75} \cr
 }
+
+Those five numbers are held in one place internally and are used by the
+classifier, by the \code{roles_definitions} table and by the shaded bands of the
+diagnostic plot alike, so the three cannot disagree. Override them with
+\code{thresholds} if a different convention is wanted.
 }
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
+}
+
 \examples{
 g <- igraph::sample_gnp(80, 0.08, directed = FALSE)
 igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))

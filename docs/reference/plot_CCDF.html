@@ -9,7 +9,7 @@ of node degrees in a network and optionally overlays power-law reference curves.
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,6 +21,7 @@ of node degrees in a network and optionally overlays power-law reference curves.
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/introduction.html">Introduction to netkit</a></li>
+    <li><a class="dropdown-item" href="../articles/weighted-networks.html">Weighted networks: strength or distance?</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -53,7 +54,9 @@ of node degrees in a network and optionally overlays power-law reference curves.
 <span>  show_PL <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  PL_exponents <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>,</span>
 <span>  colors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#000831"</span>, <span class="st">"#e41a1c"</span>, <span class="st">"darkgreen"</span>, <span class="st">"#9c52f2"</span>, <span class="st">"#b8b8ff"</span><span class="op">)</span>,</span>
-<span>  label.size <span class="op">=</span> <span class="fl">12</span></span>
+<span>  label.size <span class="op">=</span> <span class="fl">12</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  weight_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strength"</span>, <span class="st">"distance"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -94,10 +97,55 @@ If <code>NULL</code>, default colors are used.</p></dd>
 <dt id="arg-label-size">label.size<a class="anchor" aria-label="anchor" href="#arg-label-size"></a></dt>
 <dd><p>Numeric. Font size for axis labels and theme. Passed to <code>theme_minimal</code>.</p></dd>
 
+
+<dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
+<dd><p>Optional edge weights: <code>NULL</code> (default) to plot the degree
+distribution, or the name of an edge attribute / a numeric vector of length
+<code>igraph::ecount(graph)</code> to plot the vertex <em>strength</em> distribution instead.
+See <a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
+
+<dt id="arg-weight-type">weight_type<a class="anchor" aria-label="anchor" href="#arg-weight-type"></a></dt>
+<dd><p>Either <code>"strength"</code> (default) or <code>"distance"</code>. See
+<a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>ggplot2</code> object showing the CCDF of node degrees on a log-log scale.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="edge-weights">Edge weights<a class="anchor" aria-label="anchor" href="#edge-weights"></a></h2>
+
+
+
+<p>Functions that can use edge weights take two arguments:</p>
+<dl><dt><code>weights</code></dt>
+<dd><p><code>NULL</code> (the default) to ignore edge weights; the name of an
+edge attribute, such as <code>"weight"</code>; or a numeric vector with one value per
+edge, in <code>igraph::E(graph)</code> order.</p></dd>
+
+<dt><code>weight_type</code></dt>
+<dd><p><code>"strength"</code> (the default) if a larger value means a
+more tightly connected pair – confidence scores, correlations,
+co-expression, read counts, interaction scores. <code>"distance"</code> if a larger
+value means further apart – costs, dissimilarities, reaction times.</p></dd>
+
+
+</dl><p>Declaring which you have is not bookkeeping. <span class="pkg">igraph</span> reads the <code>weight</code>
+attribute implicitly and gives it <em>opposite</em> meanings in different functions:
+a cost in <code><a href="https://r.igraph.org/reference/betweenness.html" class="external-link">igraph::betweenness()</a></code>, <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::distances()</a></code>,
+<code><a href="https://r.igraph.org/reference/diameter.html" class="external-link">igraph::diameter()</a></code> and <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::mean_distance()</a></code>, but a strength in
+<code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">igraph::cluster_louvain()</a></code> and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric – a high-confidence interaction is treated as
+a long distance – while community detection reads the same numbers the way
+you intended.</p>
+<p>netkit resolves <code>weights</code> and <code>weight_type</code> once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A <code>"strength"</code> is converted to a distance by reciprocal
+(\(1/w\)); a <code>"distance"</code> is converted to a strength by reflection
+(\(\max(w) - w + \min(w)\)), which keeps a zero distance finite.</p>
     </div>
 
     <div class="section level2">

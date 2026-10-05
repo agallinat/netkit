@@ -11,7 +11,10 @@ compare_networks(
   show_PL = TRUE,
   PL_exponents = c(2, 3),
   colors = c("#e41a1c", "#000831", "#9c52f2", "#b8b8ff"),
-  label.size = 12
+  label.size = 12,
+  weights1 = NULL,
+  weights2 = NULL,
+  weight_type = c("strength", "distance")
 )
 }
 \arguments{
@@ -28,6 +31,14 @@ compare_networks(
 \item{colors}{Optional vector of colors for the CCDF plot.}
 
 \item{label.size}{Labels' size in the CCDF plot.}
+
+\item{weights1, weights2}{Optional edge weights for each graph: \code{NULL}
+(default) to ignore them, the name of an edge attribute, or a numeric
+vector. Supplied separately because the two graphs need not carry the same
+attribute. See \link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}, applied to
+both graphs. See \link{netkit-weights}.}
 }
 \value{
 A list with:
@@ -35,9 +46,15 @@ A list with:
 \item{\code{plot}}{A \code{ggplot2} object overlaying both CCDF curves.}
 \item{\code{global_topology}}{A data frame with one row per input graph, as
 produced by \code{\link[=summarize_graph_metrics]{summarize_graph_metrics()}}.}
-\item{\code{similarity}}{A one-row data frame with \code{jaccard_similarity}
-(Jaccard index of the edge sets), \code{node_overlap} (fraction of shared
-nodes) and \code{edge_overlap} (fraction of shared edges).}
+\item{\code{similarity}}{A one-row data frame with three distinct set
+statistics: \code{jaccard_similarity}, the Jaccard index of the edge sets
+(shared edges over their union); \code{node_overlap}, the Jaccard index of
+the vertex sets; and \code{edge_overlap}, the overlap coefficient of the
+edge sets (shared edges over the \emph{smaller} of the two edge sets).
+The last is the informative companion to Jaccard when the two networks
+differ greatly in size -- a small network nested inside a large one scores
+near 1 on overlap and near 0 on Jaccard. Each is \code{NaN} where its
+denominator is empty.}
 \item{\code{ks_test}}{The Kolmogorov-Smirnov test comparing the two degree
 distributions, as returned by \code{\link[stats:ks.test]{stats::ks.test()}}.}
 }
@@ -47,6 +64,38 @@ This function compares two networks using summary metrics, degree distributions,
 and topological similarity measures. It overlays the complementary cumulative
 frequency distributions (CCDFs) of degree and returns a combined report.
 }
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
+}
+
 \examples{
 g1 <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
 g2 <- igraph::sample_gnp(80, 0.05, directed = FALSE)

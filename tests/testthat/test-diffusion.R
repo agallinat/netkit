@@ -1,5 +1,5 @@
 # The diffusion cluster is netkit's most intricate code. The
-# adjacency-normalise -> Laplacian -> Cholesky/transition-matrix block used to be
+# adjacency-normalize -> Laplacian -> Cholesky/transition-matrix block used to be
 # implemented twice, once in network_diffusion() and once in prepare_diffusion();
 # network_diffusion() now delegates to prepare_diffusion(), so there is a single
 # code path. The numeric-pin test below is what guards the maths now that the two
@@ -109,7 +109,10 @@ test_that("a precomputed kernel for the wrong method is refused", {
 
 test_that("prepare_diffusion() returns the documented kernel structure", {
   lap <- prepare_diffusion(g, method = "laplacian")
-  expect_named(lap, c("L", "ch", "P", "use_sparse_P", "method"))
+  expect_named(lap, c("L", "ch", "P", "use_sparse_P", "method", "weights_key"))
+  # The key is what lets network_diffusion() reject a kernel built from
+  # different weights instead of silently diffusing over the wrong matrix.
+  expect_equal(lap$weights_key, "unweighted")
   expect_equal(lap$method, "laplacian")
   expect_false(is.null(lap$ch))   # Cholesky factor only for the Laplacian path
   expect_null(lap$P)

@@ -45,6 +45,47 @@ as_edge_df <- function(g) {
   igraph::as_data_frame(g, what = "edges")
 }
 
+# A weighted graph. Weights are a *strength* (confidence-score style, higher =
+# stronger), which is netkit's default interpretation, and they are deliberately
+# spread over two orders of magnitude so that ignoring them is detectable.
+test_graph_weighted <- function(n = 60, seed = 321) {
+  set.seed(seed)
+  g <- igraph::sample_gnp(n, 0.08, directed = FALSE)
+  igraph::V(g)$name <- paste0("w", seq_len(igraph::vcount(g)))
+  igraph::E(g)$weight <- stats::runif(igraph::ecount(g), 0.01, 1)
+  g
+}
+
+# The same graph with every weight equal to 1. Weighted and unweighted results
+# must agree here, which is the single property that pins the whole weight
+# contract: it holds for every metric at once and needs no reference values.
+test_graph_unit_weights <- function(n = 60, seed = 321) {
+  g <- test_graph_weighted(n = n, seed = seed)
+  igraph::E(g)$weight <- rep(1, igraph::ecount(g))
+  g
+}
+
+# Two disjoint cliques joined by nothing: a deliberately disconnected graph for
+# the Steiner/closeness/spinglass paths, where "no path exists" is the case that
+# matters and the component structure is known by hand.
+test_graph_disconnected <- function() {
+  g <- igraph::disjoint_union(igraph::make_full_graph(5), igraph::make_full_graph(4))
+  igraph::V(g)$name <- c(paste0("a", 1:5), paste0("b", 1:4))
+  g
+}
+
+# A barbell: two cliques joined by a single edge. That edge is the unique bridge
+# and the only route between the halves, which makes it the right fixture for
+# edge-weight barrier tests and for shortest-path extraction.
+barbell_graph <- function(clique_size = 4) {
+  g <- igraph::disjoint_union(igraph::make_full_graph(clique_size),
+                              igraph::make_full_graph(clique_size))
+  igraph::V(g)$name <- c(paste0("L", seq_len(clique_size)),
+                         paste0("R", seq_len(clique_size)))
+  g <- igraph::add_edges(g, c("L1", "R1"))
+  g
+}
+
 # robustness_analysis() drives a txtProgressBar when repeating random removals,
 # which would otherwise flood the test output.
 without_progress <- function(expr) {

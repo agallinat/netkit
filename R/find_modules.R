@@ -23,7 +23,9 @@
 #'
 #' @return A list with the following components:
 #' \describe{
-#'   \item{\code{module_table}}{A tibble mapping each node to its module assignment.}
+#'   \item{\code{result}}{A tibble mapping each node to its module assignment.}
+#'   \item{\code{module_table}}{Deprecated alias for \code{result}, kept for
+#'     backward compatibility.}
 #'   \item{\code{n_modules}}{The number of modules that meet the \code{min_size} threshold.}
 #'   \item{\code{subgraphs}}{A named list of subgraphs for each module (only if \code{return_subgraphs = TRUE}).}
 #'   \item{\code{method}}{The community detection method used.}
@@ -47,6 +49,17 @@
 #' res$n_modules
 #' head(res$module_table)
 #'
+#' @param weights Optional edge weights: `NULL` (default) to ignore them, the
+#'   name of an edge attribute, or a numeric vector of length
+#'   `igraph::ecount(graph)`. Community detection reads a weight as a
+#'   *strength*, except `method = "edge_betweenness"`, which needs costs and is
+#'   given them. `method = "fluid_communities"` cannot use weights and warns.
+#'   See [netkit-weights].
+#' @param weight_type Either `"strength"` (default) or `"distance"`. See
+#'   [netkit-weights].
+#'
+#' @inheritSection netkit-weights Edge weights
+#'
 #' @importFrom igraph is_igraph is_directed as_undirected cluster_louvain cluster_walktrap cluster_infomap cluster_edge_betweenness cluster_fluid_communities cluster_fast_greedy cluster_leading_eigen cluster_leiden cluster_spinglass membership induced_subgraph vertex_attr vertex_attr<- layout_with_fr vcount
 #' @importFrom dplyr filter %>%
 #' @importFrom tibble as_tibble
@@ -60,56 +73,89 @@ find_modules <- function(graph,
                          no.of.communities = NULL, # only required for 'fluid_communities' method.
                          return_subgraphs = FALSE,
                          plot = TRUE,
-                         label = FALSE, ...) {
+                         label = FALSE,
+                         weights = NULL,
+                         weight_type = c("strength", "distance"), ...) {
 
   # --- Validate input ---
   graph <- as_netkit_graph(graph, backfill_names = TRUE)
+  w <- as_netkit_weights(graph, weights, weight_type)
+
+  if (w$weighted && method == "fluid_communities") {
+    warning("Method 'fluid_communities' does not support edge weights; ",
+            "they will be ignored.", call. = FALSE)
+  }
 
   # --- Community detection ---
+  #
+  # Almost every algorithm here reads a weight as a *strength*: a heavier edge
+  # binds its endpoints more tightly into a module. `edge_betweenness` is the
+  # exception, because it works by removing high-betweenness edges and therefore
+  # needs edge *costs*. Passing the strength vector to it would invert the
+  # algorithm's notion of which edges are central -- which is precisely the kind
+  # of plausible-looking wrong answer the weight contract exists to prevent.
   if (method == "louvain") {
     if (is_directed(graph)) {
-      graph <- as_undirected(graph, mode = "collapse")
+      collapsed <- collapse_to_undirected(graph, w)
+      graph <- collapsed$graph
+      w <- collapsed$w
       message("Input graph converted to undirected for Louvain clustering.\n")
     }
-    comm_result <- cluster_louvain(graph)
+    comm_result <- cluster_louvain(graph, weights = w$strength)
   } else if (method == "walktrap") {
-    comm_result <- cluster_walktrap(graph)
+    comm_result <- cluster_walktrap(graph, weights = w$strength)
   } else if (method == "infomap") {
-    comm_result <- cluster_infomap(graph)
+    # infomap names the argument e.weights rather than weights.
+    comm_result <- cluster_infomap(graph, e.weights = w$strength)
   } else if (method == "edge_betweenness") {
-    comm_result <- cluster_edge_betweenness(graph)
+    # Costs, not strengths: see the note above.
+    comm_result <- cluster_edge_betweenness(graph, weights = w$distance)
   } else if (method == "fluid_communities") {
     # argument "no.of.communities" required
     comm_result <- cluster_fluid_communities(graph, no.of.communities)
   } else if (method == "fast_greedy") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as_undirected(graph, mode = "collapse")
+      collapsed <- collapse_to_undirected(graph, w)
+      graph <- collapsed$graph
+      w <- collapsed$w
       message("Input graph converted to undirected for Fast Greedy clustering.")
     }
-    comm_result <- cluster_fast_greedy(graph)
+    comm_result <- cluster_fast_greedy(graph, weights = w$strength)
   } else if (method == "leading_eigen") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as_undirected(graph, mode = "collapse")
+      collapsed <- collapse_to_undirected(graph, w)
+      graph <- collapsed$graph
+      w <- collapsed$w
       message("Input graph converted to undirected for Leading Eigen clustering.")
     }
-    comm_result <- cluster_leading_eigen(graph)
+    comm_result <- cluster_leading_eigen(graph, weights = w$strength)
   } else if (method == "leiden") {
     # only for undirected
     if (is_directed(graph)) {
-      graph <- as_undirected(graph, mode = "collapse")
+      collapsed <- collapse_to_undirected(graph, w)
+      graph <- collapsed$graph
+      w <- collapsed$w
       message("Input graph converted to undirected for Leiden clustering.")
     }
-    comm_result <- cluster_leiden(graph)
+    comm_result <- cluster_leiden(graph, weights = w$strength)
   } else if (method == "spinglass") {
     # Extract the Largest Connected Component (LCC)
     comps <- components(graph)
     largest_comp_nodes <- which(comps$membership == which.max(comps$csize))
-    graph_lcc <- induced_subgraph(graph, largest_comp_nodes)
+    # Carry the strengths through the subgraph as an attribute rather than by
+    # position: induced_subgraph() drops the edges leaving the component.
+    graph_lcc <- induced_subgraph(
+      if (w$weighted) igraph::set_edge_attr(graph, ".netkit_s", value = w$strength) else graph,
+      largest_comp_nodes
+    )
 
     # Apply spinglass on the LCC
-    comm_result <- cluster_spinglass(graph_lcc)
+    comm_result <- cluster_spinglass(
+      graph_lcc,
+      weights = if (w$weighted) igraph::edge_attr(graph_lcc, ".netkit_s") else NULL
+    )
 
     if (length(comps$csize) > 1) {
       warning("Method 'spinglass' cannot work with unconnected graph. Performing analysis on the LCC...")
@@ -182,6 +228,9 @@ find_modules <- function(graph,
   }
 
   return(list(
+    # `result` is the package-wide name for the node-level table; `module_table`
+    # is kept as an alias for backward compatibility and is deprecated.
+    result = as_tibble(module_df),
     module_table = as_tibble(module_df),
     n_modules = length(valid_modules),
     subgraphs = if (return_subgraphs) subgraph_list else NULL,

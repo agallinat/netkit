@@ -14,7 +14,12 @@ network_diffusion_with_pvalues(
   normalize = TRUE,
   n_permutations = 1000,
   seed = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  weights = NULL,
+  weight_type = c("strength", "distance"),
+  seed_weights = NULL,
+  null = c("degree_matched", "uniform"),
+  match_pool = 10
 )
 }
 \arguments{
@@ -48,6 +53,34 @@ where \eqn{P} is the transition matrix and \eqn{r} is the restart probability.
 \item{seed}{Optional integer for reproducible random number generation. If \code{NULL} (default), seed is not set.}
 
 \item{verbose}{Logical. If \code{TRUE} (default), displays a progress bar during permutations.}
+
+\item{weights}{Optional edge weights: \code{NULL} (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+\code{igraph::ecount(graph)}. See \link{netkit-weights}.}
+
+\item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
+\link{netkit-weights}.}
+
+\item{seed_weights}{Optional numeric vector of initial seed values, passed to
+\code{\link[=network_diffusion]{network_diffusion()}}, replacing the default binary indicator. Note that the
+permutation null re-uses these magnitudes on the permuted seed sets, so the
+null tests the \emph{position} of the seeds rather than their values.}
+
+\item{null}{Which permutation null to compare against:
+\describe{
+\item{\code{"degree_matched"}}{The default. Each real seed is replaced by a
+randomly chosen vertex of similar degree, so the permuted sets have the
+same degree profile as the real one.}
+\item{\code{"uniform"}}{Permuted seed sets are drawn uniformly from the
+non-seed vertices, matching only the seed count.}
+}
+See Details for why the default is degree-matched.}
+
+\item{match_pool}{Integer. For \code{null = "degree_matched"}, how many
+nearest-degree candidates each real seed may be replaced by. Default is
+\code{10}. Smaller values match degree more tightly but give the null less
+variance; \code{Inf} makes every candidate eligible and so reduces exactly to
+\code{null = "uniform"}.}
 }
 \value{
 A data frame with two columns:
@@ -84,6 +117,62 @@ future::plan("sequential")   # release the workers when finished
 
 Permutations are reproducible regardless of the plan: \code{seed} is passed to
 \code{future_lapply(future.seed = )}, which generates parallel-safe RNG streams.
+}
+
+\section{Choice of null}{
+
+
+Diffusion scores are strongly degree-dependent: a high-degree vertex receives
+signal from more directions, so it scores highly almost regardless of where
+the seeds are. A null that draws seed sets uniformly therefore compares a real
+seed set -- which in most applications is enriched for well-studied, highly
+connected vertices -- against a null composed mostly of poorly connected ones,
+and reports much of the degree difference as significance.
+
+\code{null = "degree_matched"} removes that confound by replacing each real seed
+with a randomly chosen vertex drawn from the \code{match_pool} candidates closest
+to it in degree. The resulting p-values answer "are these seeds unusually well
+\emph{placed}?" rather than "are these seeds unusually well \emph{connected}?", which is
+almost always the intended question.
+
+How closely the match can be made is limited by the graph. If the seed set is
+extreme -- the six highest-degree vertices of a scale-free network, say --
+there are simply no other vertices of comparable degree to permute with, and
+no permutation null can fully correct for degree. The function warns when the
+closest available candidates are still far from the seeds, so the residual
+confound is visible rather than assumed away.
+}
+
+\section{Edge weights}{
+
+
+Functions that can use edge weights take two arguments:
+
+\describe{
+\item{\code{weights}}{\code{NULL} (the default) to ignore edge weights; the name of an
+edge attribute, such as \code{"weight"}; or a numeric vector with one value per
+edge, in \code{igraph::E(graph)} order.}
+\item{\code{weight_type}}{\code{"strength"} (the default) if a larger value means a
+more tightly connected pair -- confidence scores, correlations,
+co-expression, read counts, interaction scores. \code{"distance"} if a larger
+value means further apart -- costs, dissimilarities, reaction times.}
+}
+
+Declaring which you have is not bookkeeping. \pkg{igraph} reads the \code{weight}
+attribute implicitly and gives it \emph{opposite} meanings in different functions:
+a cost in \code{\link[igraph:betweenness]{igraph::betweenness()}}, \code{\link[igraph:distances]{igraph::distances()}},
+\code{\link[igraph:diameter]{igraph::diameter()}} and \code{\link[igraph:distances]{igraph::mean_distance()}}, but a strength in
+\code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}} and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric -- a high-confidence interaction is treated as
+a long distance -- while community detection reads the same numbers the way
+you intended.
+
+netkit resolves \code{weights} and \code{weight_type} once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A \code{"strength"} is converted to a distance by reciprocal
+(\eqn{1/w}); a \code{"distance"} is converted to a strength by reflection
+(\eqn{\max(w) - w + \min(w)}), which keeps a zero distance finite.
 }
 
 \examples{

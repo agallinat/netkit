@@ -3,3 +3,67 @@ destination: docs
 template:
   bootstrap: 5
 
+reference:
+- title: Graph input and annotation
+  desc: >
+    Getting data into a graph and metadata onto it. Every function in netkit
+    accepts either an `igraph` object or a data.frame edge list.
+  contents:
+  - assign_attributes
+  - netkit-weights
+
+- title: Topology
+  desc: Global and node-level descriptions of a network's structure.
+  contents:
+  - summarize_graph_metrics
+  - node_metrics
+  - plot_CCDF
+  - compare_networks
+
+- title: Statistical testing
+  desc: >
+    Whether an observed value is surprising, judged against a matched random
+    ensemble.
+  contents:
+  - null_model
+  - metric_significance
+  - small_worldness
+
+- title: Node classification
+  desc: Picking out structurally distinctive vertices.
+  contents:
+  - find_hubs
+  - find_bottlenecks
+  - calculate_roles
+
+- title: Community structure
+  contents:
+  - find_modules
+
+- title: Subnetwork extraction
+  desc: Building an interpretable neighbourhood around a set of nodes.
+  contents:
+  - extract_subnetwork
+
+- title: Diffusion
+  desc: >
+    Propagating a signal from seed nodes, with a permutation null, and the
+    inverse problem of choosing seeds to reach a target set.
+  contents:
+  - network_diffusion
+  - network_diffusion_with_pvalues
+  - prepare_diffusion
+  - greedy_seed_selection
+
+- title: Robustness
+  contents:
+  - robustness_analysis
+
+- title: Visualization
+  desc: >
+    `plot_Net()` is the central renderer; the others delegate to it. These draw
+    with base graphics rather than returning a ggplot object.
+  contents:
+  - plot_Net
+  - highlight_nodes
+  - layout_horizontal_tree

@@ -24,7 +24,7 @@ test_that("the returned structure is as documented", {
   res <- robustness_analysis(g, removal_strategy = "degree", steps = 5,
                              n_reps = 1, plot = FALSE, seed = 1)
 
-  expect_named(res, c("plot", "all_results", "summary", "auc"))
+  expect_named(res, c("plot", "result", "all_results", "summary", "auc"))
   expect_null(res$plot)   # plot = FALSE, but the element is still present
   expect_s3_class(res$summary, "data.frame")
   expect_named(res$summary, c("rep", "removed", "removed_frac",
@@ -142,4 +142,57 @@ test_that("metrics can be requested selectively", {
                              metrics = "lcc_size", steps = 5,
                              n_reps = 1, plot = FALSE, seed = 1)
   expect_named(res$auc, "lcc_size")
+})
+
+# --- Regression: the RNG stream ---------------------------------------------
+#
+# robustness_analysis() used to call set.seed(seed) unconditionally. With the
+# documented default seed = NULL that runs set.seed(NULL), which re-seeds the
+# generator from the clock: a seeded script was not reproducible, and the
+# caller's own RNG stream was destroyed as a side effect. Neither symptom is
+# visible by reading the function or its output.
+
+test_that("the default call does not touch the caller's RNG stream", {
+  g <- test_graph(n = 30)
+
+  set.seed(42)
+  without_progress(robustness_analysis(g, steps = 5, n_reps = 2, plot = FALSE,
+                                       metrics = "lcc_size"))
+  after_first <- runif(3)
+
+  set.seed(42)
+  without_progress(robustness_analysis(g, steps = 5, n_reps = 2, plot = FALSE,
+                                       metrics = "lcc_size"))
+  after_second <- runif(3)
+
+  expect_equal(after_first, after_second)
+})
+
+test_that("an outer seed makes the random strategy itself reproducible", {
+  g <- test_graph(n = 30)
+
+  set.seed(7)
+  a <- without_progress(robustness_analysis(g, steps = 5, n_reps = 3, plot = FALSE,
+                                            metrics = "lcc_size"))
+  set.seed(7)
+  b <- without_progress(robustness_analysis(g, steps = 5, n_reps = 3, plot = FALSE,
+                                            metrics = "lcc_size"))
+
+  expect_equal(a$all_results, b$all_results)
+})
+
+test_that("an explicit seed is still honoured", {
+  g <- test_graph(n = 30)
+  a <- without_progress(robustness_analysis(g, steps = 5, n_reps = 3, plot = FALSE,
+                                            metrics = "lcc_size", seed = 99))
+  b <- without_progress(robustness_analysis(g, steps = 5, n_reps = 3, plot = FALSE,
+                                            metrics = "lcc_size", seed = 99))
+  expect_equal(a$all_results, b$all_results)
+})
+
+test_that("`result` aliases `summary`", {
+  res <- robustness_analysis(test_graph(n = 30), removal_strategy = "degree",
+                             steps = 5, plot = FALSE)
+  expect_true(all(c("result", "summary") %in% names(res)))
+  expect_identical(res$result, res$summary)
 })

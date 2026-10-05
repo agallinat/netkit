@@ -9,8 +9,10 @@
 #'   columns are considered as edge attributes. Must be undirected; directed graphs
 #'   will be converted.
 #' @param removal_strategy Character. Strategy used for node removal. Options are:
-#'   \code{"random"}, \code{"degree"}, \code{"betweenness"}, or the name of a numeric vertex attribute.
+#'   \code{"random"}, \code{"degree"}, \code{"betweenness"}, \code{"strength"},
+#'   or the name of a numeric vertex attribute.
 #'   Custom attributes are interpreted as priority scores (higher = removed first).
+#'   \code{"strength"} requires \code{weights} and errors without them.
 #' @param steps Integer. Number of removal steps (default: 50).
 #' @param metrics Character vector. Structural metrics to compute at each step.
 #'   Options include: \code{"lcc_size"}, \code{"efficiency"}, and \code{"n_components"}.
@@ -24,8 +26,11 @@
 #'     metrics as nodes are progressively removed, or \code{NULL} when
 #'     \code{plot = FALSE}. The element is always present, so the return shape does
 #'     not depend on the arguments.}
+#'   \item{\code{result}}{A summarized data frame (mean and SD) if \code{n_reps > 1},
+#'     otherwise raw results.}
 #'   \item{\code{all_results}}{A data frame with simulation results across all steps and repetitions.}
-#'   \item{\code{summary}}{A summarized data frame (mean and SD) if \code{n_reps > 1}, otherwise raw results.}
+#'   \item{\code{summary}}{Deprecated alias for \code{result}, kept for backward
+#'     compatibility.}
 #'   \item{\code{auc}}{Named list of AUC (area under the curve) values for each selected metric.}
 #' }
 #'
@@ -62,6 +67,17 @@
 #' head(res$summary)
 #'
 #' @importFrom igraph is_igraph is_directed as_undirected vertex_attr_names V degree betweenness delete_vertices components vcount distances vertex_attr vertex_attr<-
+#' @param weights Optional edge weights: `NULL` (default) to ignore them, the
+#'   name of an edge attribute, or a numeric vector of length
+#'   `igraph::ecount(graph)`. When supplied, global efficiency is computed over
+#'   weighted path lengths, `removal_strategy = "betweenness"` uses cost-based
+#'   betweenness, and `removal_strategy = "strength"` becomes available. See
+#'   [netkit-weights].
+#' @param weight_type Either `"strength"` (default) or `"distance"`. See
+#'   [netkit-weights].
+#'
+#' @inheritSection netkit-weights Edge weights
+#'
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #' @importFrom dplyr bind_rows group_by summarise across all_of %>%
 #' @importFrom ggplot2 ggplot aes geom_line labs theme_minimal scale_color_manual
@@ -70,36 +86,61 @@
 #'
 #' @export
 robustness_analysis <- function(graph,
-                                removal_strategy = c("random", "degree", "betweenness"),
+                                removal_strategy = c("random", "degree", "betweenness", "strength"),
                                 steps = 50,
                                 metrics = c("lcc_size", "efficiency", "n_components"),
                                 n_reps = 50,
                                 plot = TRUE,
-                                seed = NULL) {
+                                seed = NULL,
+                                weights = NULL,
+                                weight_type = c("strength", "distance")) {
 
   # Validate input
   graph <- as_netkit_graph(graph)
+  w <- as_netkit_weights(graph, weights, weight_type)
 
-  if (is_directed(graph)) graph <- as_undirected(graph, mode = "collapse")
+  collapsed <- collapse_to_undirected(graph, w)
+  graph <- collapsed$graph
+  w <- collapsed$w
 
   # Resolve the unevaluated default (a length-3 vector) to its first option
   if (length(removal_strategy) > 1) {
-    removal_strategy <- match.arg(removal_strategy, c("random", "degree", "betweenness"))
+    removal_strategy <- match.arg(removal_strategy,
+                                  c("random", "degree", "betweenness", "strength"))
+  }
+
+  if (removal_strategy == "strength" && !w$weighted) {
+    stop("removal_strategy = \"strength\" needs edge weights; pass 'weights'.",
+         call. = FALSE)
   }
 
   # Handle flexible strategy
-  if (length(removal_strategy) == 1 && removal_strategy %in% c("random", "degree", "betweenness")) {
+  if (length(removal_strategy) == 1 &&
+      removal_strategy %in% c("random", "degree", "betweenness", "strength")) {
     strategy <- removal_strategy
     custom_vector <- NULL
   } else if (length(removal_strategy) == 1 && removal_strategy %in% vertex_attr_names(graph)) {
     strategy <- "custom"
     custom_vector <- vertex_attr(graph, removal_strategy)
   } else {
-    stop("Invalid `removal_strategy`. Use 'random', 'degree', 'betweenness', or a valid vertex attribute name.")
+    stop("Invalid `removal_strategy`. Use 'random', 'degree', 'betweenness', 'strength', or a valid vertex attribute name.")
   }
 
   metrics <- match.arg(metrics, several.ok = TRUE)
-  set.seed(seed)
+
+  # Only seed when asked. This used to be an unconditional set.seed(seed), which
+  # with the documented default seed = NULL runs set.seed(NULL) and re-seeds the
+  # generator from the clock -- so `set.seed(42); robustness_analysis(g)` was not
+  # reproducible, and the caller's RNG stream was silently destroyed along with it.
+  if (!is.null(seed)) set.seed(seed)
+
+  # The removal loop works on graph_w, which carries the edge costs so that
+  # vertex deletion cannot desynchronise them from the edges.
+  graph_w <- if (w$weighted) {
+    igraph::set_edge_attr(graph, ".netkit_d", value = w$distance)
+  } else {
+    graph
+  }
 
   n <- vcount(graph) - 1
   step_size <- ceiling(n / steps)
@@ -114,7 +155,8 @@ robustness_analysis <- function(graph,
     removal_order <- switch(strategy,
                             random = sample(V(graph)),
                             degree = V(graph)[order(-degree(graph))],
-                            betweenness = V(graph)[order(-betweenness(graph))],
+                            betweenness = V(graph)[order(-betweenness(graph, weights = w$distance))],
+                            strength = V(graph)[order(-igraph::strength(graph, weights = w$strength))],
                             custom = V(graph)[order(-custom_vector)]
     )
 
@@ -122,7 +164,9 @@ robustness_analysis <- function(graph,
 
     for (i in seq(0, n, by = step_size)) {
       to_remove <- removal_order[1:i]
-      g_tmp <- delete_vertices(graph, to_remove)
+      # Carry the costs on the graph so that deleting vertices (and with them
+      # their edges) keeps weights and edges aligned by construction.
+      g_tmp <- delete_vertices(graph_w, to_remove)
 
       row <- list(
         rep = rep,
@@ -146,7 +190,12 @@ robustness_analysis <- function(graph,
           # collapsed network has no paths left, so report 0.
           row$efficiency <- 0
         } else {
-          sp <- distances(g_tmp)
+          sp <- distances(g_tmp,
+                          weights = if (w$weighted) {
+                            igraph::edge_attr(g_tmp, ".netkit_d")
+                          } else {
+                            NULL
+                          })
           inv_sp <- 1 / sp
           inv_sp[is.infinite(inv_sp)] <- 0
           row$efficiency <- sum(inv_sp) / (n_tmp^2 - n_tmp)
@@ -253,6 +302,9 @@ robustness_analysis <- function(graph,
   # shape does not depend on the arguments.
   return(list(
     plot = p,
+    # `result` is the package-wide name for the node/step-level table; `summary`
+    # is kept as an alias for backward compatibility and is deprecated.
+    result = summary,
     all_results = all_results,
     summary = summary,
     auc = auc_list
