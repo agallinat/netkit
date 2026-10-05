@@ -9,7 +9,7 @@ Supports Laplacian smoothing, heat diffusion, and random walk with restart (RWR)
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,6 +21,7 @@ Supports Laplacian smoothing, heat diffusion, and random walk with restart (RWR)
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/introduction.html">Introduction to netkit</a></li>
+    <li><a class="dropdown-item" href="../articles/weighted-networks.html">Weighted networks: strength or distance?</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -56,7 +57,12 @@ Supports Laplacian smoothing, heat diffusion, and random walk with restart (RWR)
 <span>  normalize <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  n_permutations <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  weight_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strength"</span>, <span class="st">"distance"</span><span class="op">)</span>,</span>
+<span>  seed_weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  null <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"degree_matched"</span>, <span class="st">"uniform"</span><span class="op">)</span>,</span>
+<span>  match_pool <span class="op">=</span> <span class="fl">10</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -112,6 +118,46 @@ where \(P\) is the transition matrix and \(r\) is the restart probability.</p></
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
 <dd><p>Logical. If <code>TRUE</code> (default), displays a progress bar during permutations.</p></dd>
 
+
+<dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
+<dd><p>Optional edge weights: <code>NULL</code> (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+<code>igraph::ecount(graph)</code>. See <a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
+
+<dt id="arg-weight-type">weight_type<a class="anchor" aria-label="anchor" href="#arg-weight-type"></a></dt>
+<dd><p>Either <code>"strength"</code> (default) or <code>"distance"</code>. See
+<a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
+
+<dt id="arg-seed-weights">seed_weights<a class="anchor" aria-label="anchor" href="#arg-seed-weights"></a></dt>
+<dd><p>Optional numeric vector of initial seed values, passed to
+<code><a href="network_diffusion.html">network_diffusion()</a></code>, replacing the default binary indicator. Note that the
+permutation null re-uses these magnitudes on the permuted seed sets, so the
+null tests the <em>position</em> of the seeds rather than their values.</p></dd>
+
+
+<dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
+<dd><p>Which permutation null to compare against:</p><dl><dt><code>"degree_matched"</code></dt>
+<dd><p>The default. Each real seed is replaced by a
+randomly chosen vertex of similar degree, so the permuted sets have the
+same degree profile as the real one.</p></dd>
+
+<dt><code>"uniform"</code></dt>
+<dd><p>Permuted seed sets are drawn uniformly from the
+non-seed vertices, matching only the seed count.</p></dd>
+
+
+</dl><p>See Details for why the default is degree-matched.</p></dd>
+
+
+<dt id="arg-match-pool">match_pool<a class="anchor" aria-label="anchor" href="#arg-match-pool"></a></dt>
+<dd><p>Integer. For <code>null = "degree_matched"</code>, how many
+nearest-degree candidates each real seed may be replaced by. Default is
+<code>10</code>. Smaller values match degree more tightly but give the null less
+variance; <code>Inf</code> makes every candidate eligible and so reduces exactly to
+<code>null = "uniform"</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -147,6 +193,62 @@ parallelize, set a plan once in your own session before calling:</p>
 <code>future_lapply(future.seed = )</code>, which generates parallel-safe RNG streams.</p>
     </div>
     <div class="section level2">
+    <h2 id="choice-of-null">Choice of null<a class="anchor" aria-label="anchor" href="#choice-of-null"></a></h2>
+
+
+
+<p>Diffusion scores are strongly degree-dependent: a high-degree vertex receives
+signal from more directions, so it scores highly almost regardless of where
+the seeds are. A null that draws seed sets uniformly therefore compares a real
+seed set – which in most applications is enriched for well-studied, highly
+connected vertices – against a null composed mostly of poorly connected ones,
+and reports much of the degree difference as significance.</p>
+<p><code>null = "degree_matched"</code> removes that confound by replacing each real seed
+with a randomly chosen vertex drawn from the <code>match_pool</code> candidates closest
+to it in degree. The resulting p-values answer "are these seeds unusually well
+<em>placed</em>?" rather than "are these seeds unusually well <em>connected</em>?", which is
+almost always the intended question.</p>
+<p>How closely the match can be made is limited by the graph. If the seed set is
+extreme – the six highest-degree vertices of a scale-free network, say –
+there are simply no other vertices of comparable degree to permute with, and
+no permutation null can fully correct for degree. The function warns when the
+closest available candidates are still far from the seeds, so the residual
+confound is visible rather than assumed away.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="edge-weights">Edge weights<a class="anchor" aria-label="anchor" href="#edge-weights"></a></h2>
+
+
+
+<p>Functions that can use edge weights take two arguments:</p>
+<dl><dt><code>weights</code></dt>
+<dd><p><code>NULL</code> (the default) to ignore edge weights; the name of an
+edge attribute, such as <code>"weight"</code>; or a numeric vector with one value per
+edge, in <code>igraph::E(graph)</code> order.</p></dd>
+
+<dt><code>weight_type</code></dt>
+<dd><p><code>"strength"</code> (the default) if a larger value means a
+more tightly connected pair – confidence scores, correlations,
+co-expression, read counts, interaction scores. <code>"distance"</code> if a larger
+value means further apart – costs, dissimilarities, reaction times.</p></dd>
+
+
+</dl><p>Declaring which you have is not bookkeeping. <span class="pkg">igraph</span> reads the <code>weight</code>
+attribute implicitly and gives it <em>opposite</em> meanings in different functions:
+a cost in <code><a href="https://r.igraph.org/reference/betweenness.html" class="external-link">igraph::betweenness()</a></code>, <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::distances()</a></code>,
+<code><a href="https://r.igraph.org/reference/diameter.html" class="external-link">igraph::diameter()</a></code> and <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::mean_distance()</a></code>, but a strength in
+<code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">igraph::cluster_louvain()</a></code> and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric – a high-confidence interaction is treated as
+a long distance – while community detection reads the same numbers the way
+you intended.</p>
+<p>netkit resolves <code>weights</code> and <code>weight_type</code> once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A <code>"strength"</code> is converted to a distance by reciprocal
+(\(1/w\)); a <code>"distance"</code> is converted to a strength by reflection
+(\(\max(w) - w + \min(w)\)), which keeps a zero distance finite.</p>
+    </div>
+    <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Köhler S, Bauer S, Horn D, Robinson PN. Walking the interactome for prioritization of candidate disease genes.
 <em>Am J Hum Genet</em>. 2008;82(4):949–958. <a href="https://doi.org/10.1016/j.ajhg.2008.02.013" class="external-link">doi:10.1016/j.ajhg.2008.02.013</a></p>
@@ -168,16 +270,16 @@ parallelize, set a plan once in your own session before calling:</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 60 × 3</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    node   score p_empirical</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> 1     0.815       0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> 4     0.746       0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> 3     0.575       0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> 5     0.574       0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> 2     0.541       0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> 22    0.166       0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> 60    0.094<span style="text-decoration: underline;">9</span>      0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> 31    0.094<span style="text-decoration: underline;">5</span>      0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> 12    0.091<span style="text-decoration: underline;">4</span>      0.019<span style="text-decoration: underline;">6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> 50    0.087<span style="text-decoration: underline;">6</span>      0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> 1     0.757       0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> 3     0.738       0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> 5     0.638       0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> 2     0.607       0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> 4     0.556       0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> 39    0.136       0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> 52    0.101       0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> 10    0.094<span style="text-decoration: underline;">5</span>      0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> 11    0.085<span style="text-decoration: underline;">0</span>      0.019<span style="text-decoration: underline;">6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> 22    0.082<span style="text-decoration: underline;">7</span>      0.019<span style="text-decoration: underline;">6</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 50 more rows</span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

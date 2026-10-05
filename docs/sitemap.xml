@@ -4,6 +4,7 @@
 <url><loc>https://agallinat.github.io/netkit/LICENSE.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/articles/index.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/articles/introduction.html</loc></url>
+<url><loc>https://agallinat.github.io/netkit/articles/weighted-networks.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/authors.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/index.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/news/index.html</loc></url>
@@ -11,6 +12,7 @@
 <url><loc>https://agallinat.github.io/netkit/reference/calculate_roles.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/compare_networks.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/compute_ccdf.html</loc></url>
+<url><loc>https://agallinat.github.io/netkit/reference/extract_subnetwork.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/find_bottlenecks.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/find_hubs.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/find_modules.html</loc></url>
@@ -18,12 +20,17 @@
 <url><loc>https://agallinat.github.io/netkit/reference/highlight_nodes.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/index.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/layout_horizontal_tree.html</loc></url>
+<url><loc>https://agallinat.github.io/netkit/reference/metric_significance.html</loc></url>
+<url><loc>https://agallinat.github.io/netkit/reference/netkit-weights.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/network_diffusion.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/network_diffusion_with_pvalues.html</loc></url>
+<url><loc>https://agallinat.github.io/netkit/reference/node_metrics.html</loc></url>
+<url><loc>https://agallinat.github.io/netkit/reference/null_model.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/plot_CCDF.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/plot_Net.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/prepare_diffusion.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/robustness_analysis.html</loc></url>
+<url><loc>https://agallinat.github.io/netkit/reference/small_worldness.html</loc></url>
 <url><loc>https://agallinat.github.io/netkit/reference/summarize_graph_metrics.html</loc></url>
 </urlset>
 

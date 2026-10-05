@@ -21,7 +21,9 @@ find_hubs(
   label.size = 12,
   hub_names = TRUE,
   hub_cex = 3,
-  gg_extra = list()
+  gg_extra = list(),
+  weights = NULL,
+  weight_type = c("strength", "distance")
 )
 ```
 
@@ -90,6 +92,19 @@ find_hubs(
   List. Additional user-defined layers for the returned ggplot. eg.
   list(ylim(-2,2), theme_bw(), theme(legend.position = "none"))
 
+- weights:
+
+  Optional edge weights: `NULL` (default) to ignore them, the name of an
+  edge attribute, or a numeric vector of length `igraph::ecount(graph)`.
+  When supplied, degree becomes vertex *strength* and betweenness is
+  computed on edge *costs*. See
+  [netkit-weights](https://agallinat.github.io/netkit/reference/netkit-weights.md).
+
+- weight_type:
+
+  Either `"strength"` (default) or `"distance"`. See
+  [netkit-weights](https://agallinat.github.io/netkit/reference/netkit-weights.md).
+
 ## Value
 
 A list with the following components:
@@ -119,27 +134,66 @@ A list with the following components:
 
   The original graph with a new vertex attribute `is_hub`.
 
+## Edge weights
+
+Functions that can use edge weights take two arguments:
+
+- `weights`:
+
+  `NULL` (the default) to ignore edge weights; the name of an edge
+  attribute, such as `"weight"`; or a numeric vector with one value per
+  edge, in `igraph::E(graph)` order.
+
+- `weight_type`:
+
+  `"strength"` (the default) if a larger value means a more tightly
+  connected pair – confidence scores, correlations, co-expression, read
+  counts, interaction scores. `"distance"` if a larger value means
+  further apart – costs, dissimilarities, reaction times.
+
+Declaring which you have is not bookkeeping. igraph reads the `weight`
+attribute implicitly and gives it *opposite* meanings in different
+functions: a cost in
+[`igraph::betweenness()`](https://r.igraph.org/reference/betweenness.html),
+[`igraph::distances()`](https://r.igraph.org/reference/distances.html),
+[`igraph::diameter()`](https://r.igraph.org/reference/diameter.html) and
+[`igraph::mean_distance()`](https://r.igraph.org/reference/distances.html),
+but a strength in
+[`igraph::cluster_louvain()`](https://r.igraph.org/reference/cluster_louvain.html)
+and the other community detection algorithms. Attaching a confidence
+score and letting that happen implicitly therefore inverts every
+path-based metric – a high-confidence interaction is treated as a long
+distance – while community detection reads the same numbers the way you
+intended.
+
+netkit resolves `weights` and `weight_type` once per call and derives
+both a strength and a distance vector from them, so each metric receives
+the one it needs. A `"strength"` is converted to a distance by
+reciprocal (\\1/w\\); a `"distance"` is converted to a strength by
+reflection (\\\max(w) - w + \min(w)\\), which keeps a zero distance
+finite.
+
 ## Examples
 
 ``` r
 g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
 res <- find_hubs(g, method = "quantile", plot = FALSE)
 res$method
-#> [1] "Hub nodes identified by method: quantile with Degree metric threshold = 1.79175946922805 and Betweenness metric threshold = 0.117872475763818"
+#> [1] "Hub nodes identified by method: quantile with Degree metric threshold = 1.63293809389639 and Betweenness metric threshold = 0.213719350028092 (unweighted)"
 head(res$result)
-#> # A tibble: 6 × 6
-#>   node  degree betweenness degree_metric betweenness_metric is_hub
-#>   <chr>  <dbl>       <dbl>         <dbl>              <dbl> <lgl> 
-#> 1 1         28      0.951          3.37              0.668  TRUE  
-#> 2 2          5      0.123          1.79              0.116  FALSE 
-#> 3 3          3      0.0987         1.39              0.0941 FALSE 
-#> 4 4          4      0.0750         1.61              0.0723 FALSE 
-#> 5 5          2      0.0253         1.10              0.0250 FALSE 
-#> 6 6          1      0              0.693             0      FALSE 
+#> # A tibble: 6 × 7
+#>   node  degree strength betweenness degree_metric betweenness_metric is_hub
+#>   <chr>  <dbl>    <dbl>       <dbl>         <dbl>              <dbl> <lgl> 
+#> 1 1         33       33      0.887           3.53             0.635  TRUE  
+#> 2 2          8        8      0.237           2.20             0.213  FALSE 
+#> 3 3          4        4      0.418           1.61             0.349  FALSE 
+#> 4 4          7        7      0.258           2.08             0.229  TRUE  
+#> 5 5          2        2      0.0253          1.10             0.0250 FALSE 
+#> 6 6          2        2      0.0500          1.10             0.0488 FALSE 
 
 # The returned graph carries an `is_hub` vertex attribute, so results chain.
 table(igraph::V(res$graph)$is_hub)
 #> 
 #> FALSE  TRUE 
-#>    78     2 
+#>    77     3 
 ```

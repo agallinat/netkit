@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,6 +19,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/introduction.html">Introduction to netkit</a></li>
+    <li><a class="dropdown-item" href="../articles/weighted-networks.html">Weighted networks: strength or distance?</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -37,9 +38,45 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.0.1.9000" id="netkit-0019000-development-version">netkit 0.0.1.9000 (development version)<a class="anchor" aria-label="anchor" href="#netkit-0019000-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.1.0.9000" id="netkit-0109000-development-version">netkit 0.1.0.9000 (development version)<a class="anchor" aria-label="anchor" href="#netkit-0109000-development-version"></a></h2>
 <p>Not yet released. The fourth version component (<code>.9000</code>) marks this as a development build; drop it, and update this heading to the release version, at submission time.</p>
 <p>Note the heading must keep a parseable version number. R’s NEWS.md parser needs one, and a bare <code># netkit (development version)</code> heading makes <code>R CMD check --as-cran</code> report <code>Problems with news in 'NEWS.md': No news entries found.</code></p>
+<div class="section level3">
+<h3 id="breaking-changes-0-1-0-9000">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-1-0-9000"></a></h3>
+<ul><li><p><strong>Edge weights are now ignored unless you ask for them.</strong> Functions that can use edge weights take <code>weights</code> and <code>weight_type</code> arguments, and <code>weights = NULL</code> (the default) ignores edge weights <em>even when the graph carries a <code>weight</code> attribute</em>, warning that it is doing so. This differs from plain , which picks the attribute up automatically — and that automatic behavior was the problem: igraph reads a weight as a <em>cost</em> in <code><a href="https://r.igraph.org/reference/betweenness.html" class="external-link">betweenness()</a></code>, <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">distances()</a></code>, <code><a href="https://r.igraph.org/reference/diameter.html" class="external-link">diameter()</a></code> and <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">mean_distance()</a></code>, but as a <em>strength</em> in <code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">cluster_louvain()</a></code> and the other community algorithms, while netkit’s own matrix code ignored it entirely. Attaching a confidence score therefore inverted every path-based metric, was read correctly by community detection, and vanished from diffusion. See <code><a href="../reference/netkit-weights.html">?"netkit-weights"</a></code>.</p></li>
+<li><p><strong><code><a href="../reference/network_diffusion_with_pvalues.html">network_diffusion_with_pvalues()</a></code> now defaults to a degree-matched permutation null</strong> (<code>null = "degree_matched"</code>). Diffusion scores are strongly degree-dependent, so the previous uniform seed permutation reported much of the degree difference between real and permuted seeds as significance. This changes every p-value the function produces. Pass <code>null = "uniform"</code> for the old behavior.</p></li>
+<li><p><strong><code><a href="../reference/robustness_analysis.html">robustness_analysis()</a></code> no longer re-seeds the random number generator</strong> on its default call. It previously ran <code>set.seed(seed)</code> unconditionally, so the documented default <code>seed = NULL</code> became <code>set.seed(NULL)</code>, which re-seeds from the clock. Results of a default call therefore change, and a seeded script is now actually reproducible. <code><a href="../reference/network_diffusion_with_pvalues.html">network_diffusion_with_pvalues()</a></code> had the same defect.</p></li>
+<li><p><strong><code>compare_networks()$similarity$edge_overlap</code> is redefined.</strong> It was the identical expression to <code>jaccard_similarity</code> — one number reported twice under two names. It is now the overlap coefficient, <code>|E1 ∩ E2| / min(|E1|, |E2|)</code>, which is the informative companion to Jaccard when two networks differ greatly in size.</p></li>
+<li><p><strong><code><a href="../reference/calculate_roles.html">calculate_roles()</a></code>’s R2/R3 participation boundary is corrected</strong> from 0.60 to the 0.62 published by Guimerà and Amaral (2005), and the R5/R6 boundary is now 0.30 everywhere. Some nodes near those boundaries change role.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-0-1-0-9000">New features<a class="anchor" aria-label="anchor" href="#new-features-0-1-0-9000"></a></h3>
+<ul><li><p><code><a href="../reference/node_metrics.html">node_metrics()</a></code> — the node-level counterpart to <code><a href="../reference/summarize_graph_metrics.html">summarize_graph_metrics()</a></code>. Computes degree, strength, betweenness, closeness, harmonic centrality, eigenvector centrality, PageRank, coreness, local clustering, Burt’s constraint and eccentricity in one call, and attaches each to the graph as a vertex attribute, so <code>robustness_analysis(removal_strategy = "pagerank")</code> works without further steps. The default plot is a Spearman correlation heatmap of the metrics, because the usual mistake with such a table is to read highly correlated metrics as independent evidence.</p></li>
+<li><p><code><a href="../reference/extract_subnetwork.html">extract_subnetwork()</a></code> — builds an interpretable subnetwork around a set of nodes, by induced subgraph, neighborhood expansion (with <code>max_degree</code> to exclude promiscuous hubs), the union of all shortest paths between seed pairs, an approximate minimum Steiner tree (Kou–Markowsky–Berman), or diffusion-based expansion reusing the existing kernel.</p></li>
+<li><p><code><a href="../reference/null_model.html">null_model()</a></code>, <code><a href="../reference/metric_significance.html">metric_significance()</a></code> and <code><a href="../reference/small_worldness.html">small_worldness()</a></code> — matched random ensembles and the tests built on them, which turn <code><a href="../reference/summarize_graph_metrics.html">summarize_graph_metrics()</a></code> from descriptive into inferential. Empirical p-values use the <code>(r + 1) / (n + 1)</code> convention and are never zero.</p></li>
+<li><p>Edge weights throughout: <code><a href="../reference/summarize_graph_metrics.html">summarize_graph_metrics()</a></code>, <code><a href="../reference/node_metrics.html">node_metrics()</a></code>, <code><a href="../reference/prepare_diffusion.html">prepare_diffusion()</a></code>, <code><a href="../reference/network_diffusion.html">network_diffusion()</a></code>, <code><a href="../reference/network_diffusion_with_pvalues.html">network_diffusion_with_pvalues()</a></code>, <code><a href="../reference/greedy_seed_selection.html">greedy_seed_selection()</a></code>, <code><a href="../reference/find_hubs.html">find_hubs()</a></code>, <code><a href="../reference/find_bottlenecks.html">find_bottlenecks()</a></code>, <code><a href="../reference/calculate_roles.html">calculate_roles()</a></code>, <code><a href="../reference/find_modules.html">find_modules()</a></code>, <code><a href="../reference/robustness_analysis.html">robustness_analysis()</a></code>, <code><a href="../reference/compare_networks.html">compare_networks()</a></code>, <code><a href="../reference/plot_CCDF.html">plot_CCDF()</a></code> and <code><a href="../reference/extract_subnetwork.html">extract_subnetwork()</a></code> all accept <code>weights</code> and <code>weight_type</code>.</p></li>
+<li><p><code>network_diffusion(seed_weights =)</code> — diffuse from a continuous signal (log fold changes, scores, prior probabilities) rather than from set membership.</p></li>
+<li><p><code>robustness_analysis(removal_strategy = "strength")</code>.</p></li>
+<li><p><code>calculate_roles(thresholds =)</code> — override the participation-coefficient boundaries between roles.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-1-0-9000">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-0-9000"></a></h3>
+<ul><li><p><code><a href="../reference/calculate_roles.html">calculate_roles()</a></code> returned <code>plot</code>, <code>roles_definitions</code> and <code>result</code> with no <code>graph</code> and no <code>method</code>, breaking the shared return vocabulary. It now annotates the graph with <code>module</code>, <code>role_z</code>, <code>role_p</code> and <code>role</code>.</p></li>
+<li><p>The five role boundaries were written out three times — in the classifier, in the <code>roles_definitions</code> table handed to the caller, and in the shaded bands of the plot — and had drifted. The R5/R6 boundary was 0.30 in the classifier but 0.25 in the other two, so the shaded “provincial hub” region disagreed with the classification it illustrated. They now come from one place.</p></li>
+<li><p><code><a href="../reference/network_diffusion_with_pvalues.html">network_diffusion_with_pvalues()</a></code> never called the shared input validator, so the data.frame edge list it documents failed with igraph’s own error. It was also counting seeds before intersecting them with the graph’s vertices, so any absent seed made every permuted set larger than the real one, inflating the null and biasing every p-value.</p></li>
+<li><p><code><a href="../reference/compare_networks.html">compare_networks()</a></code> crashed on an edgeless graph. <code><a href="../reference/compute_ccdf.html">compute_ccdf()</a></code> now returns an empty table for degenerate input, matching <code><a href="../reference/summarize_graph_metrics.html">summarize_graph_metrics()</a></code>, which reports <code>NaN</code> rather than refusing.</p></li>
+<li><p>Random walk with restart used an absolute convergence threshold, so the precision achieved depended on the magnitude of the seed vector — which now matters, since <code>seed_weights</code> lets callers set it. The threshold is relative to <code>sum(abs(f0))</code>, and the previously unbounded iteration has a cap.</p></li>
+<li><p><code><a href="../reference/compare_networks.html">compare_networks()</a></code> used <code><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat()</a></code> where <code><a href="https://rdrr.io/r/base/message.html" class="external-link">message()</a></code> was wanted.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="other-0-1-0-9000">Other<a class="anchor" aria-label="anchor" href="#other-0-1-0-9000"></a></h3>
+<ul><li><p><code>find_modules()$module_table</code> and <code>robustness_analysis()$summary</code> gain <code>result</code> aliases, so the <code>plot</code>/<code>result</code>/<code>graph</code>/<code>method</code> return vocabulary has no exceptions. The old names are kept and are deprecated.</p></li>
+<li><p>The test suite has grown from 425 to 815 expectations across 18 files.</p></li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.0.1.9000" id="netkit-0019000">netkit 0.0.1.9000<a class="anchor" aria-label="anchor" href="#netkit-0019000"></a></h2>
+<p>First development build. Never released.</p>
 <p>netkit provides a toolkit for analyzing and visualizing networks, built on <a href="https://igraph.org" class="external-link">igraph</a> and returning ggplot2 objects rather than drawing them, so that diagnostics can be composed and customized by the caller.</p>
 <div class="section level3">
 <h3 id="features-0-0-1-9000">Features<a class="anchor" aria-label="anchor" href="#features-0-0-1-9000"></a></h3>

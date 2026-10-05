@@ -11,7 +11,7 @@ Optionally, it visualizes the classification using a scatter plot with marginal 
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@ Optionally, it visualizes the classification using a scatter plot with marginal 
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/introduction.html">Introduction to netkit</a></li>
+    <li><a class="dropdown-item" href="../articles/weighted-networks.html">Weighted networks: strength or distance?</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -62,7 +63,9 @@ Optionally, it visualizes the classification using a scatter plot with marginal 
 <span>  label.size <span class="op">=</span> <span class="fl">12</span>,</span>
 <span>  hub_names <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  hub_cex <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>  gg_extra <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  gg_extra <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  weight_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strength"</span>, <span class="st">"distance"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -124,6 +127,18 @@ or <code>"quantile"</code> (empirical percentiles).</p></dd>
 <dd><p>List. Additional user-defined layers for the returned ggplot.
 eg. list(ylim(-2,2), theme_bw(), theme(legend.position = "none"))</p></dd>
 
+
+<dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
+<dd><p>Optional edge weights: <code>NULL</code> (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+<code>igraph::ecount(graph)</code>. When supplied, degree becomes vertex <em>strength</em> and
+betweenness is computed on edge <em>costs</em>. See <a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
+
+<dt id="arg-weight-type">weight_type<a class="anchor" aria-label="anchor" href="#arg-weight-type"></a></dt>
+<dd><p>Either <code>"strength"</code> (default) or <code>"distance"</code>. See
+<a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -148,29 +163,62 @@ extended with <code>+</code>. To customize it, pass layers through
 
 
 </dl></div>
+    <div class="section level2">
+    <h2 id="edge-weights">Edge weights<a class="anchor" aria-label="anchor" href="#edge-weights"></a></h2>
+
+
+
+<p>Functions that can use edge weights take two arguments:</p>
+<dl><dt><code>weights</code></dt>
+<dd><p><code>NULL</code> (the default) to ignore edge weights; the name of an
+edge attribute, such as <code>"weight"</code>; or a numeric vector with one value per
+edge, in <code>igraph::E(graph)</code> order.</p></dd>
+
+<dt><code>weight_type</code></dt>
+<dd><p><code>"strength"</code> (the default) if a larger value means a
+more tightly connected pair – confidence scores, correlations,
+co-expression, read counts, interaction scores. <code>"distance"</code> if a larger
+value means further apart – costs, dissimilarities, reaction times.</p></dd>
+
+
+</dl><p>Declaring which you have is not bookkeeping. <span class="pkg">igraph</span> reads the <code>weight</code>
+attribute implicitly and gives it <em>opposite</em> meanings in different functions:
+a cost in <code><a href="https://r.igraph.org/reference/betweenness.html" class="external-link">igraph::betweenness()</a></code>, <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::distances()</a></code>,
+<code><a href="https://r.igraph.org/reference/diameter.html" class="external-link">igraph::diameter()</a></code> and <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::mean_distance()</a></code>, but a strength in
+<code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">igraph::cluster_louvain()</a></code> and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric – a high-confidence interaction is treated as
+a long distance – while community detection reads the same numbers the way
+you intended.</p>
+<p>netkit resolves <code>weights</code> and <code>weight_type</code> once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A <code>"strength"</code> is converted to a distance by reciprocal
+(\(1/w\)); a <code>"distance"</code> is converted to a strength by reflection
+(\(\max(w) - w + \min(w)\)), which keeps a zero distance finite.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/sample_pa.html" class="external-link">sample_pa</a></span><span class="op">(</span><span class="fl">80</span>, power <span class="op">=</span> <span class="fl">1.5</span>, directed <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">find_hubs</span><span class="op">(</span><span class="va">g</span>, method <span class="op">=</span> <span class="st">"quantile"</span>, plot <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">method</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "Hub nodes identified by method: quantile with Degree metric threshold = 1.79175946922805 and Betweenness metric threshold = 0.117872475763818"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "Hub nodes identified by method: quantile with Degree metric threshold = 1.63293809389639 and Betweenness metric threshold = 0.213719350028092 (unweighted)"</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">result</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 6 × 6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   node  degree betweenness degree_metric betweenness_metric is_hub</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 1         28      0.951          3.37              0.668  TRUE  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 2          5      0.123          1.79              0.116  FALSE </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 3          3      0.098<span style="text-decoration: underline;">7</span>         1.39              0.094<span style="text-decoration: underline;">1</span> FALSE </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> 4          4      0.075<span style="text-decoration: underline;">0</span>         1.61              0.072<span style="text-decoration: underline;">3</span> FALSE </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> 5          2      0.025<span style="text-decoration: underline;">3</span>         1.10              0.025<span style="text-decoration: underline;">0</span> FALSE </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> 6          1      0              0.693             0      FALSE </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 6 × 7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   node  degree strength betweenness degree_metric betweenness_metric is_hub</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;lgl&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 1         33       33      0.887           3.53             0.635  TRUE  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 2          8        8      0.237           2.20             0.213  FALSE </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 3          4        4      0.418           1.61             0.349  FALSE </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> 4          7        7      0.258           2.08             0.229  TRUE  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> 5          2        2      0.025<span style="text-decoration: underline;">3</span>          1.10             0.025<span style="text-decoration: underline;">0</span> FALSE </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> 6          2        2      0.050<span style="text-decoration: underline;">0</span>          1.10             0.048<span style="text-decoration: underline;">8</span> FALSE </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># The returned graph carries an `is_hub` vertex attribute, so results chain.</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/V.html" class="external-link">V</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">graph</span><span class="op">)</span><span class="op">$</span><span class="va">is_hub</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> FALSE  TRUE </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    78     2 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    77     3 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

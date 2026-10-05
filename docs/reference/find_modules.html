@@ -11,7 +11,7 @@ visualizes the detected modules, and returns induced subgraphs for each module."
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@ visualizes the detected modules, and returns induced subgraphs for each module."
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/introduction.html">Introduction to netkit</a></li>
+    <li><a class="dropdown-item" href="../articles/weighted-networks.html">Weighted networks: strength or distance?</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -57,6 +58,8 @@ visualizes the detected modules, and returns induced subgraphs for each module.<
 <span>  return_subgraphs <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  plot <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  label <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  weight_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strength"</span>, <span class="st">"distance"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -101,14 +104,32 @@ for each detected module.</p></dd>
 <dd><p>Logical. If <code>TRUE</code>, displays node labels in the plot.</p></dd>
 
 
+<dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
+<dd><p>Optional edge weights: <code>NULL</code> (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+<code>igraph::ecount(graph)</code>. Community detection reads a weight as a
+<em>strength</em>, except <code>method = "edge_betweenness"</code>, which needs costs and is
+given them. <code>method = "fluid_communities"</code> cannot use weights and warns.
+See <a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
+
+<dt id="arg-weight-type">weight_type<a class="anchor" aria-label="anchor" href="#arg-weight-type"></a></dt>
+<dd><p>Either <code>"strength"</code> (default) or <code>"distance"</code>. See
+<a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional parameters passed to the <code><a href="plot_Net.html">plot_Net()</a></code> function for customizing the plot.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with the following components:</p><dl><dt><code>module_table</code></dt>
+    <p>A list with the following components:</p><dl><dt><code>result</code></dt>
 <dd><p>A tibble mapping each node to its module assignment.</p></dd>
+
+<dt><code>module_table</code></dt>
+<dd><p>Deprecated alias for <code>result</code>, kept for
+backward compatibility.</p></dd>
 
 <dt><code>n_modules</code></dt>
 <dd><p>The number of modules that meet the <code>min_size</code> threshold.</p></dd>
@@ -133,6 +154,39 @@ It simplifies their application and offers optional filtering, visualization via
 and module subgraph extraction.</p>
     </div>
     <div class="section level2">
+    <h2 id="edge-weights">Edge weights<a class="anchor" aria-label="anchor" href="#edge-weights"></a></h2>
+
+
+
+<p>Functions that can use edge weights take two arguments:</p>
+<dl><dt><code>weights</code></dt>
+<dd><p><code>NULL</code> (the default) to ignore edge weights; the name of an
+edge attribute, such as <code>"weight"</code>; or a numeric vector with one value per
+edge, in <code>igraph::E(graph)</code> order.</p></dd>
+
+<dt><code>weight_type</code></dt>
+<dd><p><code>"strength"</code> (the default) if a larger value means a
+more tightly connected pair – confidence scores, correlations,
+co-expression, read counts, interaction scores. <code>"distance"</code> if a larger
+value means further apart – costs, dissimilarities, reaction times.</p></dd>
+
+
+</dl><p>Declaring which you have is not bookkeeping. <span class="pkg">igraph</span> reads the <code>weight</code>
+attribute implicitly and gives it <em>opposite</em> meanings in different functions:
+a cost in <code><a href="https://r.igraph.org/reference/betweenness.html" class="external-link">igraph::betweenness()</a></code>, <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::distances()</a></code>,
+<code><a href="https://r.igraph.org/reference/diameter.html" class="external-link">igraph::diameter()</a></code> and <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::mean_distance()</a></code>, but a strength in
+<code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">igraph::cluster_louvain()</a></code> and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric – a high-confidence interaction is treated as
+a long distance – while community detection reads the same numbers the way
+you intended.</p>
+<p>netkit resolves <code>weights</code> and <code>weight_type</code> once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A <code>"strength"</code> is converted to a distance by reciprocal
+(\(1/w\)); a <code>"distance"</code> is converted to a strength by reflection
+(\(\max(w) - w + \min(w)\)), which keeps a zero distance finite.</p>
+    </div>
+    <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Csardi G, Nepusz T. The igraph software package for complex network research.
 InterJournal, Complex Systems. 2006;1695. <a href="https://igraph.org" class="external-link">https://igraph.org</a></p>
@@ -143,17 +197,17 @@ InterJournal, Complex Systems. 2006;1695. <a href="https://igraph.org" class="ex
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/sample_pa.html" class="external-link">sample_pa</a></span><span class="op">(</span><span class="fl">80</span>, power <span class="op">=</span> <span class="fl">1.5</span>, directed <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu">find_modules</span><span class="op">(</span><span class="va">g</span>, method <span class="op">=</span> <span class="st">"louvain"</span>, plot <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">n_modules</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 8</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">module_table</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 6 × 2</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   node  module</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> 1          1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span> 2          2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 3          3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> 4          4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> 5          3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> 6          2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span> 5          5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span> 6          6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span> 8          2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span> 9          6</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

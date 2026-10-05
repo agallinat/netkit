@@ -11,7 +11,7 @@ Useful for assessing the vulnerability or resilience of a graph."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">netkit</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.1.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@ Useful for assessing the vulnerability or resilience of a graph."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/introduction.html">Introduction to netkit</a></li>
+    <li><a class="dropdown-item" href="../articles/weighted-networks.html">Weighted networks: strength or distance?</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -51,12 +52,14 @@ Useful for assessing the vulnerability or resilience of a graph.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">robustness_analysis</span><span class="op">(</span></span>
 <span>  <span class="va">graph</span>,</span>
-<span>  removal_strategy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"random"</span>, <span class="st">"degree"</span>, <span class="st">"betweenness"</span><span class="op">)</span>,</span>
+<span>  removal_strategy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"random"</span>, <span class="st">"degree"</span>, <span class="st">"betweenness"</span>, <span class="st">"strength"</span><span class="op">)</span>,</span>
 <span>  steps <span class="op">=</span> <span class="fl">50</span>,</span>
 <span>  metrics <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lcc_size"</span>, <span class="st">"efficiency"</span>, <span class="st">"n_components"</span><span class="op">)</span>,</span>
 <span>  n_reps <span class="op">=</span> <span class="fl">50</span>,</span>
 <span>  plot <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  seed <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  weight_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"strength"</span>, <span class="st">"distance"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -73,8 +76,10 @@ will be converted.</p></dd>
 
 <dt id="arg-removal-strategy">removal_strategy<a class="anchor" aria-label="anchor" href="#arg-removal-strategy"></a></dt>
 <dd><p>Character. Strategy used for node removal. Options are:
-<code>"random"</code>, <code>"degree"</code>, <code>"betweenness"</code>, or the name of a numeric vertex attribute.
-Custom attributes are interpreted as priority scores (higher = removed first).</p></dd>
+<code>"random"</code>, <code>"degree"</code>, <code>"betweenness"</code>, <code>"strength"</code>,
+or the name of a numeric vertex attribute.
+Custom attributes are interpreted as priority scores (higher = removed first).
+<code>"strength"</code> requires <code>weights</code> and errors without them.</p></dd>
 
 
 <dt id="arg-steps">steps<a class="anchor" aria-label="anchor" href="#arg-steps"></a></dt>
@@ -97,6 +102,20 @@ Options include: <code>"lcc_size"</code>, <code>"efficiency"</code>, and <code>"
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
 <dd><p>Integer or NULL. Random seed for reproducibility.</p></dd>
 
+
+<dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
+<dd><p>Optional edge weights: <code>NULL</code> (default) to ignore them, the
+name of an edge attribute, or a numeric vector of length
+<code>igraph::ecount(graph)</code>. When supplied, global efficiency is computed over
+weighted path lengths, <code>removal_strategy = "betweenness"</code> uses cost-based
+betweenness, and <code>removal_strategy = "strength"</code> becomes available. See
+<a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
+
+<dt id="arg-weight-type">weight_type<a class="anchor" aria-label="anchor" href="#arg-weight-type"></a></dt>
+<dd><p>Either <code>"strength"</code> (default) or <code>"distance"</code>. See
+<a href="netkit-weights.html">netkit-weights</a>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -106,11 +125,16 @@ metrics as nodes are progressively removed, or <code>NULL</code> when
 <code>plot = FALSE</code>. The element is always present, so the return shape does
 not depend on the arguments.</p></dd>
 
+<dt><code>result</code></dt>
+<dd><p>A summarized data frame (mean and SD) if <code>n_reps &gt; 1</code>,
+otherwise raw results.</p></dd>
+
 <dt><code>all_results</code></dt>
 <dd><p>A data frame with simulation results across all steps and repetitions.</p></dd>
 
 <dt><code>summary</code></dt>
-<dd><p>A summarized data frame (mean and SD) if <code>n_reps &gt; 1</code>, otherwise raw results.</p></dd>
+<dd><p>Deprecated alias for <code>result</code>, kept for backward
+compatibility.</p></dd>
 
 <dt><code>auc</code></dt>
 <dd><p>Named list of AUC (area under the curve) values for each selected metric.</p></dd>
@@ -131,6 +155,39 @@ repeated <code>n_reps</code> times, and the results are aggregated.</p>
 of robustness. A higher AUC indicates greater resilience (i.e., slower degradation).</p>
     </div>
     <div class="section level2">
+    <h2 id="edge-weights">Edge weights<a class="anchor" aria-label="anchor" href="#edge-weights"></a></h2>
+
+
+
+<p>Functions that can use edge weights take two arguments:</p>
+<dl><dt><code>weights</code></dt>
+<dd><p><code>NULL</code> (the default) to ignore edge weights; the name of an
+edge attribute, such as <code>"weight"</code>; or a numeric vector with one value per
+edge, in <code>igraph::E(graph)</code> order.</p></dd>
+
+<dt><code>weight_type</code></dt>
+<dd><p><code>"strength"</code> (the default) if a larger value means a
+more tightly connected pair – confidence scores, correlations,
+co-expression, read counts, interaction scores. <code>"distance"</code> if a larger
+value means further apart – costs, dissimilarities, reaction times.</p></dd>
+
+
+</dl><p>Declaring which you have is not bookkeeping. <span class="pkg">igraph</span> reads the <code>weight</code>
+attribute implicitly and gives it <em>opposite</em> meanings in different functions:
+a cost in <code><a href="https://r.igraph.org/reference/betweenness.html" class="external-link">igraph::betweenness()</a></code>, <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::distances()</a></code>,
+<code><a href="https://r.igraph.org/reference/diameter.html" class="external-link">igraph::diameter()</a></code> and <code><a href="https://r.igraph.org/reference/distances.html" class="external-link">igraph::mean_distance()</a></code>, but a strength in
+<code><a href="https://r.igraph.org/reference/cluster_louvain.html" class="external-link">igraph::cluster_louvain()</a></code> and the other community detection algorithms.
+Attaching a confidence score and letting that happen implicitly therefore
+inverts every path-based metric – a high-confidence interaction is treated as
+a long distance – while community detection reads the same numbers the way
+you intended.</p>
+<p>netkit resolves <code>weights</code> and <code>weight_type</code> once per call and derives both a
+strength and a distance vector from them, so each metric receives the one it
+needs. A <code>"strength"</code> is converted to a distance by reciprocal
+(\(1/w\)); a <code>"distance"</code> is converted to a strength by reflection
+(\(\max(w) - w + \min(w)\)), which keeps a zero distance finite.</p>
+    </div>
+    <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Albert R, Jeong H, Barabási AL. Error and attack tolerance of complex networks.
 Nature. 2000;406(6794):378–382. <a href="https://doi.org/10.1038/35019019" class="external-link">doi:10.1038/35019019</a></p>
@@ -146,18 +203,18 @@ Nature. 2000;406(6794):378–382. <a href="https://doi.org/10.1038/35019019" cla
 <span class="r-in"><span>                           plot <span class="op">=</span> <span class="cn">FALSE</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">res</span><span class="op">$</span><span class="va">auc</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $lcc_size</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.1099267</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.1132208</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $n_components</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.5946149</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.5945002</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">summary</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 6 × 5</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     rep removed removed_frac lcc_size n_components</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     1       1       0.012<span style="text-decoration: underline;">7</span>       19           30</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span>     1       8       0.101         3           59</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span>     1      16       0.203         3           58</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span>     1       1       0.012<span style="text-decoration: underline;">7</span>       18           25</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">2</span>     1       8       0.101         4           55</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">3</span>     1      16       0.203         2           58</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">4</span>     1      24       0.304         1           56</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">5</span>     1      32       0.405         1           48</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">6</span>     1      40       0.506         1           40</span>
