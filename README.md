@@ -104,10 +104,8 @@ Or online:
 
 - [Introduction to
   netkit](https://agallinat.github.io/netkit/articles/introduction.html)
-
-(The “Weighted networks” article is in the package —
-`vignette("weighted-networks")` — and appears online once the pkgdown
-site is next rebuilt.)
+- [Weighted networks: strength or
+  distance?](https://agallinat.github.io/netkit/articles/weighted-networks.html)
 
 ## Contributing
 
