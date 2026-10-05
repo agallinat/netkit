@@ -6,7 +6,7 @@
 \usage{
 small_worldness(
   graph,
-  n_null = 100,
+  n = 100,
   model = c("rewire", "configuration", "erdos_renyi"),
   weights = NULL,
   weight_type = c("strength", "distance"),
@@ -16,7 +16,7 @@ small_worldness(
 \arguments{
 \item{graph}{An \code{igraph} object or a data frame edge list.}
 
-\item{n_null}{Integer. Number of null graphs. Default is \code{100}.}
+\item{n}{Integer. Number of null graphs. Default is \code{100}.}
 
 \item{model}{Passed to \code{\link[=null_model]{null_model()}}. Default is \code{"rewire"}.}
 
@@ -57,8 +57,8 @@ not which of two is more so.
 \examples{
 g <- igraph::sample_smallworld(1, 60, 4, 0.05)
 
-# `n_null` is small here to keep the example fast.
-sw <- small_worldness(g, n_null = 10, seed = 1)
+# `n` is small here to keep the example fast.
+sw <- small_worldness(g, n = 10, seed = 1)
 sw$result
 
 }

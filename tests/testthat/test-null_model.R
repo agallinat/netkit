@@ -117,7 +117,7 @@ test_that("configuration falls back when vl cannot realize the degree sequence",
 # --- metric_significance() --------------------------------------------------
 
 test_that("metric_significance() returns the full plot/result/graph/method shape", {
-  res <- metric_significance(g, metrics = "Modularity", n_null = 10, seed = 1,
+  res <- metric_significance(g, metrics = "Modularity", n = 10, seed = 1,
                              plot = FALSE)
   expect_true(all(c("plot", "result", "graph", "method") %in% names(res)))
   expect_null(res$plot)
@@ -131,7 +131,7 @@ test_that("empirical p-values respect the (r+1)/(n+1) floor", {
   n_null <- 20
   res <- metric_significance(g, metrics = c("Modularity",
                                             "Clustering_coefficient"),
-                             n_null = n_null, seed = 1, plot = FALSE)
+                             n = n_null, seed = 1, plot = FALSE)
   # Never zero, and never below the smallest attainable value. Reporting p = 0
   # from a permutation test is a category error: it claims more evidence than
   # the number of permutations can supply.
@@ -144,7 +144,7 @@ test_that("empirical p-values respect the (r+1)/(n+1) floor", {
 test_that("the observed value lies inside the reported interval ordering", {
   res <- metric_significance(g, metrics = c("Modularity",
                                             "Clustering_coefficient"),
-                             n_null = 20, seed = 1, plot = FALSE)
+                             n = 20, seed = 1, plot = FALSE)
   expect_true(all(res$result$ci_lower <= res$result$ci_upper))
   expect_true(all(res$result$null_sd >= 0))
 })
@@ -156,7 +156,7 @@ test_that("a graph drawn from the null is not significant against it", {
   set.seed(11)
   er <- igraph::sample_gnp(80, 0.08, directed = FALSE)
   res <- metric_significance(er, metrics = "Clustering_coefficient",
-                             model = "erdos_renyi", n_null = 50, seed = 2,
+                             model = "erdos_renyi", n = 50, seed = 2,
                              plot = FALSE)
   expect_lt(abs(res$result$z), 3)
   expect_gt(res$result$p_empirical, 0.05)
@@ -169,7 +169,7 @@ test_that("a modular graph is significantly modular against a random null", {
   blocks <- igraph::sample_islands(islands.n = 3, islands.size = 20,
                                    islands.pin = 0.5, n.inter = 2)
   res <- metric_significance(blocks, metrics = "Modularity",
-                             model = "erdos_renyi", n_null = 30, seed = 3,
+                             model = "erdos_renyi", n = 30, seed = 3,
                              plot = FALSE)
   expect_gt(res$result$z, 3)
   expect_lte(res$result$p_empirical, 1 / 31 + 1e-12)
@@ -179,13 +179,13 @@ test_that("metrics the null holds fixed are excluded from automatic selection", 
   # Nodes, Edges and Density have zero variance under a degree-preserving model,
   # so a z-score for them is undefined. Dropping them beats reporting NA rows
   # that look like failures.
-  res <- metric_significance(g, n_null = 10, seed = 1, plot = FALSE)
+  res <- metric_significance(g, n = 10, seed = 1, plot = FALSE)
   expect_false(any(c("Nodes", "Edges", "Density") %in% res$result$metric))
   expect_gt(nrow(res$result), 0)
 })
 
 test_that("a fixed metric requested explicitly is reported as NA, not dropped", {
-  res <- metric_significance(g, metrics = c("Nodes", "Modularity"), n_null = 10,
+  res <- metric_significance(g, metrics = c("Nodes", "Modularity"), n = 10,
                              seed = 1, plot = FALSE)
   expect_true("Nodes" %in% res$result$metric)
   expect_true(is.na(res$result$z[res$result$metric == "Nodes"]))
@@ -193,7 +193,7 @@ test_that("a fixed metric requested explicitly is reported as NA, not dropped", 
 })
 
 test_that("an unknown metric is rejected with the available names", {
-  expect_error(metric_significance(g, metrics = "Smallworldness", n_null = 5,
+  expect_error(metric_significance(g, metrics = "Smallworldness", n = 5,
                                    plot = FALSE),
                "Unknown or non-numeric metric")
 })
@@ -212,7 +212,7 @@ test_that("a caller-supplied ensemble is used instead of a fresh one", {
 test_that("the diagnostic plot builds and marks the observed value", {
   res <- metric_significance(g, metrics = c("Modularity",
                                             "Clustering_coefficient"),
-                             n_null = 15, seed = 1, plot = TRUE)
+                             n = 15, seed = 1, plot = TRUE)
   expect_s3_class(res$plot, "ggplot")
   expect_no_error(ggplot2::ggplot_build(res$plot))
 })
@@ -227,8 +227,8 @@ test_that("small_worldness() separates a small-world graph from a random one", {
   sw <- igraph::sample_smallworld(1, 80, 4, 0.05)
   er <- igraph::sample_gnp(80, igraph::edge_density(sw), directed = FALSE)
 
-  sw_res <- small_worldness(sw, n_null = 10, seed = 1)$result
-  er_res <- small_worldness(er, n_null = 10, seed = 1)$result
+  sw_res <- small_worldness(sw, n = 10, seed = 1)$result
+  er_res <- small_worldness(er, n = 10, seed = 1)$result
 
   expect_gt(sw_res$sigma, 2)
   expect_lt(er_res$sigma, 2)
@@ -238,7 +238,7 @@ test_that("small_worldness() separates a small-world graph from a random one", {
 test_that("small_worldness() reports its components and shape", {
   set.seed(22)
   sw <- igraph::sample_smallworld(1, 60, 4, 0.05)
-  res <- small_worldness(sw, n_null = 8, seed = 1)
+  res <- small_worldness(sw, n = 8, seed = 1)
 
   expect_true(all(c("result", "graph", "method") %in% names(res)))
   expect_named(res$result, c("sigma", "C", "C_rand", "L", "L_rand", "n_null"))
@@ -253,7 +253,7 @@ test_that("small_worldness() reports its components and shape", {
 test_that("small_worldness() returns NA rather than dividing by zero", {
   # A triangle-free graph has C = 0 and so does its degree-preserving null,
   # making C/C_rand a 0/0. NA is the honest answer.
-  res <- small_worldness(ring_graph(), n_null = 5, seed = 1)
+  res <- small_worldness(ring_graph(), n = 5, seed = 1)
   expect_true(is.na(res$result$sigma))
 })
 

@@ -45,6 +45,8 @@ g <- find_modules(g)$graph        # plus module
 robustness_analysis(g, removal_strategy = "pagerank")
 ```
 
+At the console those results print as a summary — what was computed, the head of the table, and the shape of everything else — rather than as a dump of the whole graph. The objects are still plain lists; `unclass()` restores the default output.
+
 ## Edge weights
 
 Every function that can use edge weights takes `weights` and a `weight_type` declaring whether the values are a **strength** (confidence scores, correlations — larger means more tightly connected) or a **distance** (costs, dissimilarities — larger means further apart). netkit ignores edge weights unless asked, and warns when a graph carries a `weight` attribute it is ignoring.

@@ -243,7 +243,7 @@ node_metrics <- function(graph,
     }
   }
 
-  list(
+  as_netkit_result(list(
     plot = p,
     result = result,
     graph = graph,
@@ -258,7 +258,7 @@ node_metrics <- function(graph,
         ""
       }
     )
-  )
+  ), "node_metrics")
 }
 
 #' Spearman correlation heatmap of node metrics

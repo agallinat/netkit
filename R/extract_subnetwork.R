@@ -244,7 +244,7 @@ extract_subnetwork <- function(graph,
   # No `plot` element: this function renders via base plot.igraph through
   # plot_Net(), exactly as find_modules() and highlight_nodes() do, so there is
   # no plot object to return.
-  list(
+  as_netkit_result(list(
     result = result,
     graph = sub,
     method = paste0(
@@ -259,7 +259,7 @@ extract_subnetwork <- function(graph,
       if (largest_component) "; largest component only" else "",
       "; ", igraph::vcount(sub), " nodes and ", igraph::ecount(sub), " edges"
     )
-  )
+  ), "extract_subnetwork")
 }
 
 #' Neighborhood expansion around a seed set

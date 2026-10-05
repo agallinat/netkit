@@ -656,6 +656,10 @@ control.</p></li>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">find_hubs</span>(g)<span class="sc">$</span>graph           <span class="co"># plus is_hub</span></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>g <span class="ot">&lt;-</span> <span class="fu">find_modules</span>(g)<span class="sc">$</span>graph        <span class="co"># plus module</span></span>
 <span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="fu">robustness_analysis</span>(g, <span class="at">removal_strategy =</span> <span class="st">&quot;pagerank&quot;</span>)</span></code></pre></div>
+<p>At the console those results print as a summary — what was computed,
+the head of the table, and the shape of everything else — rather than as
+a dump of the whole graph. The objects are still plain lists;
+<code>unclass()</code> restores the default output.</p>
 <h2 id="edge-weights">Edge weights</h2>
 <p>Every function that can use edge weights takes <code>weights</code>
 and a <code>weight_type</code> declaring whether the values are a

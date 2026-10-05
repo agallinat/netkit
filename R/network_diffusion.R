@@ -314,8 +314,14 @@ prepare_diffusion <- function(graph,
   # The kernel is reusable only for the weights it was built from. Carrying a key
   # lets network_diffusion() reject a stale one rather than silently diffusing
   # over the wrong matrix -- the same guard the `method` check already provides.
-  list(L = L, ch = ch, P = P, use_sparse_P = use_sparse_P, method = method,
-       weights_key = weights_key(w))
+  # Classed so that printing it at the console reports the kernel's shape
+  # rather than dumping the Laplacian and the Cholesky factor. `$` access is
+  # unaffected, which is all network_diffusion() uses.
+  structure(
+    list(L = L, ch = ch, P = P, use_sparse_P = use_sparse_P, method = method,
+         weights_key = weights_key(w)),
+    class = c("netkit_kernel", "list")
+  )
 }
 
 #' Summarize a resolved weight spec for kernel-reuse checks

@@ -17,6 +17,9 @@ test_that("node-classification functions return the full plot/result/graph/metho
   for (nm in names(classifiers)) {
     res <- classifiers[[nm]]
     expect_type(res, "list")
+    # Classed for printing, but still a list in every other respect. See
+    # test-print.R.
+    expect_s3_class(res, "netkit_result")
     expect_true(all(c("plot", "result", "graph", "method") %in% names(res)), info = nm)
     expect_s3_class(res$result, "data.frame")
     expect_s3_class(res$graph, "igraph")

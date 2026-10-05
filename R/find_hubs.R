@@ -161,14 +161,15 @@ find_hubs <- function(graph,
   }
 
   return(
-    list(
+    as_netkit_result(list(
       plot = p,
       method = paste("Hub nodes identified by method:", method,
                      "with Degree metric threshold =", degree_threshold,
                      "and Betweenness metric threshold =", betweenness_threshold,
                      paste0("(", describe_weights(w), ")")),
       result = result,
-      graph = graph)
+      graph = graph),
+      "find_hubs")
     )
 
 }

@@ -176,10 +176,10 @@ compare_networks <- function(graph1, graph2,
     scale_color_manual(values = colors_vec) +
     theme_minimal(base_size = label.size)
 
-  return(list(
+  return(as_netkit_result(list(
     plot = p_combined,
     global_topology = rbind(metrics1, metrics2),
     similarity = similarity,
     ks_test = ks
-  ))
+  ), "compare_networks"))
 }

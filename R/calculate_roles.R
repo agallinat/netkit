@@ -380,7 +380,7 @@ calculate_roles <- function(graph,
 
   # `plot` is always present, and NULL when plot = FALSE, so that the return
   # shape does not depend on the arguments.
-  return(list(
+  return(as_netkit_result(list(
     plot = p,
     result = roles_df,
     graph = graph,
@@ -400,5 +400,5 @@ calculate_roles <- function(graph,
       ", R6/R7 = ", th[["R6_R7"]]
     ),
     roles_definitions = roles_def
-  ))
+  ), "calculate_roles"))
 }

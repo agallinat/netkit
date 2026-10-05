@@ -300,7 +300,7 @@ robustness_analysis <- function(graph,
 
   # `plot` is always present, and NULL when plot = FALSE, so that the return
   # shape does not depend on the arguments.
-  return(list(
+  return(as_netkit_result(list(
     plot = p,
     # `result` is the package-wide name for the node/step-level table; `summary`
     # is kept as an alias for backward compatibility and is deprecated.
@@ -308,5 +308,5 @@ robustness_analysis <- function(graph,
     all_results = all_results,
     summary = summary,
     auc = auc_list
-  ))
+  ), "robustness_analysis"))
 }

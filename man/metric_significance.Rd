@@ -8,7 +8,7 @@ metric_significance(
   graph,
   null = NULL,
   metrics = NULL,
-  n_null = 100,
+  n = 100,
   model = c("rewire", "configuration", "erdos_renyi"),
   weights = NULL,
   weight_type = c("strength", "distance"),
@@ -22,15 +22,17 @@ metric_significance(
 netkit.}
 
 \item{null}{A list of null graphs, as produced by \code{\link[=null_model]{null_model()}}. If \code{NULL}
-(default), an ensemble is generated internally with \code{n_null} graphs under
+(default), an ensemble is generated internally with \code{n} graphs under
 \code{model}.}
 
 \item{metrics}{Character vector of metric names to test, matching columns of
 \code{\link[=summarize_graph_metrics]{summarize_graph_metrics()}}. If \code{NULL} (default), every numeric metric that
 varies across the ensemble is used.}
 
-\item{n_null}{Integer. Number of null graphs when \code{null} is \code{NULL}. Default is
-\code{100}.}
+\item{n}{Integer. Number of null graphs to generate when \code{null} is \code{NULL}.
+Default is \code{100}. Named \code{n} rather than \code{n_null} so that it matches
+\code{\link[=null_model]{null_model()}} and so that \verb{n =} is an exact argument match -- with a
+formal called \code{n_null} alongside \code{null}, \verb{n =} is ambiguous and errors.}
 
 \item{model}{Passed to \code{\link[=null_model]{null_model()}} when \code{null} is \code{NULL}.}
 
@@ -65,7 +67,7 @@ takes over a null ensemble, and reports the z-score and empirical p-value.
 \code{r} counts null values at least as extreme as the observed one. It is
 therefore never exactly zero: with \code{n} nulls the smallest attainable p-value
 is \code{1 / (n + 1)}, so testing against 20 nulls cannot produce evidence at
-\code{p < 0.05} however large the effect. Choose \code{n_null} accordingly.
+\code{p < 0.05} however large the effect. Choose \code{n} accordingly.
 
 \code{z} is \code{NA} when the null distribution has zero variance -- which happens
 legitimately for metrics the null model holds fixed, such as \code{Nodes}, \code{Edges}
@@ -76,11 +78,11 @@ rather than dropped if you request them explicitly.
 \examples{
 g <- igraph::sample_pa(60, power = 1.5, directed = FALSE)
 
-# `n_null` is small here to keep the example fast. Note the floor this puts
+# `n` is small here to keep the example fast. Note the floor this puts
 # on the attainable p-value: 1 / (10 + 1).
 res <- metric_significance(g, metrics = c("Clustering_coefficient",
                                           "Modularity"),
-                           n_null = 10, seed = 1, plot = FALSE)
+                           n = 10, seed = 1, plot = FALSE)
 res$result
 
 }

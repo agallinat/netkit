@@ -158,12 +158,12 @@ greedy_seed_selection <- function(graph,
   }
 
   # --- Return results ---
-  return(list(
+  return(as_netkit_result(list(
     selected_seeds = selected,
     final_target_score = utils::tail(best_scores, 1),
     scores_at_each_step = best_scores,
     plot = p
-  ))
+  ), "greedy_seed_selection"))
 }
 
 

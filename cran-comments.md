@@ -35,7 +35,10 @@ checking. It does not appear when the service is reachable.
      Actions workflow in .github/workflows/R-CMD-check.yaml covers
      ubuntu-latest (R devel, release, oldrel-1), macOS-latest (release) and
      windows-latest (release), but list a platform here only once a run has
-     genuinely passed on it. -->
+     genuinely passed on it. That matters more than it sounds: the one defect
+     that reached CI and not the local suite -- network_diffusion_with_pvalues()
+     leaving future worker connections open -- was invisible locally because
+     the local sandbox cannot spawn workers. -->
 
 ## Downstream dependencies
 

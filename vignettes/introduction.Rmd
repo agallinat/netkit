@@ -192,10 +192,10 @@ A clustering coefficient of 0.4 or a modularity of 0.42 means nothing on its own
 The `"rewire"` default preserves the degree sequence *exactly* by making double-edge swaps, which is almost always the right null for a topological claim — nearly every network metric is partly determined by the degree sequence, so a null that does not hold it fixed mostly rediscovers that the graph is heavy-tailed. `"erdos_renyi"` matches only the vertex and edge counts and is included as the deliberate weak contrast.
 
 ````{r null-model, fig.width = 7, fig.height = 4}
-# n_null is kept small here for speed; use 100 or more in practice.
+# n is kept small here for speed; use 100 or more in practice.
 sig <- metric_significance(g, metrics = c("Clustering_coefficient", "Modularity",
                                           "Degree_assortativity"),
-                           n_null = 30, seed = 1)
+                           n = 30, seed = 1)
 sig$result
 ````
 
@@ -214,7 +214,7 @@ sig$plot
 `small_worldness()` is the classic application of the same machinery, reporting sigma = (C/C_rand)/(L/L_rand). Values appreciably above 1 indicate small-world organization.
 
 ````{r small-world}
-small_worldness(sample_smallworld(1, 100, 4, 0.05), n_null = 20, seed = 1)$result
+small_worldness(sample_smallworld(1, 100, 4, 0.05), n = 20, seed = 1)$result
 ````
 
 ### 3.4. Robustness Analysis

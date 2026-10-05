@@ -1,7 +1,7 @@
 Package: netkit
 Type: Package
 Title: Network Analysis and Visualization Toolkit
-Version: 0.1.0.9000
+Version: 0.1.0
 Authors@R:
     person("Alex", "Gallinat", email = "alex.gaoc@gmail.com",
            role = c("aut", "cre"))

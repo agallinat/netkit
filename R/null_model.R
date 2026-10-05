@@ -192,13 +192,15 @@ null_model <- function(graph,
 #' @param graph An `igraph` object or a data frame edge list, as elsewhere in
 #'   netkit.
 #' @param null A list of null graphs, as produced by [null_model()]. If `NULL`
-#'   (default), an ensemble is generated internally with `n_null` graphs under
+#'   (default), an ensemble is generated internally with `n` graphs under
 #'   `model`.
 #' @param metrics Character vector of metric names to test, matching columns of
 #'   [summarize_graph_metrics()]. If `NULL` (default), every numeric metric that
 #'   varies across the ensemble is used.
-#' @param n_null Integer. Number of null graphs when `null` is `NULL`. Default is
-#'   `100`.
+#' @param n Integer. Number of null graphs to generate when `null` is `NULL`.
+#'   Default is `100`. Named `n` rather than `n_null` so that it matches
+#'   [null_model()] and so that `n =` is an exact argument match -- with a
+#'   formal called `n_null` alongside `null`, `n =` is ambiguous and errors.
 #' @param model Passed to [null_model()] when `null` is `NULL`.
 #' @param weights,weight_type Passed to [summarize_graph_metrics()]. See
 #'   [netkit-weights].
@@ -223,7 +225,7 @@ null_model <- function(graph,
 #' `r` counts null values at least as extreme as the observed one. It is
 #' therefore never exactly zero: with `n` nulls the smallest attainable p-value
 #' is `1 / (n + 1)`, so testing against 20 nulls cannot produce evidence at
-#' `p < 0.05` however large the effect. Choose `n_null` accordingly.
+#' `p < 0.05` however large the effect. Choose `n` accordingly.
 #'
 #' `z` is `NA` when the null distribution has zero variance -- which happens
 #' legitimately for metrics the null model holds fixed, such as `Nodes`, `Edges`
@@ -237,11 +239,11 @@ null_model <- function(graph,
 #' @examples
 #' g <- igraph::sample_pa(60, power = 1.5, directed = FALSE)
 #'
-#' # `n_null` is small here to keep the example fast. Note the floor this puts
+#' # `n` is small here to keep the example fast. Note the floor this puts
 #' # on the attainable p-value: 1 / (10 + 1).
 #' res <- metric_significance(g, metrics = c("Clustering_coefficient",
 #'                                           "Modularity"),
-#'                            n_null = 10, seed = 1, plot = FALSE)
+#'                            n = 10, seed = 1, plot = FALSE)
 #' res$result
 #'
 #' @importFrom tibble tibble
@@ -253,7 +255,7 @@ null_model <- function(graph,
 metric_significance <- function(graph,
                                 null = NULL,
                                 metrics = NULL,
-                                n_null = 100,
+                                n = 100,
                                 model = c("rewire", "configuration",
                                           "erdos_renyi"),
                                 weights = NULL,
@@ -270,7 +272,7 @@ metric_significance <- function(graph,
   if (!is.null(seed)) set.seed(seed)
 
   if (is.null(null)) {
-    null <- null_model(graph, model = model, n = n_null,
+    null <- null_model(graph, model = model, n = n,
                        shuffle_weights = !is.null(weights))
   }
   if (!is.list(null) || length(null) == 0) {
@@ -386,7 +388,7 @@ metric_significance <- function(graph,
     }
   }
 
-  list(
+  as_netkit_result(list(
     plot = p,
     result = result,
     graph = graph,
@@ -398,7 +400,7 @@ metric_significance <- function(graph,
       "; two-sided empirical p-values with the (r+1)/(n+1) convention, so the ",
       "smallest attainable p-value is ", signif(1 / (length(null) + 1), 3)
     )
-  )
+  ), "metric_significance")
 }
 
 #' Small-World Coefficients
@@ -412,7 +414,7 @@ metric_significance <- function(graph,
 #' values appreciably above 1 indicate small-world organization.
 #'
 #' @param graph An `igraph` object or a data frame edge list.
-#' @param n_null Integer. Number of null graphs. Default is `100`.
+#' @param n Integer. Number of null graphs. Default is `100`.
 #' @param model Passed to [null_model()]. Default is `"rewire"`.
 #' @param weights,weight_type Passed to [summarize_graph_metrics()]. See
 #'   [netkit-weights].
@@ -450,15 +452,15 @@ metric_significance <- function(graph,
 #' @examples
 #' g <- igraph::sample_smallworld(1, 60, 4, 0.05)
 #'
-#' # `n_null` is small here to keep the example fast.
-#' sw <- small_worldness(g, n_null = 10, seed = 1)
+#' # `n` is small here to keep the example fast.
+#' sw <- small_worldness(g, n = 10, seed = 1)
 #' sw$result
 #'
 #' @importFrom tibble tibble
 #'
 #' @export
 small_worldness <- function(graph,
-                            n_null = 100,
+                            n = 100,
                             model = c("rewire", "configuration",
                                       "erdos_renyi"),
                             weights = NULL,
@@ -474,7 +476,7 @@ small_worldness <- function(graph,
 
   obs <- summarize_graph_metrics(graph, weights = weights,
                                  weight_type = weight_type)
-  nulls <- null_model(graph, model = model, n = n_null,
+  nulls <- null_model(graph, model = model, n = n,
                       shuffle_weights = !is.null(weights))
 
   null_weights <- if (is.null(weights)) NULL else "weight"
@@ -497,7 +499,7 @@ small_worldness <- function(graph,
     (C / C_rand) / (L / L_rand)
   }
 
-  list(
+  as_netkit_result(list(
     result = tibble::tibble(
       sigma = sigma,
       C = C, C_rand = C_rand,
@@ -511,7 +513,7 @@ small_worldness <- function(graph,
       describe_weights(as_netkit_weights(graph, weights, weight_type,
                                          warn_unused = FALSE))
     )
-  )
+  ), "small_worldness")
 }
 
 #' Report which null model an ensemble came from

@@ -227,7 +227,7 @@ find_modules <- function(graph,
 
   }
 
-  return(list(
+  return(as_netkit_result(list(
     # `result` is the package-wide name for the node-level table; `module_table`
     # is kept as an alias for backward compatibility and is deprecated.
     result = as_tibble(module_df),
@@ -236,6 +236,6 @@ find_modules <- function(graph,
     subgraphs = if (return_subgraphs) subgraph_list else NULL,
     method = method,
     graph = graph
-  ))
+  ), "find_modules"))
 
 }

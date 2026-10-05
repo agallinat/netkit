@@ -59,6 +59,11 @@ g <- find_modules(g)$graph        # plus module
 robustness_analysis(g, removal_strategy = "pagerank")
 ```
 
+At the console those results print as a summary — what was computed, the
+head of the table, and the shape of everything else — rather than as a
+dump of the whole graph. The objects are still plain lists; `unclass()`
+restores the default output.
+
 ## Edge weights
 
 Every function that can use edge weights takes `weights` and a

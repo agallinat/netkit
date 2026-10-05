@@ -157,7 +157,7 @@ find_bottlenecks <- function(graph,
   }
 
     return(
-      list(
+      as_netkit_result(list(
         plot = p,
         method = paste("Bottlenecks identified by method:", method,
                        "with Degree metric threshold =", degree_threshold,
@@ -165,6 +165,6 @@ find_bottlenecks <- function(graph,
                      paste0("(", describe_weights(w), ")")),
         result = result,
         graph = graph
-      ))
+      ), "find_bottlenecks"))
 
 }

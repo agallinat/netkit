@@ -4,6 +4,10 @@ template:
   bootstrap: 5
 
 reference:
+- title: Package overview
+  contents:
+  - netkit-package
+
 - title: Graph input and annotation
   desc: >
     Getting data into a graph and metadata onto it. Every function in netkit
@@ -67,3 +71,10 @@ reference:
   - plot_Net
   - highlight_nodes
   - layout_horizontal_tree
+
+- title: Printing
+  desc: >
+    How netkit's results display at the console. Nothing here needs to be
+    called directly.
+  contents:
+  - netkit-print
