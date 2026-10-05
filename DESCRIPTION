@@ -55,5 +55,9 @@ Suggests:
     spelling
 VignetteBuilder: knitr
 Config/testthat/edition: 3
-URL: https://agallinat.github.io/netkit
+URL: https://agallinat.github.io/netkit, https://github.com/agallinat/netkit
 BugReports: https://github.com/agallinat/netkit/issues
+X-schema.org-keywords: network analysis, graph theory, igraph, centrality,
+    hubs, bottlenecks, community detection, modularity, network diffusion,
+    random walk with restart, heat kernel, network propagation, null models,
+    small-world, network robustness, network visualization
