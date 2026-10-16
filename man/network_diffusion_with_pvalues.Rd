@@ -234,9 +234,29 @@ and is then reported as significant whatever its real score. The null becomes
 null exists to be the more conservative of the two.
 
 The default therefore scales the pool with the seed count rather than fixing
-it: \code{10 * length(seed_nodes)}. That multiplier was calibrated on five
-synthetic scale-free graphs rather than derived, and should be treated as a
-working default rather than a settled one.
+it, and the multiplier follows from the self-seeding exclusion. Each vertex is
+tested only against the permutations that did not seed it, so a vertex seeded
+in a fraction \eqn{r} of permutations retains \eqn{n(1-r)} of them and its
+attainable p-value floor is \eqn{1/(n(1-r)+1)} instead of \eqn{1/(n+1)} --
+inflated by about \eqn{1/(1-r)}. Requiring that inflation to stay within a
+tolerance \eqn{t} bounds \eqn{r \le t/(1+t)}, and since each permutation draws
+\code{length(seed_nodes)} members from a bin of size \eqn{B}, every member is
+seeded with probability \eqn{n_{seeds}/B}, so
+
+\deqn{B \ge n_{seeds}\,(1+t)/t.}
+
+At a 10\% tolerance that is \eqn{11 \times} the seed count. (The 10x
+multiplier used in 0.1.1 was calibrated on five synthetic scale-free graphs;
+it turns out to be what a 10\% tolerance implies, so it is now a consequence
+of a stated criterion rather than a fitted constant.)
+
+That bound is what the bin floor is chosen to achieve. What the graph
+\emph{delivers} is measured separately and warned about, because bins are grown to
+the degree distribution: several seeds can land in one bin, which multiplies
+that bin's seeding rate without changing its size. The realized rate is
+therefore the seeds assigned to a bin over that bin's size, and when it
+exceeds the bound the warning reports the bin, its degree range, and how much
+the p-value floor rises for its members.
 
 One consequence is worth stating, because it is easy to mistake for a bug.
 The degree-matched null is \strong{not} uniformly more conservative than the

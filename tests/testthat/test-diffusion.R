@@ -592,3 +592,82 @@ test_that("a vertex seeded in every permutation reports NA rather than a number"
   expect_equal(nrow(res), 6L)
   expect_true(all(is.na(utils::tail(res$p_empirical, 3))))
 })
+
+# --- the degree-matched bin floor is derived, and the derivation holds -------
+#
+# match_pool = NULL used to default to 10 * n_seeds, a multiplier calibrated on
+# five synthetic scale-free graphs. It is now derived from the self-seeding
+# exclusion: a vertex seeded in a fraction r of permutations keeps n(1-r) of
+# them, so its p-value floor rises by about 1/(1-r), and holding that within a
+# tolerance t gives r <= t/(1+t) and hence a bin floor of n_seeds * (1+t)/t.
+# At t = 0.1 that is 11 * n_seeds.
+#
+# These tests measure r by actually drawing permutations, rather than asserting
+# the constant, so the derivation is checked against the sampler's behaviour.
+
+seeding_rate <- function(graph, seeds, match_pool, n_draws = 2000) {
+  sampler <- suppressWarnings(netkit:::make_degree_matched_sampler(
+    graph, seeds, setdiff(igraph::V(graph)$name, seeds), match_pool))
+  drawn <- unlist(replicate(n_draws, sampler(), simplify = FALSE))
+  max(table(drawn)) / n_draws
+}
+
+test_that("the derived bin floor keeps the self-seeding rate within tolerance", {
+  set.seed(5)
+  g <- igraph::sample_pa(150, directed = FALSE)
+  igraph::V(g)$name <- paste0("v", seq_len(150))
+  seeds <- paste0("v", c(2, 5, 9, 14, 21))
+
+  # t = 0.1 bounds r at 0.1/1.1 = 0.0909. A little slack for sampling noise in
+  # 2000 draws; the assertion is the bound, not a recorded value.
+  derived <- 11 * length(seeds)
+  expect_lt(seeding_rate(g, seeds, derived), 0.0909 + 0.02)
+})
+
+test_that("the self-seeding rate falls as the bin floor rises", {
+  # Monotonicity is the substance of the derivation: r ~ n_seeds / B. Asserting
+  # the trend rather than the values keeps this robust to the binning details.
+  set.seed(5)
+  g <- igraph::sample_pa(150, directed = FALSE)
+  igraph::V(g)$name <- paste0("v", seq_len(150))
+  seeds <- paste0("v", c(2, 5, 9, 14, 21))
+
+  rates <- vapply(c(5, 20, 55, 110),
+                  function(mp) seeding_rate(g, seeds, mp), numeric(1))
+  expect_true(all(diff(rates) < 0))
+  # A pool at the seed-set size is the degenerate case the floor exists to
+  # prevent: the same few vertices in every permutation.
+  expect_gt(rates[[1]], 3 * rates[[4]])
+})
+
+test_that("a match_pool below the derived floor warns about the p-value floor", {
+  set.seed(5)
+  g <- igraph::sample_pa(150, directed = FALSE)
+  igraph::V(g)$name <- paste0("v", seq_len(150))
+  seeds <- paste0("v", c(2, 5, 9, 14, 21, 28, 35, 42))
+
+  # The warning now states the consequence -- how much of each vertex's own null
+  # the exclusion removes -- rather than only that the number is small.
+  expect_warning(
+    netkit:::make_degree_matched_sampler(
+      g, seeds, setdiff(igraph::V(g)$name, seeds), match_pool = 10),
+    "p-value floor"
+  )
+})
+
+test_that("match_pool = NULL derives the floor from the seed count", {
+  # 11 * n_seeds, capped at the candidate count. Asserted through behaviour: the
+  # derived pool must give a rate within tolerance for seed sets of different
+  # sizes, which a fixed pool would not.
+  set.seed(8)
+  g <- igraph::sample_pa(400, directed = FALSE)
+  igraph::V(g)$name <- paste0("v", seq_len(400))
+
+  for (k in c(3, 10)) {
+    seeds <- paste0("v", seq(2, by = 7, length.out = k))
+    auto <- suppressWarnings(netkit:::make_degree_matched_sampler(
+      g, seeds, setdiff(igraph::V(g)$name, seeds), match_pool = NULL))
+    drawn <- unlist(replicate(1500, auto(), simplify = FALSE))
+    expect_lt(max(table(drawn)) / 1500, 0.0909 + 0.03)
+  }
+})

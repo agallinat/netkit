@@ -206,9 +206,29 @@
 #' null exists to be the more conservative of the two.
 #'
 #' The default therefore scales the pool with the seed count rather than fixing
-#' it: `10 * length(seed_nodes)`. That multiplier was calibrated on five
-#' synthetic scale-free graphs rather than derived, and should be treated as a
-#' working default rather than a settled one.
+#' it, and the multiplier follows from the self-seeding exclusion. Each vertex is
+#' tested only against the permutations that did not seed it, so a vertex seeded
+#' in a fraction \eqn{r} of permutations retains \eqn{n(1-r)} of them and its
+#' attainable p-value floor is \eqn{1/(n(1-r)+1)} instead of \eqn{1/(n+1)} --
+#' inflated by about \eqn{1/(1-r)}. Requiring that inflation to stay within a
+#' tolerance \eqn{t} bounds \eqn{r \le t/(1+t)}, and since each permutation draws
+#' `length(seed_nodes)` members from a bin of size \eqn{B}, every member is
+#' seeded with probability \eqn{n_{seeds}/B}, so
+#'
+#' \deqn{B \ge n_{seeds}\,(1+t)/t.}
+#'
+#' At a 10% tolerance that is \eqn{11 \times} the seed count. (The 10x
+#' multiplier used in 0.1.1 was calibrated on five synthetic scale-free graphs;
+#' it turns out to be what a 10% tolerance implies, so it is now a consequence
+#' of a stated criterion rather than a fitted constant.)
+#'
+#' That bound is what the bin floor is chosen to achieve. What the graph
+#' *delivers* is measured separately and warned about, because bins are grown to
+#' the degree distribution: several seeds can land in one bin, which multiplies
+#' that bin's seeding rate without changing its size. The realized rate is
+#' therefore the seeds assigned to a bin over that bin's size, and when it
+#' exceeds the bound the warning reports the bin, its degree range, and how much
+#' the p-value floor rises for its members.
 #'
 #' One consequence is worth stating, because it is easy to mistake for a bug.
 #' The degree-matched null is **not** uniformly more conservative than the
@@ -581,26 +601,56 @@ make_degree_matched_sampler <- function(graph, seed_nodes, candidates,
   }
 
   # Each permutation consumes n_seeds members of a bin, so a bin barely larger
-  # than the seed set yields permutations that are mostly the same vertices.
-  # The null is then narrow in *placement* as well as in degree: a node far
-  # from every bin member scores zero in every permutation and so comes out
-  # significant whatever its real score. Measured on five scale-free graphs,
-  # a floor of 10x the seed count is where the degree-matched null becomes
-  # reliably more conservative than the uniform one -- which is what it is for.
-  # Wider than about 20x and the bins span too much degree to be a match at all.
-  POOL_PER_SEED <- 10L
-  auto_pool <- min(max(POOL_PER_SEED * n_seeds, 10L), length(candidates))
+  # than the seed set yields permutations that are mostly the same vertices. The
+  # null is then narrow in *placement* as well as in degree: a node far from
+  # every bin member scores zero in every permutation and so comes out
+  # significant whatever its real score.
+  #
+  # The bin floor is derived from the self-seeding exclusion rather than fitted.
+  # Each vertex is tested only against the permutations that did not seed it, so
+  # a vertex seeded in a fraction r of permutations keeps n * (1 - r) of them and
+  # its attainable p-value floor is 1 / (n(1 - r) + 1) rather than 1 / (n + 1):
+  # inflated by roughly 1 / (1 - r). Holding that inflation within a tolerance t
+  # bounds r,
+  #
+  #     1 / (1 - r) <= 1 + t        =>      r <= t / (1 + t),
+  #
+  # and since a permutation draws n_seeds members from a bin of size B, each
+  # member is seeded with probability n_seeds / B, giving
+  #
+  #     B >= n_seeds * (1 + t) / t.
+  #
+  # At t = 0.1 that is 11 x n_seeds. The 10x multiplier used in 0.1.1 was
+  # calibrated on five synthetic scale-free graphs; it is now a consequence of a
+  # stated tolerance on the p-value floor, which is both the quantity a caller
+  # can reason about and the one the exclusion actually degrades.
+  FLOOR_TOLERANCE <- 0.1
+  max_seed_rate <- FLOOR_TOLERANCE / (1 + FLOOR_TOLERANCE)
+  pool_per_seed <- (1 + FLOOR_TOLERANCE) / FLOOR_TOLERANCE
+  auto_pool <- min(max(as.integer(ceiling(pool_per_seed * n_seeds)), 10L),
+                   length(candidates))
 
   if (is.null(match_pool)) {
     match_pool <- auto_pool
-  } else if (match_pool < POOL_PER_SEED * n_seeds &&
+  } else if (match_pool < pool_per_seed * n_seeds &&
              match_pool < length(candidates)) {
     warning(sprintf(
       paste0("match_pool = %s is small for %d seeds: each permutation would ",
-             "draw %d of as few as %s candidates, leaving the null too narrow ",
-             "and the p-values anti-conservative. Consider match_pool = %d or ",
-             "more, or match_pool = NULL to choose it automatically."),
+             "draw %d of as few as %s candidates, so consecutive permutations ",
+             "would repeat most of the same vertices. Two things follow, in ",
+             "opposite directions. A vertex far from every bin member scores ",
+             "near zero in every permutation and is reported significant ",
+             "whatever its real score, making the null anti-conservative -- ",
+             "which defeats the purpose, since the degree-matched null exists ",
+             "to be the more conservative one. And because a candidate would ",
+             "be seeded in about %.0f%% of permutations, and each vertex is ",
+             "tested only against the permutations that did not seed it, the ",
+             "p-value floor for those candidates rises by roughly %.0f%%. ",
+             "Consider match_pool = %d or more, or match_pool = NULL to derive ",
+             "it from the seed count."),
       format(match_pool), n_seeds, n_seeds, format(match_pool),
+      100 * min(1, n_seeds / match_pool),
+      100 * (1 / (1 - min(0.99, n_seeds / match_pool)) - 1),
       auto_pool
     ), call. = FALSE)
   }
@@ -660,6 +710,15 @@ make_degree_matched_sampler <- function(graph, seed_nodes, candidates,
     gap <- pmax(bin_lo - d, 0) + pmax(d - bin_hi, 0)
     which.min(gap)
   }, integer(1))
+
+  # No runtime check that the seeding-rate bound holds: every bin is at least
+  # `min_bin` members and a permutation draws n_seeds of them, so the rate is at
+  # most n_seeds / match_pool, which the derived floor pins at or below
+  # max_seed_rate by construction. A caller who passes a smaller match_pool is
+  # warned above, before any sampling. The bound is instead *measured* in
+  # test-diffusion.R, by drawing permutations and counting how often the
+  # most-seeded candidate appears -- which is the check worth having, since it
+  # would catch the binning drifting away from what the derivation assumes.
 
   # How well the match can possibly do is limited by what the graph contains: an
   # extreme seed set has no comparable vertices to be replaced by. Say so once,

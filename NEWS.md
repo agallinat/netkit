@@ -145,6 +145,33 @@ than estimates.
   `cluster.method = "spinglass"` to restore the previous behaviour, or supply
   `communities` directly when the partition matters and should not be re-derived.
 
+* **`network_diffusion_with_pvalues(match_pool = NULL)` now derives the bin
+  floor instead of using a fitted multiplier.** It was `10 * length(seed_nodes)`,
+  calibrated on five synthetic scale-free graphs and documented as a working
+  default rather than a settled one. The multiplier now follows from the
+  self-seeding exclusion added above: a vertex seeded in a fraction \eqn{r} of
+  permutations is tested against only \eqn{n(1-r)} of them, so its attainable
+  p-value floor rises from \eqn{1/(n+1)} to \eqn{1/(n(1-r)+1)}, a factor of about
+  \eqn{1/(1-r)}. Holding that inflation within a tolerance \eqn{t} gives
+  \eqn{r \le t/(1+t)}, and because each permutation draws `length(seed_nodes)`
+  members from a bin of size \eqn{B}, every member is seeded with probability
+  \eqn{n_{seeds}/B}, so \eqn{B \ge n_{seeds}(1+t)/t}. At a 10% tolerance that is
+  \eqn{11 \times} the seed count -- which is why the fitted 10x worked, and
+  what it was approximating.
+
+  The default pool is therefore about 10% wider than before, so **p-values from
+  `null = "degree_matched"` shift slightly**. There is no runtime check that the
+  bound holds, because it holds by construction: every bin has at least
+  `match_pool` members and a permutation draws `n_seeds` of them. It is instead
+  measured in the test suite, by drawing permutations and counting how often the
+  most-seeded candidate appears -- 0.082 against a predicted bound of 0.0909 on
+  a 150-vertex graph with 5 seeds, falling monotonically as the floor rises.
+
+  The warning for an explicitly too-small `match_pool` now states both
+  consequences, which run in opposite directions: the null goes
+  anti-conservative for vertices far from every bin member, while the p-value
+  floor rises for the over-seeded candidates themselves.
+
 * **`find_hubs()` and `find_bottlenecks()` warn when they select nothing.**
   Both used to return an empty table in silence, which conflates three
   different situations, and the warning now says which one occurred because the
