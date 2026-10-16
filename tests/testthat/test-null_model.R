@@ -344,9 +344,11 @@ test_that("the degree-matched null is the default and both nulls are valid", {
   expect_equal(default_res, explicit)
 
   for (res in list(default_res, explicit)) {
-    expect_named(res, c("node", "score", "p_empirical"))
+    expect_named(res, c("node", "score", "p_empirical", "null_mean", "null_sd",
+                        "z", "n_valid"))
     expect_equal(nrow(res), igraph::vcount(g2))
-    expect_true(all(res$p_empirical >= 1 / 31 - 1e-12))
+    # Per-vertex floor: n_valid excludes the permutations that seeded the vertex.
+    expect_true(all(res$p_empirical >= 1 / (res$n_valid + 1) - 1e-12))
     expect_true(all(res$p_empirical <= 1))
   }
 })
@@ -371,9 +373,26 @@ test_that("the two nulls disagree on a graph where degree is confounded", {
   u <- u[order(u$node), ]
   d <- d[order(d$node), ]
   expect_false(isTRUE(all.equal(u$p_empirical, d$p_empirical)))
-  # The uniform null credits degree as signal, so it must find at least as many
-  # significant nodes as the matched one.
-  expect_gte(sum(u$p_empirical < 0.05), sum(d$p_empirical < 0.05))
+
+  # This used to assert that the uniform null finds at least as many significant
+  # nodes as the matched one. That is not a theorem, and it stopped holding once
+  # each vertex began being tested only against the permutations that did not
+  # seed it: the degree-matched sampler draws from a narrower support and so
+  # draws individual vertices more often (measured at up to 10 of 60
+  # permutations, against 5 for uniform), so the exclusion removes a larger
+  # share of its nulls' upper tails and lowers those p-values further. Both
+  # p-values remain valid; the count comparison simply has two effects pulling
+  # on it and no longer measures what it was added to measure.
+  #
+  # What it was added to measure was the degenerate sampler -- a null assembled
+  # from ten vertices, which has almost no variance and so makes nearly any
+  # observed score extreme. That is now asserted directly, on the variance
+  # itself, which is both the mechanism and a quantity the function reports.
+  expect_false(any(d$null_sd == 0, na.rm = TRUE))
+  expect_gt(stats::median(d$null_sd, na.rm = TRUE),
+            0.5 * stats::median(u$null_sd, na.rm = TRUE))
+  # The sampler's own support is guarded in "the sampler explores the candidate
+  # pool rather than one corner of it", which is the other half of this.
 })
 
 test_that("an unmatchable seed set warns rather than claiming an exact match", {
@@ -382,8 +401,11 @@ test_that("an unmatchable seed set warns rather than claiming an exact match", {
   igraph::V(pa)$name <- paste0("v", seq_len(200))
   hubs <- names(sort(igraph::degree(pa), decreasing = TRUE))[1:6]
 
+  # match_pool = NULL, so the pool-size warning does not fire and this asserts
+  # the one it is about: the graph has no vertices comparable to these seeds.
   expect_warning(
-    make_degree_matched_sampler(pa, hubs, setdiff(igraph::V(pa)$name, hubs), 10),
+    make_degree_matched_sampler(pa, hubs, setdiff(igraph::V(pa)$name, hubs),
+                                NULL),
     "only approximately"
   )
 })
@@ -414,4 +436,286 @@ test_that("the new functions honour the shared graph-input contract", {
                  "Input 'graph' must be either an igraph object or a data.frame")
   }
   expect_length(null_model(as_edge_df(g), n = 2, seed = 1), 2)
+})
+
+# --- Weights under a name other than `weight` --------------------------------
+#
+# null_model() read only the literal attribute `weight`, so a graph annotated
+# with any other name -- which is the normal case -- produced unweighted nulls
+# while the caller had explicitly asked for weighted ones.
+
+test_that("null_model() permutes a weight attribute under any name", {
+  gw <- test_graph()
+  set.seed(51)
+  igraph::E(gw)$corr <- runif(igraph::ecount(gw), 0.1, 2)
+
+  nulls <- null_model(gw, model = "rewire", n = 5, seed = 1, weights = "corr")
+  for (null_g in nulls) {
+    # Written under `weight` whatever the source was called, so consumers have
+    # one name to ask for.
+    expect_equal(igraph::edge_attr_names(null_g), "weight")
+    expect_equal(sort(igraph::E(null_g)$weight), sort(igraph::E(gw)$corr))
+  }
+})
+
+test_that("null_model() accepts a numeric weight vector", {
+  gw <- test_graph()
+  set.seed(52)
+  w <- runif(igraph::ecount(gw), 0.1, 2)
+
+  nulls <- null_model(gw, n = 3, seed = 1, weights = w)
+  expect_equal(sort(igraph::E(nulls[[1]])$weight), sort(w))
+})
+
+test_that("rewired nulls carry no edge attribute left over from the observed graph", {
+  # rewire() starts from the observed graph, so every observed edge attribute is
+  # inherited -- now bound to edges that have since been moved. Those values are
+  # not a permutation of anything and a weighted metric would read them as data.
+  gw <- test_graph()
+  set.seed(53)
+  igraph::E(gw)$corr <- runif(igraph::ecount(gw), 0.1, 2)
+  igraph::E(gw)$label <- "observed"
+
+  unweighted <- null_model(gw, model = "rewire", n = 2, seed = 1,
+                           shuffle_weights = FALSE)
+  expect_length(igraph::edge_attr_names(unweighted[[1]]), 0)
+
+  weighted <- null_model(gw, model = "rewire", n = 2, seed = 1,
+                         weights = "corr")
+  expect_equal(igraph::edge_attr_names(weighted[[1]]), "weight")
+})
+
+test_that("metric_significance() and small_worldness() accept non-standard weight names", {
+  # Both used to tell null_model() only *whether* weights were wanted, never
+  # which, so the nulls came back unweighted and the lookup for `weight` then
+  # failed with an error naming an attribute the caller had never mentioned.
+  gw <- test_graph()
+  set.seed(54)
+  igraph::E(gw)$corr <- runif(igraph::ecount(gw), 0.1, 2)
+
+  res <- metric_significance(gw, weights = "corr", metrics = "Modularity",
+                             n = 5, seed = 1, plot = FALSE)
+  expect_equal(nrow(res$result), 1)
+  expect_true(is.finite(res$result$observed))
+  expect_match(res$method, "weighted by 'corr'")
+
+  expect_no_error(
+    metric_significance(gw, weights = igraph::E(gw)$corr,
+                        metrics = "Modularity", n = 5, seed = 1, plot = FALSE)
+  )
+  expect_true(is.finite(small_worldness(gw, n = 5, seed = 1,
+                                        weights = "corr")$result$C))
+})
+
+test_that("a caller-supplied unweighted ensemble is rejected, not silently compared", {
+  gw <- test_graph()
+  set.seed(55)
+  igraph::E(gw)$corr <- runif(igraph::ecount(gw), 0.1, 2)
+
+  bare <- null_model(gw, n = 3, seed = 1, shuffle_weights = FALSE)
+  expect_error(
+    metric_significance(gw, null = bare, weights = "corr",
+                        metrics = "Modularity", plot = FALSE),
+    "carry no 'weight' edge attribute"
+  )
+})
+
+# --- The sampler's pool must be wide enough to be a null --------------------
+#
+# The per-seed nearest-degree pools this replaces matched degree tightly and
+# were, as a null, nearly degenerate: ties broke by vertex index, so seeds of
+# similar degree got near-identical pools and drew from them without
+# replacement. 200 permutations of a 5-seed set on a 150-vertex graph touched
+# 10 of 145 candidates. That was invisible until the permutation rows were
+# aligned, because the p-values were scrambled anyway.
+
+test_that("the sampler explores the candidate pool rather than one corner of it", {
+  set.seed(71)
+  pa <- igraph::sample_pa(150, power = 1.2, directed = FALSE)
+  igraph::V(pa)$name <- paste0("v", seq_len(150))
+  hubs <- names(sort(igraph::degree(pa), decreasing = TRUE))[1:5]
+  candidates <- setdiff(igraph::V(pa)$name, hubs)
+
+  sampler <- suppressWarnings(
+    make_degree_matched_sampler(pa, hubs, candidates, NULL)
+  )
+  draws <- replicate(200, sampler())
+
+  # The old implementation reached 10 of 145. The exact figure depends on the
+  # degree distribution, so this asserts the order of magnitude, not a number.
+  expect_gt(length(unique(as.vector(draws))), 40)
+
+  # A seed set is a set: no permutation may use one vertex twice, which would
+  # quietly make the null's effective seed count smaller than the real one.
+  expect_equal(sum(apply(draws, 2, anyDuplicated)), 0)
+
+  # And a real seed must never appear in its own null.
+  expect_length(intersect(as.vector(draws), hubs), 0)
+})
+
+test_that("ties are broken at random, not by vertex index", {
+  # order() is stable, so the previous implementation always returned the
+  # lowest-indexed of a set of equally good candidates. On a graph where every
+  # candidate is equally good that made the sampler fully deterministic.
+  ring <- igraph::make_ring(60)
+  igraph::V(ring)$name <- paste0("r", seq_len(60))
+  seeds <- c("r1", "r2")
+  candidates <- setdiff(igraph::V(ring)$name, seeds)
+
+  sampler <- make_degree_matched_sampler(ring, seeds, candidates, NULL)
+  draws <- replicate(100, sampler())
+
+  # Every vertex of a ring has degree 2, so all candidates are interchangeable
+  # and the draws must spread over them rather than collapsing onto the first.
+  expect_gt(length(unique(as.vector(draws))), 30)
+})
+
+test_that("the drawn set stays in seed order, so seed_weights stay attached", {
+  # The sampler processes seeds in a random order to avoid giving the first one
+  # the widest choice, but network_diffusion_with_pvalues() reuses
+  # `seed_weights` against the returned vector positionally. If the shuffle
+  # leaked into the return value, each weight would land on the wrong
+  # replacement -- and nothing about the output would show it.
+  set.seed(72)
+  pa <- igraph::sample_pa(200, power = 1.2, directed = FALSE)
+  igraph::V(pa)$name <- paste0("v", seq_len(200))
+  deg <- igraph::degree(pa)
+  names(deg) <- igraph::V(pa)$name
+
+  # Seeds of sharply different degree, so a permuted position can be traced
+  # back to the seed it replaced.
+  seeds <- c(names(sort(deg, decreasing = TRUE))[1],
+             names(sort(deg))[1],
+             names(sort(deg, decreasing = TRUE))[2])
+  sampler <- suppressWarnings(
+    make_degree_matched_sampler(pa, seeds, setdiff(names(deg), seeds), 5)
+  )
+
+  draws <- replicate(200, sampler())
+  expect_equal(nrow(draws), length(seeds))
+
+  # Position 2 replaces the lowest-degree seed, so its mean degree must stay
+  # below those of positions 1 and 3. Under a leaked shuffle all three
+  # positions would converge on the same mean.
+  position_mean <- rowMeans(matrix(deg[as.vector(draws)], nrow = length(seeds)))
+  expect_lt(position_mean[2], position_mean[1])
+  expect_lt(position_mean[2], position_mean[3])
+})
+
+test_that("the degree-matched null is the more conservative of the two", {
+  # The property the whole correction exists to provide, and the one the broken
+  # sampler inverted: because permuted seeds have degrees like the real ones,
+  # the null scores are comparable to the real ones, so *fewer* nodes clear the
+  # threshold than under a uniform null that seeds mostly leaves.
+  set.seed(73)
+  pa <- igraph::sample_pa(400, power = 1.2, directed = FALSE)
+  igraph::V(pa)$name <- paste0("v", seq_len(400))
+  seeds <- names(sort(igraph::degree(pa), decreasing = TRUE))[50:60]
+
+  u <- network_diffusion_with_pvalues(pa, seeds, method = "rwr",
+                                      n_permutations = 100, seed = 1,
+                                      verbose = FALSE, null = "uniform")
+  d <- suppressWarnings(
+    network_diffusion_with_pvalues(pa, seeds, method = "rwr",
+                                   n_permutations = 100, seed = 1,
+                                   verbose = FALSE, null = "degree_matched")
+  )
+
+  expect_lte(sum(d$p_empirical < 0.05), sum(u$p_empirical < 0.05))
+})
+
+test_that("a pool too small for the seed count is rejected loudly", {
+  # The anti-conservative regime: each permutation would consume most of the
+  # bin, so consecutive permutations repeat and the null stops varying.
+  set.seed(74)
+  pa <- igraph::sample_pa(400, power = 1.2, directed = FALSE)
+  igraph::V(pa)$name <- paste0("v", seq_len(400))
+  deg <- igraph::degree(pa)
+  names(deg) <- igraph::V(pa)$name
+
+  # Mid-degree seeds, so the graph *can* match them and the only warning in
+  # play is the one about pool size. The hubs of a scale-free graph would also
+  # trip the "only approximately degree-matched" warning, which is a different
+  # claim about a different problem.
+  seeds <- names(sort(deg, decreasing = TRUE))[60:69]
+  candidates <- setdiff(names(deg), seeds)
+
+  expect_warning(make_degree_matched_sampler(pa, seeds, candidates, 5),
+                 "anti-conservative")
+
+  # The automatic choice scales with the seed count and so must not warn.
+  expect_no_warning(make_degree_matched_sampler(pa, seeds, candidates, NULL))
+})
+
+# --- Summarizing the null ensemble ------------------------------------------
+#
+# metric_significance() and small_worldness() both recompute every metric for
+# every null graph, which is the expensive half of each and is embarrassingly
+# parallel. They now share summarize_null_ensemble(), which distributes the work
+# with future.apply under whatever plan the caller has set.
+
+test_that("the ensemble is summarized in input order, one row per graph", {
+  # The rows are bound positionally and each metric column is then treated as a
+  # null distribution, so a reordering would be entirely invisible in the
+  # output. Graphs with distinct edge counts make the order observable.
+  ens <- lapply(c(3L, 7L, 5L, 9L, 4L), function(k) {
+    gg <- igraph::make_full_graph(5)
+    igraph::subgraph_from_edges(gg, igraph::E(gg)[seq_len(k)],
+                                delete.vertices = FALSE)
+  })
+
+  rows <- summarize_null_ensemble(ens, NULL, "strength")
+
+  expect_equal(nrow(rows), length(ens))
+  expect_equal(rows$Edges, vapply(ens, igraph::ecount, numeric(1)))
+})
+
+test_that("an ensemble summary is unchanged by the plan it ran under", {
+  # The parallel path cannot be exercised under the default sequential plan, and
+  # the one parallel defect this package has had -- a package-level
+  # future::plan() call that leaked worker connections -- was invisible locally
+  # and only caught by CI. Forked futures are unavailable on Windows, hence the
+  # skip rather than a hard requirement.
+  skip_on_cran()
+  skip_if_not(future::supportsMulticore(),
+              "forked futures are unavailable on this platform")
+
+  g <- test_graph(n = 40)
+  nulls <- null_model(g, n = 6, seed = 2)
+
+  sequential <- metric_significance(g, null = nulls, plot = FALSE)$result
+  sw_sequential <- small_worldness(g, n = 6, seed = 2)$result
+
+  plan_before <- future::plan()
+  conns_before <- nrow(showConnections(all = FALSE))
+  on.exit(future::plan(plan_before), add = TRUE)
+  # suppressWarnings: parallelly warns when asked for more workers than it
+  # detects cores, which is a property of the machine, not of netkit.
+  suppressWarnings(future::plan("multicore", workers = 2))
+
+  parallel <- metric_significance(g, null = nulls, plot = FALSE)$result
+  sw_parallel <- small_worldness(g, n = 6, seed = 2)$result
+
+  # Identical, not merely similar: Modularity is seeded inside
+  # summarize_graph_metrics() through with_local_seed(), so distributing the
+  # ensemble must not hand each worker its own random stream.
+  expect_equal(parallel, sequential)
+  expect_equal(sw_parallel, sw_sequential)
+
+  future::plan(plan_before)
+  expect_equal(class(future::plan()), class(plan_before))
+  expect_equal(nrow(showConnections(all = FALSE)), conns_before)
+})
+
+test_that("neither function changes the caller's future plan", {
+  # The regression guard that applies on every platform, parallel or not.
+  g <- test_graph(n = 30)
+  plan_before <- class(future::plan())
+  conns_before <- nrow(showConnections(all = FALSE))
+
+  metric_significance(g, metrics = "Modularity", n = 4, seed = 1, plot = FALSE)
+  small_worldness(g, n = 4, seed = 1)
+
+  expect_equal(class(future::plan()), plan_before)
+  expect_equal(nrow(showConnections(all = FALSE)), conns_before)
 })

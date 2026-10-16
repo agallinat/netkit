@@ -31,11 +31,21 @@
 #'       non-seed vertices, matching only the seed count.}
 #'   }
 #'   See Details for why the default is degree-matched.
-#' @param match_pool Integer. For `null = "degree_matched"`, how many
-#'   nearest-degree candidates each real seed may be replaced by. Default is
-#'   `10`. Smaller values match degree more tightly but give the null less
-#'   variance; `Inf` makes every candidate eligible and so reduces exactly to
-#'   `null = "uniform"`.
+#' @param match_pool For `null = "degree_matched"`, the smallest number of
+#'   candidates any seed may be drawn from. Candidates are grouped into adaptive
+#'   degree bins holding at least this many members, and each seed is replaced
+#'   by a vertex drawn uniformly from its own bin.
+#'
+#'   `NULL` (the default) sets it to `10 * length(seed_nodes)`, capped at the
+#'   number of candidates. The seed count has to enter the choice: every
+#'   permutation draws `length(seed_nodes)` members out of a bin, so a fixed
+#'   small pool means consecutive permutations are largely the same vertices and
+#'   the null collapses. A number sets it explicitly and warns if it is small
+#'   enough to put the null in that regime. `Inf` puts every candidate in one
+#'   bin and so reduces exactly to `null = "uniform"`.
+#'
+#'   Tighter matching is not automatically better: see the "Choice of null"
+#'   section for the trade-off it makes against the validity of the p-values.
 #' @param weights Optional edge weights: `NULL` (default) to ignore them, the
 #'   name of an edge attribute, or a numeric vector of length
 #'   `igraph::ecount(graph)`. See [netkit-weights].
@@ -48,11 +58,52 @@
 #'
 #' @inheritSection netkit-weights Edge weights
 #'
-#' @return A data frame with two columns:
+#' @return A tibble with one row per vertex, ordered by `p_empirical` and then by
+#'   descending `z`:
 #' \describe{
-#'   \item{node}{Node name}
-#'   \item{score}{Diffusion score representing influence from the seed nodes}
+#'   \item{node}{Node name.}
+#'   \item{score}{Diffusion score representing influence from the seed nodes.}
+#'   \item{p_empirical}{One-sided empirical p-value; see "Interpreting the
+#'     p-values".}
+#'   \item{null_mean, null_sd}{Mean and standard deviation of the vertex's own
+#'     null distribution.}
+#'   \item{z}{`(score - null_mean) / null_sd`, or `NA` where the null has no
+#'     variance. This is the column to rank on when many p-values tie at the
+#'     floor, which with the default `n_permutations` they routinely do.}
+#'   \item{n_valid}{Number of permutations the vertex was actually tested
+#'     against, which is `n_permutations` minus the permutations that seeded the
+#'     vertex itself. The p-value floor is `1 / (n_valid + 1)`, so this is what
+#'     sets the best attainable significance for that vertex.}
 #' }
+#'
+#' @section Interpreting the p-values:
+#'
+#' `p_empirical` is **one-sided**: it counts null scores at least as *high* as
+#' the observed one, and so tests whether a vertex receives more signal than
+#' chance placement of the seeds would give. There is no two-sided variant,
+#' because a vertex receiving unusually little diffusion signal is not a
+#' meaningful finding -- most vertices receive almost none.
+#'
+#' It uses the `(r + 1) / (n + 1)` convention and is therefore never zero. With
+#' `n_valid` permutations the smallest attainable value is `1 / (n_valid + 1)`,
+#' so the default of 1000 permutations cannot distinguish the strongest vertex
+#' in the graph from the hundredth strongest -- they all report 0.000999. Rank
+#' on `z` when that happens; it is why the column is returned.
+#'
+#' A vertex is tested only against the permutations in which it was **not**
+#' itself a permuted seed. A permutation that happened to seed vertex *v*
+#' deposits a large score at *v* for exactly the reason the real seeds top the
+#' real run, and says nothing about whether *v* is unusually well placed with
+#' respect to the real seed set; including it inflated the upper tail of *v*'s
+#' null and made its p-value conservative. The effect fell hardest on the
+#' vertices drawn most often, so it was not a uniform shift. `n_valid` reports
+#' what each vertex was actually compared against.
+#'
+#' The real seed nodes are a special case worth knowing about. They are never
+#' drawn as permuted seeds, so they are compared against a null in which they
+#' are never seeded, while in the real run they are. They will therefore sit at
+#' the top of the ranking essentially by construction, and their p-values are
+#' not evidence of anything. Drop them before interpreting the table.
 #'
 #' @details
 #' This function allows flexible application of network diffusion strategies, useful in systems biology
@@ -78,6 +129,32 @@
 #'
 #' Permutations are reproducible regardless of the plan: `seed` is passed to
 #' `future_lapply(future.seed = )`, which generates parallel-safe RNG streams.
+#'
+#' @section Performance:
+#'
+#' The permutations are not diffused one at a time. They are grouped into
+#' batches and each batch is solved as a single multiple-right-hand-side
+#' problem, which for `"laplacian"` means one sparse Cholesky solve against a
+#' matrix of seed vectors rather than one solve per permutation. On a
+#' 6000-vertex, 78000-edge graph with 200 permutations this took the whole call
+#' from 6.8 s to 3.4 s for `"laplacian"`, 1.4 s to 0.6 s for `"heat"` and 1.4 s
+#' to 0.6 s for `"rwr"`.
+#'
+#' Two things are worth knowing about where the remaining time goes. The kernel
+#' is built once per call, and for `"laplacian"` that factorization is itself
+#' expensive -- 2.8 s on the graph above -- so at small `n_permutations` most of
+#' the runtime is a fixed cost that no batching touches. The saving is
+#' proportional to `n_permutations`, so it is substantial at the default of
+#' 1000 and negligible at 50. If you intend to run several seed sets against one
+#' graph, build the kernel once with [prepare_diffusion()] instead.
+#'
+#' Batching is numerically free for `"laplacian"` and `"heat"`, which produce
+#' bit-identical results either way. `"rwr"` is the exception: the iteration
+#' stops when the slowest column of a batch has converged, so the other columns
+#' are carried slightly past their own stopping point. They end up marginally
+#' *closer* to the fixed point, and the difference is bounded by the convergence
+#' tolerance, but `"rwr"` scores are therefore reproducible to that tolerance
+#' rather than to the bit.
 #'
 #' @references
 #' Köhler S, Bauer S, Horn D, Robinson PN. Walking the interactome for prioritization of candidate disease genes.
@@ -105,11 +182,11 @@
 #' connected vertices -- against a null composed mostly of poorly connected ones,
 #' and reports much of the degree difference as significance.
 #'
-#' `null = "degree_matched"` removes that confound by replacing each real seed
-#' with a randomly chosen vertex drawn from the `match_pool` candidates closest
-#' to it in degree. The resulting p-values answer "are these seeds unusually well
-#' *placed*?" rather than "are these seeds unusually well *connected*?", which is
-#' almost always the intended question.
+#' `null = "degree_matched"` removes that confound by grouping candidates into
+#' adaptive degree bins and replacing each real seed with a vertex drawn
+#' uniformly from its own bin. The resulting p-values answer "are these seeds
+#' unusually well *placed*?" rather than "are these seeds unusually well
+#' *connected*?", which is almost always the intended question.
 #'
 #' How closely the match can be made is limited by the graph. If the seed set is
 #' extreme -- the six highest-degree vertices of a scale-free network, say --
@@ -117,6 +194,34 @@
 #' no permutation null can fully correct for degree. The function warns when the
 #' closest available candidates are still far from the seeds, so the residual
 #' confound is visible rather than assumed away.
+#'
+#' **Matching more tightly is not better.** There is a real trade-off here, and
+#' it runs the opposite way to intuition. Narrowing the bins improves the degree
+#' match but shrinks the set of vertices the null ever places a seed on, and
+#' each permutation draws `length(seed_nodes)` of them. Once the bins approach
+#' the size of the seed set, consecutive permutations are mostly the same
+#' vertices: a node far from all of them scores near zero in every permutation
+#' and is then reported as significant whatever its real score. The null becomes
+#' *anti*-conservative -- which defeats the purpose, since the degree-matched
+#' null exists to be the more conservative of the two.
+#'
+#' The default therefore scales the pool with the seed count rather than fixing
+#' it: `10 * length(seed_nodes)`. That multiplier was calibrated on five
+#' synthetic scale-free graphs rather than derived, and should be treated as a
+#' working default rather than a settled one.
+#'
+#' One consequence is worth stating, because it is easy to mistake for a bug.
+#' The degree-matched null is **not** uniformly more conservative than the
+#' uniform null, node count for node count. Because its bins restrict which
+#' vertices are ever seeded, it draws each of them more often -- on a
+#' 150-vertex graph with 5 seeds, up to 10 of 60 permutations against 5 for the
+#' uniform null. Each vertex is tested only against the permutations that did
+#' not seed it, so that narrower support means a larger share of a vertex's own
+#' null is excluded, and what gets excluded is its upper tail. The remaining
+#' null is smaller and the p-value lower. Both nulls stay valid; they are
+#' answering slightly different conditional questions, and the matched one is
+#' conditioned more strongly. Narrowing `match_pool` strengthens that
+#' conditioning, which is a second reason not to narrow it.
 #'
 #' @importFrom igraph is_igraph V is_directed as_adjacency_matrix vertex_attr vertex_attr<- vcount degree
 #' @importFrom Matrix Diagonal
@@ -136,7 +241,7 @@ network_diffusion_with_pvalues <- function(graph,
                                            weight_type = c("strength", "distance"),
                                            seed_weights = NULL,
                                            null = c("degree_matched", "uniform"),
-                                           match_pool = 10) {
+                                           match_pool = NULL) {
 
   method <- match.arg(method)
   weight_type <- match.arg(weight_type)
@@ -178,15 +283,39 @@ network_diffusion_with_pvalues <- function(graph,
   seed_weights <- resolve_perm_seed_weights(seed_weights, requested_seeds,
                                             seed_nodes)
 
-  # 1. Compute real diffusion scores
+  # 1. Build the diffusion kernel, once.
+  #
+  # Built here, before the real scores, rather than after them. The real-score
+  # call used to run first and without `precompute`, so network_diffusion() built
+  # a kernel of its own and threw it away, and the identical kernel was then
+  # built again for the permutations. For "laplacian" that is a second sparse
+  # Cholesky factorization of the whole graph: 2.8 s of the 6.8 s this function
+  # took on a 6000-vertex, 78000-edge graph went on a factorization whose result
+  # was discarded. The cost is per call rather than per permutation, so unlike
+  # the batching below it is invisible in any benchmark that scales
+  # n_permutations up -- and it dominates at small ones.
+  precomp <- prepare_diffusion(graph = graph,
+                               method = method,
+                               alpha = alpha, t = t, restart_prob = restart_prob,
+                               normalize = normalize,
+                               weights = weights,
+                               weight_type = weight_type)
+
+  # 2. Compute real diffusion scores
   real_scores_df <- network_diffusion(graph, seed_nodes, method = method,
                                       alpha = alpha, t = t,
                                       restart_prob = restart_prob,
                                       normalize = normalize,
+                                      precompute = precomp,
                                       weights = weights,
                                       weight_type = weight_type,
                                       seed_weights = seed_weights)
-  real_scores <- setNames(real_scores_df$score, real_scores_df$node)
+  # Pinned to graph order, not to score order. network_diffusion() sorts its
+  # output by descending score, so the real scores and every permutation come
+  # back in a *different* vertex order. Everything downstream is matched by
+  # position, so the alignment has to happen here and in the permutation lambda,
+  # once each, before any of it is combined.
+  real_scores <- setNames(real_scores_df$score, real_scores_df$node)[all_nodes]
 
   if (verbose) {
     # class(plan()) is e.g. c("FutureStrategy", "sequential", "uniprocess", ...);
@@ -196,15 +325,7 @@ network_diffusion_with_pvalues <- function(graph,
                     n_permutations, n_seeds, plan_name))
   }
 
-  # Precompute diffusion matrix
-  precomp <- prepare_diffusion(graph = graph,
-                               method = method,
-                               alpha = alpha, t = t, restart_prob = restart_prob,
-                               normalize = normalize,
-                               weights = weights,
-                               weight_type = weight_type)
-
-  # 2. Run permutations under whatever future plan the caller has set.
+  # 3. Run permutations under whatever future plan the caller has set.
   #
   # This deliberately does NOT call future::plan(). A package must not change the
   # user's plan: doing so overrides their choice globally, and the "multisession"
@@ -213,7 +334,6 @@ network_diffusion_with_pvalues <- function(graph,
   # R CMD check. The default plan is sequential; see @details for opting in to
   # parallel execution.
 
-  # 3. Run permutations
   # Candidate pool and, for the degree-matched null, the bin structure. Both are
   # computed once outside the permutation loop.
   candidates <- setdiff(all_nodes, seed_nodes)
@@ -232,34 +352,174 @@ network_diffusion_with_pvalues <- function(graph,
     function() sample(candidates, n_seeds)
   }
 
-  perm_results <- future.apply::future_lapply(seq_len(n_permutations), function(i) {
-    perm_seeds <- sampler()
-    null_df <- network_diffusion(graph, perm_seeds, method = method,
-                                 alpha = alpha, t = t,
-                                 restart_prob = restart_prob,
-                                 normalize = normalize, precompute = precomp,
-                                 weights = weights, weight_type = weight_type,
-                                 seed_weights = seed_weights)
-    setNames(null_df$score, null_df$node)
-  }, future.seed = seed)
+  # Draw every permuted seed set up front, one future_lapply element per
+  # permutation with `future.seed = seed`. The batching below changes how the
+  # diffusions are *solved*, not which seeds are drawn: keeping the draw in this
+  # shape means each permutation still consumes its own L'Ecuyer stream, so the
+  # permuted sets -- and therefore the p-values -- are identical to those the
+  # per-permutation implementation produced for the same `seed`.
+  perm_seed_sets <- future.apply::future_lapply(
+    seq_len(n_permutations), function(i) sampler(), future.seed = seed
+  )
 
-  # 4. Convert list of named vectors to a matrix
+  # Solve the permutations in batches, as a multi-RHS problem rather than one
+  # diffusion per permutation. A sparse Cholesky solve has a fixed overhead per
+  # call that does not grow with the number of right-hand sides, so 200 separate
+  # solves pay it 200 times; the heat expansion and the random walk amortize the
+  # sparse traversal over the columns instead of repeating it per vector.
+  #
+  # Measured on a 6000-vertex, 78000-edge graph with 200 permutations, the
+  # permutation solves alone went from 0.75 s to 0.26 s for "laplacian", 1.01 s
+  # to 0.46 s for "heat" and 0.70 s to 0.60 s for "rwr". Note what that implies
+  # about the *function*: at 200 permutations most of its runtime is the
+  # one-time Cholesky factorization in prepare_diffusion() (2.8 s on this
+  # graph), which no amount of batching touches. The batching win is
+  # proportional to n_permutations, so it matters at the documented default of
+  # 1000 and more at 5000, and is close to invisible at 50.
+  #
+  # The batches are then distributed with future_lapply, so a caller who has set
+  # a plan still gets parallelism -- across batches now rather than across
+  # permutations. No RNG is consumed here, the seed sets having already been
+  # drawn, hence `future.seed = FALSE`.
+  n_nodes <- length(all_nodes)
+  batch_cols <- diffusion_batch_size(n_nodes, n_permutations)
+  batches <- split(seq_len(n_permutations),
+                   ceiling(seq_len(n_permutations) / batch_cols))
+
+  perm_results <- future.apply::future_lapply(batches, function(idx) {
+    # Rows in graph order by construction. The per-permutation implementation
+    # had to re-align each result by name, because network_diffusion() sorts its
+    # output by descending score and so returned every permutation in a
+    # different vertex order; binding those by position gave each node the
+    # distribution of the k-th *ranked* null score. Building the seed matrix
+    # directly removes that step rather than repeating it -- there is no sort to
+    # undo -- but the row order is still asserted below, since a matrix whose
+    # rows have been permuted looks exactly as well-formed as one whose rows
+    # have not.
+    F0 <- matrix(
+      vapply(perm_seed_sets[idx],
+             function(ps) make_seed_vector(all_nodes, ps, seed_weights),
+             numeric(n_nodes)),
+      nrow = n_nodes
+    )
+    as.matrix(diffuse_columns(F0, precomp, method = method, t = t,
+                              restart_prob = restart_prob))
+  }, future.seed = FALSE)
+
+  # 4. One column per permutation, every column in `all_nodes` order, as is
+  # `real_scores`, so binding by position is correct.
   null_scores_mat <- do.call(cbind, perm_results)
-  null_scores_mat <- null_scores_mat[names(real_scores), , drop = FALSE]  # align rows
+  rownames(null_scores_mat) <- all_nodes
 
-  # 5. Compute empirical p-values
-  p_values <- mapply(function(real, null_dist) {
-    (sum(null_dist >= real) + 1) / (length(null_dist) + 1)
-  }, real = real_scores, null_dist = split(null_scores_mat, row(null_scores_mat)))
+  # 5. Which permutations seeded which vertex.
+  #
+  # A permutation in which vertex v was itself a permuted seed contributes an
+  # enormous score at v -- for the same reason the real seeds top the real run --
+  # and that permutation therefore says nothing about whether v is unusually well
+  # placed relative to the real seeds. Leaving it in the null inflates the upper
+  # tail of v's own null distribution and makes v's p-value conservative,
+  # systematically so for the low-degree vertices that get drawn most often.
+  # Each vertex is now tested only against the permutations that did not seed it.
+  #
+  # Built as a logical matrix in `all_nodes` x permutation order, matching
+  # null_scores_mat exactly, so the mask and the scores cannot drift apart.
+  seeded <- matrix(FALSE, nrow = n_nodes, ncol = n_permutations,
+                   dimnames = list(all_nodes, NULL))
+  for (i in seq_len(n_permutations)) {
+    seeded[perm_seed_sets[[i]], i] <- TRUE
+  }
 
-  # 6. Return result
+  # 6. Per-node null summaries and p-values.
+  #
+  # row-wise rather than via split(): split(m, row(m)) allocates an integer
+  # matrix the size of the data and then one vector per vertex, which on a
+  # 6000-vertex graph is 6000 allocations to compute 6000 numbers.
+  stats_rows <- lapply(seq_len(n_nodes), function(i) {
+    keep <- !seeded[i, ]
+    nulls <- null_scores_mat[i, keep]
+    nulls <- nulls[is.finite(nulls)]
+    n_valid <- length(nulls)
+
+    if (n_valid == 0L) {
+      # Every permutation seeded this vertex, so it has no null to be tested
+      # against. Reported as NA rather than as a p-value computed from nothing.
+      return(c(p = NA_real_, null_mean = NA_real_, null_sd = NA_real_,
+               z = NA_real_, n_valid = 0))
+    }
+
+    mu <- mean(nulls)
+    sdev <- stats::sd(nulls)
+    c(
+      # One-sided, upper tail: the question is whether the real score is higher
+      # than the null, never lower. The +1/+1 convention keeps p away from zero,
+      # so the smallest attainable value is 1 / (n_valid + 1).
+      p = (sum(nulls >= real_scores[[i]]) + 1) / (n_valid + 1),
+      null_mean = mu,
+      null_sd = sdev,
+      z = if (is.finite(sdev) && sdev > 0) {
+        (real_scores[[i]] - mu) / sdev
+      } else {
+        NA_real_
+      },
+      n_valid = n_valid
+    )
+  })
+  stats_mat <- do.call(rbind, stats_rows)
+
+  # 7. Return result
   result <- tibble::tibble(
     node = names(real_scores),
     score = as.numeric(real_scores),
-    p_empirical = as.numeric(p_values)
+    p_empirical = stats_mat[, "p"],
+    null_mean = stats_mat[, "null_mean"],
+    null_sd = stats_mat[, "null_sd"],
+    z = stats_mat[, "z"],
+    n_valid = as.integer(stats_mat[, "n_valid"])
   )
-  result <- result[order(result$p_empirical), ]
+
+  # Ordered by p, then by descending z. The p-value floor is 1 / (n_valid + 1),
+  # so with the default 1000 permutations every vertex above the threshold piles
+  # up at 0.000999 and the ordering within that pile would otherwise be whatever
+  # order the vertices happen to sit in. The z-score breaks the tie by effect
+  # size, which is the only thing left that distinguishes them.
+  result <- result[order(result$p_empirical, -result$z, na.last = TRUE), ]
   return(result)
+}
+
+#' Columns per batch for the permutation null
+#'
+#' Internal. Chooses how many permuted seed vectors to solve in one multi-RHS
+#' call. Two constraints pull in opposite directions, so neither a fixed number
+#' nor "all of them at once" is right:
+#'
+#' * The intermediate is dense and `n x batch`, so the batch has to be bounded
+#'   by the vertex count rather than fixed. A 6000-vertex graph solved 1000
+#'   permutations at once would allocate 48 MB per intermediate, and the heat
+#'   expansion holds three of them at a time.
+#' * Parallelism now happens across batches. One batch means one worker does
+#'   everything however many the caller started, so the batch count is capped to
+#'   give every worker something to do.
+#'
+#' @param n Vertex count.
+#' @param n_permutations Total permutations to solve.
+#' @param budget Target size of one dense intermediate, in matrix entries.
+#'   `1e6` doubles is about 8 MB.
+#'
+#' @return A single positive integer, never larger than `n_permutations`.
+#'
+#' @keywords internal
+#' @noRd
+diffusion_batch_size <- function(n, n_permutations, budget = 1e6) {
+
+  cols <- max(1L, as.integer(floor(budget / max(n, 1L))))
+  cols <- min(cols, n_permutations)
+
+  workers <- tryCatch(future::nbrOfWorkers(), error = function(e) 1L)
+  if (length(workers) == 1L && is.finite(workers) && workers > 1L) {
+    cols <- min(cols, as.integer(ceiling(n_permutations / workers)))
+  }
+
+  max(1L, as.integer(cols))
 }
 
 #' Build a degree-matched seed sampler
@@ -268,24 +528,43 @@ network_diffusion_with_pvalues <- function(graph,
 #' the real seed set's, by replacing each real seed with a randomly chosen
 #' candidate of similar degree.
 #'
-#' Nearest-degree matching rather than binning. Two binning schemes were tried
-#' first and both matched only loosely on exactly the graphs this correction
-#' matters for. Quantile bins of degree *value* collapse on a heavy-tailed
-#' distribution -- most vertices of a scale-free graph have degree 1, so most
-#' quantiles coincide and the surviving top bin spans everything from degree 3 to
-#' the largest hub. Quantile bins of degree *rank* are equal-sized by
-#' construction, but still wide: ten bins over 200 vertices put twenty vertices
-#' per bin, and in the top bin their degrees ranged from 1 to 17, so the bin mean
-#' was nowhere near the seed it was meant to match. Matching each seed
-#' individually removes the binning granularity from the problem entirely.
+#' Adaptive degree bins, not per-seed nearest-degree pools. The per-seed version
+#' this replaces matched degree tightly and was, as a null, close to useless: it
+#' gave each seed the `match_pool` nearest candidates by `order()`, which breaks
+#' ties by vertex index, so seeds of similar degree received near-identical
+#' pools and then drew from them without replacement. Across 200 permutations of
+#' a 5-seed set on a 150-vertex scale-free graph the sampler touched **10 of 145
+#' candidates**. A null assembled from ten vertices has almost no variance, so
+#' nearly any real score exceeded nearly all of it, and the p-values were
+#' anti-conservative -- the degree-matched null reported three times as many
+#' significant nodes as the uniform one it is supposed to be *more* conservative
+#' than. That defect was invisible until the permutation rows were aligned
+#' correctly, because the p-values were scrambled anyway.
+#'
+#' Binning restores the variance. Both naive schemes really are too loose, for
+#' the reasons the previous implementation recorded -- quantiles of degree value
+#' collapse on a heavy tail, quantiles of degree rank put a 1 and a 17 in one
+#' bin -- so neither is used. Instead the bins are grown adaptively: walk the
+#' candidates in degree order and close a bin only once it holds `match_pool`
+#' members *and* the degree is about to change. Bins are therefore as narrow as
+#' the degree distribution allows while still being wide enough to sample from,
+#' which on a scale-free graph means the degree-1 vertices form one large bin and
+#' the hubs form bins only as wide as they have to be.
+#'
+#' Three further properties matter, each of which the previous version got
+#' wrong: ties are broken at random rather than by vertex index; seeds are
+#' processed in a random order each draw, so the first seed is not always the one
+#' with the widest remaining choice; and the drawn set is returned in the
+#' *original* seed order, because `network_diffusion_with_pvalues()` reuses
+#' `seed_weights` against it positionally.
 #'
 #' @param graph An `igraph` object.
 #' @param seed_nodes The real seed names.
 #' @param candidates Vertex names eligible as permuted seeds.
-#' @param match_pool How many nearest-degree candidates each real seed may be
-#'   replaced by. Small values match degree tightly but give the null little
-#'   variance; `Inf` makes every candidate eligible and so reduces exactly to the
-#'   uniform null.
+#' @param match_pool The minimum number of candidates in each degree bin, and so
+#'   the smallest pool any seed may be drawn from. Small values match degree
+#'   tightly but give the null little variance; `Inf` puts every candidate in one
+#'   bin and so reduces exactly to the uniform null.
 #'
 #' @return A function of no arguments returning a character vector of seed names.
 #'
@@ -294,8 +573,36 @@ network_diffusion_with_pvalues <- function(graph,
 make_degree_matched_sampler <- function(graph, seed_nodes, candidates,
                                         match_pool) {
 
-  if (!is.numeric(match_pool) || length(match_pool) != 1 || match_pool < 1) {
+  n_seeds <- length(seed_nodes)
+
+  if (!is.null(match_pool) &&
+      (!is.numeric(match_pool) || length(match_pool) != 1 || match_pool < 1)) {
     stop("'match_pool' must be a single number of at least 1.", call. = FALSE)
+  }
+
+  # Each permutation consumes n_seeds members of a bin, so a bin barely larger
+  # than the seed set yields permutations that are mostly the same vertices.
+  # The null is then narrow in *placement* as well as in degree: a node far
+  # from every bin member scores zero in every permutation and so comes out
+  # significant whatever its real score. Measured on five scale-free graphs,
+  # a floor of 10x the seed count is where the degree-matched null becomes
+  # reliably more conservative than the uniform one -- which is what it is for.
+  # Wider than about 20x and the bins span too much degree to be a match at all.
+  POOL_PER_SEED <- 10L
+  auto_pool <- min(max(POOL_PER_SEED * n_seeds, 10L), length(candidates))
+
+  if (is.null(match_pool)) {
+    match_pool <- auto_pool
+  } else if (match_pool < POOL_PER_SEED * n_seeds &&
+             match_pool < length(candidates)) {
+    warning(sprintf(
+      paste0("match_pool = %s is small for %d seeds: each permutation would ",
+             "draw %d of as few as %s candidates, leaving the null too narrow ",
+             "and the p-values anti-conservative. Consider match_pool = %d or ",
+             "more, or match_pool = NULL to choose it automatically."),
+      format(match_pool), n_seeds, n_seeds, format(match_pool),
+      auto_pool
+    ), call. = FALSE)
   }
 
   deg <- igraph::degree(graph)
@@ -306,26 +613,68 @@ make_degree_matched_sampler <- function(graph, seed_nodes, candidates,
   # the equivalence exact, which is what the documentation claims, and avoids
   # warning below about a match that was never requested.
   if (match_pool >= length(candidates)) {
-    n_seeds <- length(seed_nodes)
     return(function() sample(candidates, n_seeds))
   }
 
   cand_deg <- deg[candidates]
-  k <- min(match_pool, length(candidates))
+  min_bin <- max(1L, as.integer(min(match_pool, length(candidates))))
 
-  # The eligible pool for each seed, computed once rather than per permutation.
-  pools <- lapply(seed_nodes, function(s) {
-    ord <- order(abs(cand_deg - deg[[s]]))
-    candidates[utils::head(ord, k)]
-  })
+  # --- Adaptive degree bins over the candidates ---
+  #
+  # Walk the candidates in degree order, closing a bin once it holds min_bin
+  # members and the next degree differs. Splitting a run of equal degrees would
+  # be an arbitrary cut, and a bin below min_bin is too small to be sampled
+  # from, so both constraints have to hold before a bin is closed.
+  ord <- order(cand_deg)
+  sorted_names <- candidates[ord]
+  sorted_deg <- unname(cand_deg[ord])
+
+  bin_id <- integer(length(sorted_deg))
+  current <- 1L
+  filled <- 0L
+  for (i in seq_along(sorted_deg)) {
+    bin_id[i] <- current
+    filled <- filled + 1L
+    if (filled >= min_bin && i < length(sorted_deg) &&
+        sorted_deg[i + 1L] != sorted_deg[i]) {
+      current <- current + 1L
+      filled <- 0L
+    }
+  }
+  # A short trailing bin is merged back rather than left underfilled, so the
+  # occupancy floor holds for every bin and not merely for most of them.
+  if (current > 1L && filled < min_bin) {
+    bin_id[bin_id == current] <- current - 1L
+  }
+
+  members <- split(sorted_names, factor(bin_id, levels = sort(unique(bin_id))))
+  bin_lo <- vapply(members, function(m) min(deg[m]), numeric(1))
+  bin_hi <- vapply(members, function(m) max(deg[m]), numeric(1))
+  bin_mean <- vapply(members, function(m) mean(deg[m]), numeric(1))
+
+  # Each seed takes the bin whose degree range contains it, or the nearest bin
+  # when its degree lies outside every range -- which is what happens to a hub
+  # more connected than any available candidate.
+  seed_bin <- vapply(seed_nodes, function(s) {
+    d <- deg[[s]]
+    gap <- pmax(bin_lo - d, 0) + pmax(d - bin_hi, 0)
+    which.min(gap)
+  }, integer(1))
 
   # How well the match can possibly do is limited by what the graph contains: an
   # extreme seed set has no comparable vertices to be replaced by. Say so once,
   # rather than leaving the caller to assume the correction was exact.
-  best <- vapply(seq_along(seed_nodes), function(i) {
-    mean(deg[pools[[i]]])
-  }, numeric(1))
+  #
+  # Judged against the closest candidates that *exist*, not against the bin
+  # actually used. The bins are deliberately wider than the tightest possible
+  # match, so measuring the bin would report that deliberate widening as though
+  # it were a property of the graph -- and would fire on nearly every call.
   seed_deg <- deg[seed_nodes]
+  n_closest <- min(5L, length(cand_deg))
+  best <- vapply(seed_nodes, function(s) {
+    mean(sort(cand_deg[order(abs(cand_deg - deg[[s]]))][seq_len(n_closest)]))
+  }, numeric(1))
+
   if (any(seed_deg > 0) &&
       mean(abs(best - seed_deg)) > 0.5 * mean(seed_deg)) {
     warning(sprintf(
@@ -341,22 +690,39 @@ make_degree_matched_sampler <- function(graph, seed_nodes, candidates,
 
   function() {
     drawn <- character(0)
-    for (pl in pools) {
-      available <- setdiff(pl, drawn)
-      if (length(available) == 0) {
-        # The pool is exhausted because an earlier seed took its members. Widen
-        # to every remaining candidate rather than failing, and take the closest
-        # in degree so the match degrades gracefully.
+    out <- character(n_seeds)
+
+    # Random processing order. With a fixed one the first seed always picks from
+    # a full bin and the last from whatever is left, which biases the match by
+    # position in the seed vector.
+    for (i in sample.int(n_seeds)) {
+      pool <- setdiff(members[[seed_bin[[i]]]], drawn)
+
+      if (length(pool) == 0) {
+        # The bin is exhausted because other seeds took its members. Widen to
+        # every remaining candidate and keep the closest in degree, so the match
+        # degrades gracefully instead of failing.
         others <- setdiff(candidates, drawn)
         if (length(others) == 0) {
           stop("Not enough candidate vertices to build a degree-matched ",
                "permutation. Use null = \"uniform\", or reduce the seed set.",
                call. = FALSE)
         }
-        available <- others[order(abs(deg[others] - mean(deg[pl])))][1]
+        gaps <- abs(deg[others] - deg[[seed_nodes[[i]]]])
+        pool <- others[gaps == min(gaps)]
       }
-      drawn <- c(drawn, available[sample.int(length(available), 1)])
+
+      # sample.int() over the pool, so equally good candidates are equally
+      # likely. The previous version resolved ties through order(), which is
+      # stable and therefore always returned the lowest vertex index.
+      pick <- pool[[sample.int(length(pool), 1)]]
+      drawn <- c(drawn, pick)
+      out[[i]] <- pick
     }
-    drawn
+
+    # Original seed order, not draw order: network_diffusion_with_pvalues()
+    # reuses `seed_weights` against this vector positionally, so permuting it
+    # would attach each weight to the wrong replacement.
+    out
   }
 }

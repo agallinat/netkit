@@ -36,6 +36,41 @@
 #'   \item{\code{graph}}{The original graph with a new vertex attribute \code{is_hub}.}
 #' }
 #'
+#' @section Choosing a method:
+#'
+#' The two methods ask different questions and fail in opposite directions.
+#'
+#' `"zscore"` asks whether a vertex is unusual *relative to the spread of this
+#' graph*, which is the meaningful definition of a hub, but its thresholds are
+#' only reachable if the metric has a tail to reach them. The defaults of 3 and
+#' 1 are calibrated for a scale-free degree distribution. On a dense graph -- a
+#' thresholded correlation matrix, say -- the degree distribution is
+#' near-Gaussian, the largest z-score a few hundred vertices can produce is
+#' around 2 to 3, and `degree_threshold = 3` is therefore *unreachable* rather
+#' than unmet. The function now warns when that happens instead of returning an
+#' empty selection in silence.
+#'
+#' `"quantile"` asks which vertices are in the top few percent, which is always
+#' answerable -- and that is its weakness: it returns a non-empty selection
+#' whether or not the graph has any hub structure at all. On a ring, where every
+#' vertex is identical, `degree_quantile = 0.95` marks *every* vertex a hub,
+#' because every tied value is at or above the 95th percentile. Use it when you
+#' want a fixed-size shortlist from a graph you already believe has hubs; use
+#' `"zscore"` when the existence of hubs is itself the question.
+#'
+#' When a metric takes the same value at every vertex the standardization is
+#' undefined. `degree_metric` and `betweenness_metric` are then `NA`, which is
+#' what an undefined z-score should report, while `is_hub` is `FALSE`: no vertex
+#' is unusual when none differs from any other.
+#'
+#' A vertex with betweenness of exactly zero is never a hub, whatever the degree
+#' threshold says. A hub is defined by high degree *and* high betweenness, and
+#' zero is not high. On a complete graph no vertex mediates any path, so none is
+#' a hub however many edges it carries -- which is the right answer. In practice
+#' this guard changes nothing on a scale-free graph, where a high-degree vertex
+#' has paths through it; it is there because "in practice" is not a contract.
+#' See [find_bottlenecks()], where the same arithmetic had a much larger effect.
+#'
 #' @examples
 #' g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
 #' res <- find_hubs(g, method = "quantile", plot = FALSE)
@@ -95,9 +130,19 @@ find_hubs <- function(graph,
   deg_val <- if (log_transform) log1p(deg) else deg
   btw_val <- if (log_transform) log1p(btw) else btw
 
+  deg_degenerate <- FALSE
+  btw_degenerate <- FALSE
+
   if (method == "zscore") {
-    deg_score <- scale(deg_val)[, 1]
-    btw_score <- scale(btw_val)[, 1]
+    # Via standardize_node_metric() rather than scale() directly: on a graph
+    # where every vertex has the same degree, scale() returns NaN throughout and
+    # the comparisons below are then NA, not FALSE.
+    deg_std <- standardize_node_metric(deg_val)
+    btw_std <- standardize_node_metric(btw_val)
+    deg_score <- deg_std$z
+    btw_score <- btw_std$z
+    deg_degenerate <- deg_std$degenerate
+    btw_degenerate <- btw_std$degenerate
     is_hub <- deg_score >= degree_threshold & btw_score >= betweenness_threshold
   } else if (method == "quantile") {
     deg_score <- deg_val
@@ -107,6 +152,46 @@ find_hubs <- function(graph,
     degree_threshold <- deg_cutoff
     betweenness_threshold <- btw_cutoff
     is_hub <- deg_score >= degree_threshold & btw_score >= betweenness_threshold
+  }
+
+  # A vertex whose metric is undefined is not a hub. Leaving the NA in place
+  # wrote an all-NA vertex attribute onto the graph, which every downstream
+  # filter then silently dropped.
+  is_hub[is.na(is_hub)] <- FALSE
+
+  # A hub is defined by high degree *and* high betweenness, and zero is not
+  # high. Betweenness is heavily zero-inflated on a sparse graph, so a quantile
+  # cutoff can land exactly on zero and then admit every vertex on that axis,
+  # leaving the selection resting on degree alone while still claiming both.
+  # See find_bottlenecks(), where the same arithmetic returned 1731 of 2000
+  # vertices. It bites far less often here, because a high-degree vertex usually
+  # has paths through it -- but "usually" is not a contract.
+  is_hub <- is_hub & btw > 0
+
+  # An empty selection used to be returned in silence, which on a dense
+  # correlation graph is the normal outcome of the z-score defaults: the degree
+  # distribution has no tail to reach a z of 3, so the answer is "the threshold
+  # is unreachable", not "this graph has no hubs".
+  if (!any(is_hub)) {
+    criterion <- if (method == "zscore") {
+      c("degree_threshold", "betweenness_threshold")
+    } else {
+      c(sprintf("the degree %s quantile", format(degree_quantile)),
+        sprintf("the betweenness %s quantile", format(betweenness_quantile)))
+    }
+    warn_empty_selection(
+      "find_hubs", "hub nodes", method,
+      list(
+        list(metric = criterion[1], label = "degree metric", direction = ">=",
+             threshold = degree_threshold,
+             attained = suppressWarnings(max(deg_score, na.rm = TRUE)),
+             degenerate = deg_degenerate),
+        list(metric = criterion[2], label = "betweenness metric",
+             direction = ">=", threshold = betweenness_threshold,
+             attained = suppressWarnings(max(btw_score, na.rm = TRUE)),
+             degenerate = btw_degenerate)
+      )
+    )
   }
 
   # Compile result

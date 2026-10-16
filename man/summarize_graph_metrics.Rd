@@ -7,7 +7,8 @@
 summarize_graph_metrics(
   graph,
   weights = NULL,
-  weight_type = c("strength", "distance")
+  weight_type = c("strength", "distance"),
+  seed = 1
 )
 }
 \arguments{
@@ -19,6 +20,14 @@ name of an edge attribute, or a numeric vector of length
 
 \item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
 \link{netkit-weights}.}
+
+\item{seed}{Integer or \code{NULL}. Seed for the one metric computed by a
+randomized algorithm, \code{Modularity}, whose Louvain run visits vertices in a
+random order. Default is \code{1}, which makes the whole summary a deterministic
+function of the graph. The seed is applied locally and the caller's random
+stream is restored afterwards, so this cannot affect anything else. Pass
+\code{NULL} to use the ambient stream instead, for example to sample the
+variability of \code{Modularity} deliberately.}
 }
 \value{
 A one-row \code{data.frame}, each column a graph-level metric.

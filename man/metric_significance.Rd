@@ -68,6 +68,29 @@ takes over a null ensemble, and reports the z-score and empirical p-value.
 therefore never exactly zero: with \code{n} nulls the smallest attainable p-value
 is \code{1 / (n + 1)}, so testing against 20 nulls cannot produce evidence at
 \code{p < 0.05} however large the effect. Choose \code{n} accordingly.
+}
+\section{Parallel execution}{
+
+
+Summarizing the ensemble is the expensive part of this function -- every
+metric is recomputed for every null graph, and on a 6000-vertex graph that is
+seconds per graph against a default of \code{n = 100}. It runs through
+\code{\link[future.apply:future_lapply]{future.apply::future_lapply()}}, so it is spread across workers under
+whichever \pkg{future} plan is active.
+
+This function does not set a plan itself, so the default is \strong{sequential}.
+Set one in your own session to parallelize, and release the workers
+afterwards:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{future::plan("multisession", workers = 4)
+res <- metric_significance(g, n = 100)
+future::plan("sequential")
+}\if{html}{\out{</div>}}
+
+Results do not depend on the plan. \code{Modularity} is seeded inside
+\code{\link[=summarize_graph_metrics]{summarize_graph_metrics()}} rather than drawn from the ambient stream, and
+nothing else here consumes randomness, so the same ensemble gives the same
+table however it was distributed.
 
 \code{z} is \code{NA} when the null distribution has zero variance -- which happens
 legitimately for metrics the null model holds fixed, such as \code{Nodes}, \code{Edges}
@@ -75,6 +98,7 @@ and \code{Density} under a degree-preserving model. Those metrics are excluded f
 the automatic \code{metrics} selection for that reason, but are reported as \code{NA}
 rather than dropped if you request them explicitly.
 }
+
 \examples{
 g <- igraph::sample_pa(60, power = 1.5, directed = FALSE)
 

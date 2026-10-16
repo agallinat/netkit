@@ -1,3 +1,298 @@
+# netkit 0.1.2
+
+The deferred half of the external 0.1.0 review: the statistical-design,
+interpretability and performance items that the 0.1.1 correctness pass left
+open. Every behavioural claim below was measured by running the code, and the
+performance figures are before-and-after timings on the same machine rather
+than estimates.
+
+## New features
+
+* **`compare_networks()` now reports whether the shared edges are more than
+  chance gives.** A shared-edge count on its own is not interpretable: two
+  large dense networks overlap by arithmetic alone. The new `edge_enrichment`
+  element places the observed overlap against the hypergeometric expectation
+  over the vertex pairs the two networks could both have reported, giving
+  `expected_shared_edges` (\eqn{m_1 m_2 / \binom{n}{2}}), `fold_enrichment` and
+  a one-sided `p_value`, plus the counts they are derived from. The universe is
+  the *shared* vertex set, and the two draw sizes are each network's distinct
+  non-loop edges inside it -- the count and its denominator come from one
+  restriction, which is the arithmetic mistake this package has made twice
+  before. Reported as its own element rather than as further columns of
+  `similarity`, which is documented as a frame of proportions.
+
+* **`greedy_seed_selection()` gains `objective = "coverage"`**, a saturating
+  alternative to the default `"total"`. This exists because the default makes
+  the greedy search redundant, and that is now stated plainly in the help page:
+  diffusion is a linear operator, so the target score of a seed set is the sum
+  of its members' individual contributions, the objective is modular, every
+  step ranks the candidates identically, and the result is exactly the top `k`
+  single-seed contributions. `"coverage"` passes each target's accumulated
+  signal through `1 - exp(-x / m_v)` before summing, which is submodular, so
+  gains genuinely diminish and the selection spreads across the target set
+  instead of concentrating on whichever target is cheapest to reach. Its value
+  reads as an effective number of targets reached, bounded by the target count.
+  The default is unchanged, so no existing call returns anything different.
+
+* `greedy_seed_selection()` returns `objective_at_each_step` alongside
+  `scores_at_each_step`, and a `method` string. `scores_at_each_step` keeps its
+  meaning -- the summed diffusion score over the targets -- under both
+  objectives, so the two are comparable on one scale.
+
+* **`network_diffusion_with_pvalues()` tests each vertex only against the
+  permutations that did not seed it, and reports the null it was tested
+  against.** A permutation that happened to seed vertex *v* deposits a large
+  score at *v*, for the same reason the real seeds top the real run, and so says
+  nothing about whether *v* is unusually well placed with respect to the real
+  seed set. Including those permutations inflated the upper tail of each
+  vertex's own null and made its p-value conservative -- hardest on the vertices
+  drawn most often, so not a uniform shift. **This changes every p-value the
+  function produces.**
+
+  The returned table gains `null_mean`, `null_sd`, `z` and `n_valid`, and is now
+  ordered by `p_empirical` and then by descending `z`. The z-score is the point:
+  the p-value floor is `1 / (n_valid + 1)`, so at the default 1000 permutations
+  every strong vertex reports 0.000999 and the ordering among them was
+  previously arbitrary. The help page gains an "Interpreting the p-values"
+  section stating that the p-values are one-sided, that `n_valid` sets each
+  vertex's attainable floor, and that the real seeds sit at the top of the
+  ranking by construction and should be dropped before interpreting anything.
+
+  One interaction is worth knowing and is documented under "Choice of null": the
+  degree-matched null is no longer uniformly more conservative than the uniform
+  one, node count for node count. Its bins restrict which vertices are ever
+  seeded, so it draws each of them more often -- up to 10 of 60 permutations
+  against 5 for the uniform null -- and the exclusion therefore removes a larger
+  share of its nulls' upper tails. Both remain valid; the matched one is
+  conditioned more strongly. A test that asserted the old count relationship has
+  been replaced by one asserting the thing it was a proxy for, namely that the
+  matched null's variance has not collapsed.
+
+* **`greedy_seed_selection()` reports a degree-matched gain z-score.** The new
+  `result` table carries one row per selected seed with its `degree`, the
+  marginal `gain` that pick bought, and `gain_z` -- that gain standardized
+  against the gains of the candidates closest to it in degree. This separates
+  the two reasons a vertex can look good: a `gain_z` near zero means the vertex
+  is typical of its degree class and was picked *because of* its degree, while a
+  large one means it outperforms others as poorly connected as itself. When a
+  selection fills up with leaves, this is what says whether any of them is
+  individually worth attention. The comparison pool is taken as a whole degree
+  radius rather than the *n* nearest, so ties are never resolved by vertex
+  index -- the mistake that made the diffusion null's degree-matched sampler
+  degenerate in 0.1.1.
+
+* **`metric_significance()` and `small_worldness()` evaluate their null
+  ensembles in parallel.** Both recomputed every metric for every null graph
+  serially, reported at roughly 19 s per graph at 6000 vertices against a
+  default of `n = 100`. They now share one internal summarizer running on
+  [future.apply::future_lapply()]. Measured on a 2500-vertex, 15000-edge graph
+  with 12 nulls: 9.9 s to 3.3 s on four workers, for identical results.
+  Following the convention the diffusion null already set, neither function
+  calls `future::plan()` -- the caller sets the plan and the default stays
+  sequential.
+
+## Behaviour changes
+
+* **`find_hubs()` and `find_bottlenecks()` warn when they select nothing.**
+  Both used to return an empty table in silence, which conflates three
+  different situations, and the warning now says which one occurred because the
+  remedy differs for each: a metric with no variance, a threshold no vertex can
+  reach, or two criteria each satisfied by some vertex but never by the same
+  one.
+
+  The middle case is the one reported from the correlation-network analyses, and
+  it is not specific to dense graphs: a z-score threshold is only reachable if
+  the metric has a tail to reach it. The `"zscore"` defaults of 3 and 1 are
+  calibrated for a scale-free degree distribution, and on a near-Gaussian one
+  the largest attainable z-score for a few hundred vertices is around 2.5. The
+  default stays `"zscore"` deliberately. `"quantile"` was considered and
+  rejected: it cannot return nothing, which sounds like an improvement and is
+  not -- it selects a fixed *fraction* of the graph whether or not the graph has
+  any hub structure, marking every vertex of a ring a hub. See the new
+  "Choosing a method" section of `?find_hubs` for the trade-off. (Measuring
+  that comparison also turned up the zero-betweenness defect below, which was
+  the more serious half of what `"quantile"` was doing.)
+
+* **`find_hubs()` and `find_bottlenecks()` no longer return an all-`NA`
+  classification on a regular graph.** When every vertex carries the same
+  degree the standard deviation is zero, `scale()` returns `NaN` throughout, and
+  every comparison against it was `NA` -- so `is_hub` was `NA` for every vertex
+  and was written onto the graph as an all-`NA` vertex attribute, which
+  downstream filters silently dropped. The standardized columns stay `NA`, which
+  is what an undefined z-score should report, but the classification is now
+  `FALSE`: no vertex is unusual when none differs from any other.
+
+* **`find_hubs()` and `find_bottlenecks()` no longer select vertices whose
+  betweenness is exactly zero.** Both are defined by *high* betweenness, and
+  zero is not high. The guard matters because betweenness is heavily
+  zero-inflated on a sparse graph: 87% of the vertices of a 2000-vertex
+  scale-free graph have betweenness 0, which puts the 75th percentile *at* zero,
+  and the inclusive `>=` comparison then admitted all of them. The default
+  `find_bottlenecks(method = "quantile")` call returned **1731 of 2000 vertices**
+  as bottlenecks, every one of them lying on no shortest path at all -- the
+  definitional opposite of a bottleneck. No choice of quantile defends against
+  this, because the quantile of a mostly-zero distribution is zero. The effect
+  on `find_hubs()` is nil on every graph family tested, a high-degree vertex
+  normally having paths through it; the guard makes that a contract rather than
+  a regularity.
+
+* `greedy_seed_selection()` warns when more than half its selection has degree
+  1. Under symmetric normalization an edge into a degree-1 vertex carries the
+  largest weight any edge to that target can, so a leaf hanging off a target is
+  the most efficient injection point in the graph. That is arithmetically
+  correct and rarely actionable, and nothing in the returned scores hinted at
+  it.
+
+* `greedy_seed_selection()` caps `k` at the number of candidates instead of
+  selecting past the end of the candidate set, and errors on an empty candidate
+  set.
+
+## Performance
+
+* **The diffusion permutation null is solved as a multiple-right-hand-side
+  problem.** Permutations are grouped into batches and each batch is solved in
+  one call, so a sparse Cholesky pays its per-call overhead once per batch
+  instead of once per permutation. The permuted seed sets are drawn exactly as
+  before -- one `future_lapply` element and so one RNG stream per permutation --
+  so for a given `seed` the p-values are unchanged; this was verified
+  bit-for-bit on all three methods.
+
+  Two further findings came out of profiling rather than from reading the code.
+  The diffusion kernel was being built **twice** per call: the real-score
+  diffusion ran before the kernel existed and silently built one of its own,
+  which for `"laplacian"` meant a second sparse Cholesky factorization of the
+  whole graph whose result was discarded. And the batch right-hand side has to
+  be a `dgeMatrix`: a base `matrix` takes a markedly slower path through
+  Matrix's sparse product, 3.4 s against 0.6 s for the same 30 random-walk
+  iterations over 166 columns, for bit-identical results.
+
+  End to end on a 6000-vertex, 78000-edge graph with 200 permutations:
+  `"laplacian"` 6.8 s to 3.4 s, `"heat"` 1.4 s to 0.6 s, `"rwr"` 1.4 s to
+  0.6 s. The batching saving is proportional to `n_permutations`, so it matters
+  at the documented default of 1000 and is negligible at 50; what dominates at
+  small permutation counts is the one-time factorization, which is why building
+  it once was the larger win there.
+
+* **`greedy_seed_selection()` computes every diffusion once.** Because the
+  objective is additive, the entire search reduces to arithmetic on one
+  targets-by-candidates matrix of single-seed contributions, built in a single
+  batched pass. The previous implementation ran a full diffusion for every
+  candidate at every step, recomputing at step 3 what it had already computed
+  at step 1. On a 2000-vertex graph with 4 targets and `k = 8` that is 15968
+  diffusions and 15.7 s, against 0.37 s now, for the same selection and the
+  same scores to within 3e-16.
+
+* The diffusion maths now has a single implementation, `diffuse_columns()`,
+  which takes any number of seed vectors at once; `network_diffusion()` calls it
+  with one column. Batching is bit-identical for `"laplacian"` and `"heat"`.
+  `"rwr"` is the exception: its iteration stops when the slowest column of a
+  batch has converged, so the others are carried marginally past their own
+  stopping point and end up slightly *closer* to the fixed point. The
+  difference is bounded by the convergence tolerance, and is asserted per column
+  rather than assumed.
+
+* `compare_networks()` builds its canonical edge keys with vectorized
+  `pmin()`/`pmax()` rather than an `apply()` closure per edge, and resolves
+  vertex identifiers itself instead of letting `as_edgelist()` choose -- for an
+  unnamed graph it returns doubles, and pasting those goes through scientific
+  notation above 1e5, which would key one vertex two ways.
+
+# netkit 0.1.1
+
+A correctness release. Every item below was reported from external analysis
+runs against 0.1.0 and reproduced here before being fixed; each has a
+regression test.
+
+## Bug fixes
+
+* **`network_diffusion_with_pvalues()` matched each node against the wrong
+  null distribution.** `network_diffusion()` returns its nodes sorted by
+  descending score, so the real scores and every permutation came back in a
+  different vertex order. The permutation vectors were combined with
+  `do.call(cbind, ...)`, which binds by position and takes its row names from
+  the first element only, so each node was tested against the distribution of
+  the k-th *ranked* permuted score rather than its own. The symptom was
+  bimodal p-values piled at the floor and at 1: on a 200-vertex scale-free
+  graph, 135 of 200 nodes sat at the minimum attainable p-value and the rank
+  correlation between score and p-value was -0.50, against -0.92 once fixed.
+  **This changes every p-value the function has ever produced.**
+
+* **The degree-matched sampler produced an anti-conservative null.** Each seed
+  drew from the `match_pool` nearest-degree candidates chosen with `order()`,
+  which breaks ties by vertex index, so seeds of similar degree received
+  near-identical pools and then drew from them without replacement. Across 200
+  permutations of a 5-seed set on a 150-vertex graph the sampler touched 10 of
+  145 candidates. A null that narrow has almost no variance, and the
+  degree-matched null consequently reported *more* significant nodes than the
+  uniform null it exists to be more conservative than. Candidates are now
+  grouped into adaptive degree bins, ties are broken at random, and seeds are
+  processed in a random order. `match_pool` now defaults to `NULL`, meaning
+  `10 * length(seed_nodes)`: the pool has to scale with the seed count, because
+  every permutation consumes `length(seed_nodes)` of it. Setting it small
+  enough to re-enter the degenerate regime now warns. This defect was only
+  visible once the row alignment above was corrected.
+
+* **`null_model()` recognized edge weights only under the literal attribute
+  name `weight`.** A graph annotated with any other name — `corr`,
+  `confidence`, `combined_score` — produced unweighted null graphs, and
+  `metric_significance()` and `small_worldness()` then failed with
+  `Edge attribute 'weight' not found` naming an attribute the caller had never
+  mentioned. `null_model()` gains a `weights` argument accepting an attribute
+  name or a numeric vector, and the two callers forward theirs to it. The
+  permuted values are always written onto the nulls as `weight`, as the
+  documentation already claimed.
+
+* **Rewired null graphs inherited the observed graph's edge attributes**, now
+  bound to edges that had since been moved. Those values were neither the
+  observed annotation nor a permutation of one, but a downstream weighted
+  metric read them as data. Null graphs now carry no edge attribute except the
+  permuted `weight`, which also makes the three models agree on what they
+  return.
+
+* **`plot_Net()` resolved `frame.color` by testing `color`.** Mapping `color`
+  to a vertex attribute while passing a literal `frame.color` looked up an
+  attribute named, for example, `"black"`, got `NULL` and silently drew no
+  frame; the mirror case passed the literal attribute name to `plot.igraph` as
+  a colour and errored. Neither combination worked.
+
+* **`Modularity` in `summarize_graph_metrics()` was not reproducible.** Louvain
+  randomizes its vertex visiting order, so repeated calls on one graph returned
+  values spanning roughly 0.356 to 0.366 — larger than many of the differences
+  the metric gets used to argue about. It is now computed under a fixed seed,
+  applied locally so that the caller's random stream is restored afterwards.
+  The new `seed` argument controls it; `seed = NULL` restores the old
+  behaviour.
+
+* **`find_modules(method = "leiden")` put every node in its own community on
+  weighted graphs.** It used \pkg{igraph}'s default CPM objective at resolution
+  1, under which no grouping beats a singleton once the weights fall below 1;
+  `min_size` then discarded all of them, leaving an empty result table with
+  nothing to indicate why. The objective now defaults to `"modularity"`, and
+  `objective_function`, `resolution` and `n_iterations` are exposed. Supplying
+  them to another method warns rather than ignoring them.
+
+## New features
+
+* `find_modules()` returns `modularity`, the \eqn{Q} of the partition it found,
+  from `igraph::modularity()` and computed before `min_size` filtering. No
+  method exposed it before, so comparing two partitions of one graph meant
+  recomputing it by hand.
+
+* `find_modules()` warns when `min_size` filtering leaves no modules at all,
+  rather than returning a zero-row table that looks the same whether the graph
+  has no community structure or the algorithm was misconfigured.
+
+## Documentation
+
+* `greedy_seed_selection()`: the return element is `selected_seeds`, not
+  `selected` as documented. `normalize` is passed to the adjacency
+  normalization in `network_diffusion()`; it was documented as normalizing the
+  cumulative score over the target nodes, which it has never done.
+
+* `network_diffusion_with_pvalues()` gains a "Choice of null" discussion of why
+  matching degree more tightly is not better, and how an over-tight
+  `match_pool` makes the p-values anti-conservative.
+
 # netkit 0.1.0
 
 First CRAN release.

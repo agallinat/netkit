@@ -19,7 +19,7 @@ network_diffusion_with_pvalues(
   weight_type = c("strength", "distance"),
   seed_weights = NULL,
   null = c("degree_matched", "uniform"),
-  match_pool = 10
+  match_pool = NULL
 )
 }
 \arguments{
@@ -76,17 +76,39 @@ non-seed vertices, matching only the seed count.}
 }
 See Details for why the default is degree-matched.}
 
-\item{match_pool}{Integer. For \code{null = "degree_matched"}, how many
-nearest-degree candidates each real seed may be replaced by. Default is
-\code{10}. Smaller values match degree more tightly but give the null less
-variance; \code{Inf} makes every candidate eligible and so reduces exactly to
-\code{null = "uniform"}.}
+\item{match_pool}{For \code{null = "degree_matched"}, the smallest number of
+candidates any seed may be drawn from. Candidates are grouped into adaptive
+degree bins holding at least this many members, and each seed is replaced
+by a vertex drawn uniformly from its own bin.
+
+\code{NULL} (the default) sets it to \code{10 * length(seed_nodes)}, capped at the
+number of candidates. The seed count has to enter the choice: every
+permutation draws \code{length(seed_nodes)} members out of a bin, so a fixed
+small pool means consecutive permutations are largely the same vertices and
+the null collapses. A number sets it explicitly and warns if it is small
+enough to put the null in that regime. \code{Inf} puts every candidate in one
+bin and so reduces exactly to \code{null = "uniform"}.
+
+Tighter matching is not automatically better: see the "Choice of null"
+section for the trade-off it makes against the validity of the p-values.}
 }
 \value{
-A data frame with two columns:
+A tibble with one row per vertex, ordered by \code{p_empirical} and then by
+descending \code{z}:
 \describe{
-\item{node}{Node name}
-\item{score}{Diffusion score representing influence from the seed nodes}
+\item{node}{Node name.}
+\item{score}{Diffusion score representing influence from the seed nodes.}
+\item{p_empirical}{One-sided empirical p-value; see "Interpreting the
+p-values".}
+\item{null_mean, null_sd}{Mean and standard deviation of the vertex's own
+null distribution.}
+\item{z}{\code{(score - null_mean) / null_sd}, or \code{NA} where the null has no
+variance. This is the column to rank on when many p-values tie at the
+floor, which with the default \code{n_permutations} they routinely do.}
+\item{n_valid}{Number of permutations the vertex was actually tested
+against, which is \code{n_permutations} minus the permutations that seeded the
+vertex itself. The p-value floor is \code{1 / (n_valid + 1)}, so this is what
+sets the best attainable significance for that vertex.}
 }
 }
 \description{
@@ -103,6 +125,37 @@ based on a row-normalized transition matrix. Recommended method for large networ
 
 For \code{"laplacian"} and \code{"heat"}, the graph Laplacian is computed from the (optionally normalized) adjacency matrix.
 }
+\section{Interpreting the p-values}{
+
+
+\code{p_empirical} is \strong{one-sided}: it counts null scores at least as \emph{high} as
+the observed one, and so tests whether a vertex receives more signal than
+chance placement of the seeds would give. There is no two-sided variant,
+because a vertex receiving unusually little diffusion signal is not a
+meaningful finding -- most vertices receive almost none.
+
+It uses the \code{(r + 1) / (n + 1)} convention and is therefore never zero. With
+\code{n_valid} permutations the smallest attainable value is \code{1 / (n_valid + 1)},
+so the default of 1000 permutations cannot distinguish the strongest vertex
+in the graph from the hundredth strongest -- they all report 0.000999. Rank
+on \code{z} when that happens; it is why the column is returned.
+
+A vertex is tested only against the permutations in which it was \strong{not}
+itself a permuted seed. A permutation that happened to seed vertex \emph{v}
+deposits a large score at \emph{v} for exactly the reason the real seeds top the
+real run, and says nothing about whether \emph{v} is unusually well placed with
+respect to the real seed set; including it inflated the upper tail of \emph{v}'s
+null and made its p-value conservative. The effect fell hardest on the
+vertices drawn most often, so it was not a uniform shift. \code{n_valid} reports
+what each vertex was actually compared against.
+
+The real seed nodes are a special case worth knowing about. They are never
+drawn as permuted seeds, so they are compared against a null in which they
+are never seeded, while in the real run they are. They will therefore sit at
+the top of the ranking essentially by construction, and their p-values are
+not evidence of anything. Drop them before interpreting the table.
+}
+
 \section{Parallel execution}{
 
 The permutation null is evaluated with \code{\link[future.apply:future_lapply]{future.apply::future_lapply()}}, which
@@ -119,6 +172,34 @@ Permutations are reproducible regardless of the plan: \code{seed} is passed to
 \code{future_lapply(future.seed = )}, which generates parallel-safe RNG streams.
 }
 
+\section{Performance}{
+
+
+The permutations are not diffused one at a time. They are grouped into
+batches and each batch is solved as a single multiple-right-hand-side
+problem, which for \code{"laplacian"} means one sparse Cholesky solve against a
+matrix of seed vectors rather than one solve per permutation. On a
+6000-vertex, 78000-edge graph with 200 permutations this took the whole call
+from 6.8 s to 3.4 s for \code{"laplacian"}, 1.4 s to 0.6 s for \code{"heat"} and 1.4 s
+to 0.6 s for \code{"rwr"}.
+
+Two things are worth knowing about where the remaining time goes. The kernel
+is built once per call, and for \code{"laplacian"} that factorization is itself
+expensive -- 2.8 s on the graph above -- so at small \code{n_permutations} most of
+the runtime is a fixed cost that no batching touches. The saving is
+proportional to \code{n_permutations}, so it is substantial at the default of
+1000 and negligible at 50. If you intend to run several seed sets against one
+graph, build the kernel once with \code{\link[=prepare_diffusion]{prepare_diffusion()}} instead.
+
+Batching is numerically free for \code{"laplacian"} and \code{"heat"}, which produce
+bit-identical results either way. \code{"rwr"} is the exception: the iteration
+stops when the slowest column of a batch has converged, so the other columns
+are carried slightly past their own stopping point. They end up marginally
+\emph{closer} to the fixed point, and the difference is bounded by the convergence
+tolerance, but \code{"rwr"} scores are therefore reproducible to that tolerance
+rather than to the bit.
+}
+
 \section{Choice of null}{
 
 
@@ -129,11 +210,11 @@ seed set -- which in most applications is enriched for well-studied, highly
 connected vertices -- against a null composed mostly of poorly connected ones,
 and reports much of the degree difference as significance.
 
-\code{null = "degree_matched"} removes that confound by replacing each real seed
-with a randomly chosen vertex drawn from the \code{match_pool} candidates closest
-to it in degree. The resulting p-values answer "are these seeds unusually well
-\emph{placed}?" rather than "are these seeds unusually well \emph{connected}?", which is
-almost always the intended question.
+\code{null = "degree_matched"} removes that confound by grouping candidates into
+adaptive degree bins and replacing each real seed with a vertex drawn
+uniformly from its own bin. The resulting p-values answer "are these seeds
+unusually well \emph{placed}?" rather than "are these seeds unusually well
+\emph{connected}?", which is almost always the intended question.
 
 How closely the match can be made is limited by the graph. If the seed set is
 extreme -- the six highest-degree vertices of a scale-free network, say --
@@ -141,6 +222,34 @@ there are simply no other vertices of comparable degree to permute with, and
 no permutation null can fully correct for degree. The function warns when the
 closest available candidates are still far from the seeds, so the residual
 confound is visible rather than assumed away.
+
+\strong{Matching more tightly is not better.} There is a real trade-off here, and
+it runs the opposite way to intuition. Narrowing the bins improves the degree
+match but shrinks the set of vertices the null ever places a seed on, and
+each permutation draws \code{length(seed_nodes)} of them. Once the bins approach
+the size of the seed set, consecutive permutations are mostly the same
+vertices: a node far from all of them scores near zero in every permutation
+and is then reported as significant whatever its real score. The null becomes
+\emph{anti}-conservative -- which defeats the purpose, since the degree-matched
+null exists to be the more conservative of the two.
+
+The default therefore scales the pool with the seed count rather than fixing
+it: \code{10 * length(seed_nodes)}. That multiplier was calibrated on five
+synthetic scale-free graphs rather than derived, and should be treated as a
+working default rather than a settled one.
+
+One consequence is worth stating, because it is easy to mistake for a bug.
+The degree-matched null is \strong{not} uniformly more conservative than the
+uniform null, node count for node count. Because its bins restrict which
+vertices are ever seeded, it draws each of them more often -- on a
+150-vertex graph with 5 seeds, up to 10 of 60 permutations against 5 for the
+uniform null. Each vertex is tested only against the permutations that did
+not seed it, so that narrower support means a larger share of a vertex's own
+null is excluded, and what gets excluded is its upper tail. The remaining
+null is smaller and the p-value lower. Both nulls stay valid; they are
+answering slightly different conditional questions, and the matched one is
+conditioned more strongly. Narrowing \code{match_pool} strengthens that
+conditioning, which is a second reason not to narrow it.
 }
 
 \section{Edge weights}{

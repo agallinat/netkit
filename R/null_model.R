@@ -24,12 +24,18 @@
 #'       tells you whether an effect needs anything beyond density.}
 #'   }
 #' @param n Integer. Number of null graphs to generate. Default is `100`.
-#' @param shuffle_weights Logical. If `TRUE` (default) and the observed graph
-#'   carries a `weight` edge attribute, the observed weights are permuted across
-#'   the null graph's edges, so the weight *distribution* is preserved while its
-#'   placement is randomized. If `FALSE`, the null graphs carry no weights at
-#'   all -- including under `model = "rewire"`, which would otherwise inherit the
-#'   observed attribute bound to edges that have since been rewired.
+#' @param shuffle_weights Logical. If `TRUE` (default) and weights are in play,
+#'   the observed weights are permuted across the null graph's edges, so the
+#'   weight *distribution* is preserved while its placement is randomized. If
+#'   `FALSE`, the null graphs carry no weights at all.
+#' @param weights Which edge weights to permute: `NULL` (default) to use the
+#'   graph's `weight` edge attribute if it has one, the name of any other edge
+#'   attribute, or a numeric vector of length `igraph::ecount(graph)`. See
+#'   [netkit-weights]. Whatever the source, the permuted values are written onto
+#'   the null graphs under the name `weight`, so that downstream functions have
+#'   one name to ask for. No `weight_type` is needed here: permuting values does
+#'   not depend on whether they mean strength or distance, and the consumer of
+#'   the ensemble declares that itself.
 #' @param seed Integer or `NULL`. Seed for reproducibility. When `NULL` (default)
 #'   the caller's random stream is used and left alone.
 #' @param niter Integer or `NULL`. Number of rewiring trials for
@@ -37,7 +43,10 @@
 #'   usual rule of thumb for mixing.
 #'
 #' @return A list of `n` `igraph` objects, with class `c("netkit_null", "list")`
-#'   and the model recorded in its `"model"` attribute.
+#'   and the model recorded in its `"model"` attribute. The null graphs carry no
+#'   edge attributes except the permuted `weight`: rewiring moves the edges, so
+#'   any other observed edge attribute would be left bound to the wrong one.
+#'   Vertex attributes are unaffected by rewiring and are preserved.
 #'
 #' @details
 #' `"rewire"` and `"configuration"` both preserve the degree sequence, which is
@@ -87,6 +96,7 @@ null_model <- function(graph,
                        model = c("rewire", "configuration", "erdos_renyi"),
                        n = 100,
                        shuffle_weights = TRUE,
+                       weights = NULL,
                        seed = NULL,
                        niter = NULL) {
 
@@ -118,7 +128,17 @@ null_model <- function(graph,
 
   if (is.null(niter)) niter <- 10 * ne
 
-  weights <- if (shuffle_weights && "weight" %in% igraph::edge_attr_names(graph)) {
+  # Resolve *which* values to permute before deciding whether to. `weights` used
+  # to be read only as the literal attribute `weight`, so a graph annotated with
+  # any other name -- `corr`, `confidence`, `combined_score`, which is the normal
+  # case -- produced unweighted nulls while the caller had explicitly asked for
+  # weighted ones, and metric_significance() then failed asking the nulls for a
+  # `weight` they had never been given.
+  weight_values <- if (!shuffle_weights) {
+    NULL
+  } else if (!is.null(weights)) {
+    netkit_raw_weights(graph, weights, arg = "weights")
+  } else if ("weight" %in% igraph::edge_attr_names(graph)) {
     igraph::edge_attr(graph, "weight")
   } else {
     NULL
@@ -163,19 +183,25 @@ null_model <- function(graph,
       igraph::vertex_attr(null_g, "name") <- igraph::vertex_attr(graph, "name")
     }
 
-    if (!is.null(weights)) {
+    # model = "rewire" starts from the observed graph, so the null inherits
+    # every observed edge attribute -- now bound to edges that have since been
+    # rewired. Those values are neither the observed annotation nor a declared
+    # permutation of one, and a downstream weighted metric reads them as though
+    # they were. Strip them all, so the three models agree on what a null graph
+    # carries rather than differing by which code path produced it.
+    for (attr_name in igraph::edge_attr_names(null_g)) {
+      null_g <- igraph::delete_edge_attr(null_g, attr_name)
+    }
+
+    if (!is.null(weight_values)) {
       # Permute rather than copy: the distribution of weights is preserved, but
       # which edge carries which is randomized, so a weighted metric is tested
       # against weight *placement* and not merely against the weight values.
+      # Written as `weight` whatever the observed attribute was called, so that
+      # consumers of the ensemble have a single name to ask for.
       igraph::edge_attr(null_g, "weight") <-
-        sample(weights, ecount(null_g), replace = ecount(null_g) > length(weights))
-    } else if ("weight" %in% igraph::edge_attr_names(null_g)) {
-      # model = "rewire" starts from the observed graph, so it inherits the
-      # observed `weight` attribute -- now bound to edges that have been rewired.
-      # That is neither the observed weighting nor a declared permutation of it,
-      # so leaving it in place would make shuffle_weights = FALSE mean something
-      # undocumented. Drop it: the nulls are then unambiguously unweighted.
-      null_g <- igraph::delete_edge_attr(null_g, "weight")
+        sample(weight_values, ecount(null_g),
+               replace = ecount(null_g) > length(weight_values))
     }
 
     nulls[[i]] <- null_g
@@ -227,6 +253,29 @@ null_model <- function(graph,
 #' is `1 / (n + 1)`, so testing against 20 nulls cannot produce evidence at
 #' `p < 0.05` however large the effect. Choose `n` accordingly.
 #'
+#' @section Parallel execution:
+#'
+#' Summarizing the ensemble is the expensive part of this function -- every
+#' metric is recomputed for every null graph, and on a 6000-vertex graph that is
+#' seconds per graph against a default of `n = 100`. It runs through
+#' [future.apply::future_lapply()], so it is spread across workers under
+#' whichever \pkg{future} plan is active.
+#'
+#' This function does not set a plan itself, so the default is **sequential**.
+#' Set one in your own session to parallelize, and release the workers
+#' afterwards:
+#'
+#' ```
+#' future::plan("multisession", workers = 4)
+#' res <- metric_significance(g, n = 100)
+#' future::plan("sequential")
+#' ```
+#'
+#' Results do not depend on the plan. `Modularity` is seeded inside
+#' [summarize_graph_metrics()] rather than drawn from the ambient stream, and
+#' nothing else here consumes randomness, so the same ensemble gives the same
+#' table however it was distributed.
+#'
 #' `z` is `NA` when the null distribution has zero variance -- which happens
 #' legitimately for metrics the null model holds fixed, such as `Nodes`, `Edges`
 #' and `Density` under a degree-preserving model. Those metrics are excluded from
@@ -272,8 +321,13 @@ metric_significance <- function(graph,
   if (!is.null(seed)) set.seed(seed)
 
   if (is.null(null)) {
+    # `weights` is forwarded, not merely turned into a logical. Passing only
+    # shuffle_weights left null_model() to guess which attribute was meant, and
+    # it guessed `weight` -- so any other name, or a numeric vector, produced
+    # unweighted nulls and then an error from the lookup below.
     null <- null_model(graph, model = model, n = n,
-                       shuffle_weights = !is.null(weights))
+                       shuffle_weights = !is.null(weights),
+                       weights = weights)
   }
   if (!is.list(null) || length(null) == 0) {
     stop("'null' must be a non-empty list of igraph objects, as returned by ",
@@ -286,13 +340,26 @@ metric_significance <- function(graph,
   # Null graphs carry the permuted weights under the name `weight`, whatever the
   # observed attribute was called, so that is what is requested from them.
   null_weights <- if (is.null(weights)) NULL else "weight"
-  null_rows <- lapply(null, function(g) {
-    suppressWarnings(
-      summarize_graph_metrics(g, weights = null_weights,
-                              weight_type = weight_type)
-    )
-  })
-  null_mat <- do.call(rbind, null_rows)
+
+  # A caller-supplied ensemble is outside that guarantee, so say what is wrong
+  # rather than letting as_netkit_weights() report a missing attribute the
+  # caller never named.
+  if (!is.null(null_weights)) {
+    unweighted <- !vapply(null, function(g) {
+      "weight" %in% igraph::edge_attr_names(g)
+    }, logical(1))
+    if (any(unweighted)) {
+      stop(sprintf(
+        paste0("'weights' was supplied but %d of %d null graphs carry no ",
+               "'weight' edge attribute, so the observed and null metrics ",
+               "would not be comparable. Build the ensemble with ",
+               "null_model(graph, weights = ), which writes the permuted ",
+               "weights under that name."),
+        sum(unweighted), length(null)
+      ), call. = FALSE)
+    }
+  }
+  null_mat <- summarize_null_ensemble(null, null_weights, weight_type)
 
   numeric_cols <- names(observed)[vapply(observed, is.numeric, logical(1))]
 
@@ -439,6 +506,13 @@ metric_significance <- function(graph,
 #' graphs of different size -- use it to ask whether one graph is small-world,
 #' not which of two is more so.
 #'
+#' @section Parallel execution:
+#'
+#' The null ensemble is summarized with [future.apply::future_lapply()] under
+#' whichever \pkg{future} plan is active; see the same section of
+#' [metric_significance()]. This function sets no plan, so the default is
+#' sequential.
+#'
 #' @references
 #' Humphries, M. D., & Gurney, K. (2008). Network "small-world-ness": a
 #' quantitative method for determining canonical network equivalence.
@@ -477,13 +551,11 @@ small_worldness <- function(graph,
   obs <- summarize_graph_metrics(graph, weights = weights,
                                  weight_type = weight_type)
   nulls <- null_model(graph, model = model, n = n,
-                      shuffle_weights = !is.null(weights))
+                      shuffle_weights = !is.null(weights),
+                      weights = weights)
 
   null_weights <- if (is.null(weights)) NULL else "weight"
-  null_stats <- do.call(rbind, lapply(nulls, function(g) {
-    suppressWarnings(summarize_graph_metrics(g, weights = null_weights,
-                                             weight_type = weight_type))
-  }))
+  null_stats <- summarize_null_ensemble(nulls, null_weights, weight_type)
 
   C <- obs$Clustering_coefficient
   L <- obs$Average_path_length
@@ -514,6 +586,50 @@ small_worldness <- function(graph,
                                          warn_unused = FALSE))
     )
   ), "small_worldness")
+}
+
+#' Summarize every graph in a null ensemble
+#'
+#' Internal. Computes the full metric table for each null graph and stacks the
+#' rows. Shared by [metric_significance()] and [small_worldness()], which had the
+#' same serial `lapply` each.
+#'
+#' This is the expensive half of both functions: every metric is recomputed for
+#' every null graph, and at 6000 vertices that was reported at roughly 19 s per
+#' graph, so the documented default of `n = 100` is a long wait for something
+#' embarrassingly parallel. It now runs through [future.apply::future_lapply()],
+#' so a caller who has set a plan gets the ensemble spread across workers.
+#'
+#' Two choices are deliberate:
+#'
+#' * No `future::plan()` call here. A package that sets the plan overrides the
+#'   user's choice globally and leaks the worker connections it opened, which is
+#'   what made `R CMD check` fail with "connections left open" when
+#'   `network_diffusion_with_pvalues()` did it. The caller sets the plan; the
+#'   default is sequential.
+#' * `future.seed = FALSE`, because this computation consumes no randomness that
+#'   escapes. `summarize_graph_metrics()` seeds Louvain for its `Modularity`
+#'   column, but does it through `with_local_seed()`, which restores
+#'   `.Random.seed` on exit -- so the net RNG state is unchanged and
+#'   \pkg{future.apply}'s misuse detector has nothing to flag. Were it
+#'   `future.seed = TRUE`, each worker would be handed its own stream and the
+#'   seeding that makes `Modularity` reproducible would be undone.
+#'
+#' @param null A list of `igraph` objects.
+#' @param weights Weight specification to pass to [summarize_graph_metrics()].
+#' @param weight_type Either `"strength"` or `"distance"`.
+#'
+#' @return A data frame with one row per null graph.
+#'
+#' @keywords internal
+#' @noRd
+summarize_null_ensemble <- function(null, weights, weight_type) {
+  rows <- future.apply::future_lapply(null, function(g) {
+    suppressWarnings(
+      summarize_graph_metrics(g, weights = weights, weight_type = weight_type)
+    )
+  }, future.seed = FALSE)
+  do.call(rbind, rows)
 }
 
 #' Report which null model an ensemble came from

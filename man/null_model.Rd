@@ -9,6 +9,7 @@ null_model(
   model = c("rewire", "configuration", "erdos_renyi"),
   n = 100,
   shuffle_weights = TRUE,
+  weights = NULL,
   seed = NULL,
   niter = NULL
 )
@@ -32,12 +33,19 @@ tells you whether an effect needs anything beyond density.}
 
 \item{n}{Integer. Number of null graphs to generate. Default is \code{100}.}
 
-\item{shuffle_weights}{Logical. If \code{TRUE} (default) and the observed graph
-carries a \code{weight} edge attribute, the observed weights are permuted across
-the null graph's edges, so the weight \emph{distribution} is preserved while its
-placement is randomized. If \code{FALSE}, the null graphs carry no weights at
-all -- including under \code{model = "rewire"}, which would otherwise inherit the
-observed attribute bound to edges that have since been rewired.}
+\item{shuffle_weights}{Logical. If \code{TRUE} (default) and weights are in play,
+the observed weights are permuted across the null graph's edges, so the
+weight \emph{distribution} is preserved while its placement is randomized. If
+\code{FALSE}, the null graphs carry no weights at all.}
+
+\item{weights}{Which edge weights to permute: \code{NULL} (default) to use the
+graph's \code{weight} edge attribute if it has one, the name of any other edge
+attribute, or a numeric vector of length \code{igraph::ecount(graph)}. See
+\link{netkit-weights}. Whatever the source, the permuted values are written onto
+the null graphs under the name \code{weight}, so that downstream functions have
+one name to ask for. No \code{weight_type} is needed here: permuting values does
+not depend on whether they mean strength or distance, and the consumer of
+the ensemble declares that itself.}
 
 \item{seed}{Integer or \code{NULL}. Seed for reproducibility. When \code{NULL} (default)
 the caller's random stream is used and left alone.}
@@ -48,7 +56,10 @@ usual rule of thumb for mixing.}
 }
 \value{
 A list of \code{n} \code{igraph} objects, with class \code{c("netkit_null", "list")}
-and the model recorded in its \code{"model"} attribute.
+and the model recorded in its \code{"model"} attribute. The null graphs carry no
+edge attributes except the permuted \code{weight}: rewiring moves the edges, so
+any other observed edge attribute would be left bound to the wrong one.
+Vertex attributes are unaffected by rewiring and are preserved.
 }
 \description{
 Produces an ensemble of random graphs matched to an observed graph in some

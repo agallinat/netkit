@@ -152,62 +152,121 @@ network_diffusion <- function(graph, seed_nodes,
     use_sparse_P <- kernel$use_sparse_P
   }
 
-  # Heat diffusion: exp(-tL) * f0 via truncated Taylor
-  approx_expmv <- function(L, f0, t = 1, K = 20) {
-    result <- f0
-    term <- f0
-    for (k in 1:K) {
-      term <- (-t / k) * (L %*% term)
-      result <- result + term
-    }
-    result
-  }
-
-  # Diffuse
-  f <- switch(method,
-              "laplacian" = {
-                if (is.null(ch)) stop("Missing Cholesky decomposition for Laplacian diffusion.")
-                Matrix::solve(ch, f0)
-              },
-              "heat" = {
-                approx_expmv(L, f0, t = t, K = 20)
-              },
-              "rwr" = {
-                # The convergence test is relative to the magnitude of the seed
-                # vector, not absolute. With a binary f0 the two are equivalent,
-                # but `seed_weights` lets the caller start from values of any
-                # scale (log fold changes, read counts), and an absolute
-                # threshold would then mean the achieved precision depended on
-                # the units of the input.
-                tol <- 1e-6 * max(1, sum(abs(f0)))
-                max_iter <- 1000L
-
-                f_prev <- f0
-                converged <- FALSE
-                for (iter in seq_len(max_iter)) {
-                  f_new <- (1 - restart_prob) * (P %*% f_prev) + restart_prob * f0
-                  if (sum(abs(f_new - f_prev), na.rm = TRUE) < tol) {
-                    converged <- TRUE
-                    break
-                  }
-                  f_prev <- f_new
-                }
-                # The loop used to be an unbounded `repeat`, which cannot
-                # terminate if the iteration fails to contract.
-                if (!converged) {
-                  warning(sprintf(
-                    "Random walk with restart did not converge in %d iterations.",
-                    max_iter
-                  ), call. = FALSE)
-                }
-                f_new
-              }
-  )
+  # Diffuse. One seed vector, so a single-column matrix -- the maths itself lives
+  # in diffuse_columns(), which takes any number of columns at once. Keeping one
+  # implementation matters here for the same reason prepare_diffusion() was
+  # consolidated: network_diffusion_with_pvalues() solves its permutations in
+  # batches, and a second copy of the Taylor expansion or the RWR iteration
+  # would be free to drift away from this one.
+  f <- diffuse_columns(matrix(f0, ncol = 1L),
+                       list(L = L, ch = ch, P = P),
+                       method = method, t = t, restart_prob = restart_prob)
 
   tibble::tibble(
     node = all_nodes,
     score = as.numeric(f)
   ) |> dplyr::arrange(desc(score))
+}
+
+#' Diffuse many seed vectors through one kernel
+#'
+#' Internal. Applies the diffusion operator to every column of `F0` at once.
+#' This is the single implementation of the diffusion maths: [network_diffusion()]
+#' calls it with one column, and [network_diffusion_with_pvalues()] calls it with
+#' a batch of permuted seed vectors.
+#'
+#' Batching is what makes the permutation null tractable. A sparse Cholesky
+#' solve has a large fixed cost -- traversing the factor, allocating the result
+#' -- that does not grow with the number of right-hand sides, so
+#' `Matrix::solve(ch, F0)` for a matrix `F0` costs far less than one
+#' `solve(ch, f0)` per column. The random walk and the heat expansion batch for
+#' a different reason: a sparse matrix times a dense matrix amortizes the sparse
+#' traversal over all the columns, where a matrix-vector product repeats it
+#' every time.
+#'
+#' The one place batching is not simply the same arithmetic is the RWR
+#' convergence test, which now stops when the *slowest* column has converged.
+#' Columns that converge earlier are iterated further, which can only move them
+#' closer to the fixed point, so the batched result is at least as converged as
+#' the per-column one. With a single column the two tests are identical.
+#'
+#' @param F0 A numeric matrix of seed vectors, one column per diffusion, with
+#'   rows in graph order.
+#' @param kernel A list carrying `L`, `ch` and `P`, as built by
+#'   [prepare_diffusion()].
+#' @param method One of `"laplacian"`, `"heat"`, `"rwr"`.
+#' @param t Heat diffusion time.
+#' @param restart_prob RWR restart probability.
+#'
+#' @return A matrix of diffusion scores with the dimensions of `F0`, rows still
+#'   in graph order.
+#'
+#' @keywords internal
+#' @noRd
+diffuse_columns <- function(F0, kernel, method, t = 1, restart_prob = 0.3) {
+
+  # A base `matrix` right-hand side takes a markedly slower path through
+  # Matrix's sparse-times-dense product than a `dgeMatrix` does: on a
+  # 6000-vertex, 78000-edge graph, 30 RWR iterations over 166 columns cost 3.4 s
+  # with a base matrix and 0.6 s with a dgeMatrix, for bit-identical results.
+  # Coerced here rather than in the callers so that neither can get it wrong,
+  # and so the cost is paid once per batch instead of once per iteration.
+  if (is.matrix(F0)) {
+    F0 <- Matrix::Matrix(F0, sparse = FALSE)
+  }
+
+  # colSums() rather than sum(): with one column the two agree exactly, so the
+  # single-vector path is numerically unchanged by having been generalized.
+  col_abs_sums <- function(x) Matrix::colSums(abs(x))
+
+  if (method == "laplacian") {
+    if (is.null(kernel$ch)) {
+      stop("Missing Cholesky decomposition for Laplacian diffusion.")
+    }
+    return(Matrix::solve(kernel$ch, F0))
+  }
+
+  if (method == "heat") {
+    # exp(-tL) F0 via a truncated Taylor expansion. K is fixed rather than
+    # adaptive, so this is exactly the same arithmetic column by column.
+    K <- 20L
+    result <- F0
+    term <- F0
+    for (k in seq_len(K)) {
+      term <- (-t / k) * (kernel$L %*% term)
+      result <- result + term
+    }
+    return(result)
+  }
+
+  # rwr
+  # The convergence test is relative to the magnitude of the seed vectors, not
+  # absolute. With binary seeds the two are equivalent, but `seed_weights` lets
+  # the caller start from values of any scale (log fold changes, read counts),
+  # and an absolute threshold would then mean the achieved precision depended on
+  # the units of the input.
+  tol <- 1e-6 * max(1, max(col_abs_sums(F0)))
+  max_iter <- 1000L
+
+  f_prev <- F0
+  converged <- FALSE
+  for (iter in seq_len(max_iter)) {
+    f_new <- (1 - restart_prob) * (kernel$P %*% f_prev) + restart_prob * F0
+    if (max(col_abs_sums(f_new - f_prev), na.rm = TRUE) < tol) {
+      converged <- TRUE
+      break
+    }
+    f_prev <- f_new
+  }
+  # The loop used to be an unbounded `repeat`, which cannot terminate if the
+  # iteration fails to contract.
+  if (!converged) {
+    warning(sprintf(
+      "Random walk with restart did not converge in %d iterations.",
+      max_iter
+    ), call. = FALSE)
+  }
+  f_new
 }
 
 #'

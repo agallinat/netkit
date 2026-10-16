@@ -130,7 +130,13 @@ plot_Net <- function(
 
   # ---- Outline ----
   if (!is.null(frame.color)) {
-    if (color %in% vertex_attr_names(graph)) {
+    # Tests `frame.color`, not `color`. The branch used to key off `color`, so
+    # the two arguments were decided together: mapping `color` to an attribute
+    # while passing a literal `frame.color` looked up an attribute named e.g.
+    # "black" and got NULL, and the mirror case painted every frame with the
+    # literal attribute name. Neither combination worked, and neither errored
+    # in a way that pointed here.
+    if (frame.color %in% vertex_attr_names(graph)) {
       vertex_attr(graph, "frame.color") <- vertex_attr(graph, frame.color)
     } else {
       vertex_attr(graph, "frame.color") <- frame.color

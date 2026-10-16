@@ -15,6 +15,21 @@
 #'   Modules smaller than this size are discarded. Default is 3.
 #' @param no.of.communities Integer. Required only when \code{method = "fluid_communities"}.
 #'   Specifies the number of communities to find.
+#' @param objective_function Character, used by \code{method = "leiden"} only.
+#'   Either \code{"modularity"} (the default) or \code{"CPM"}, the constant
+#'   Potts model. Note that this differs from the \pkg{igraph} default of
+#'   \code{"CPM"}: CPM at \code{resolution = 1} compares every edge against a
+#'   density of 1, which on a weighted graph whose weights are below 1 makes
+#'   every singleton optimal, so the algorithm returns one community per node.
+#'   Modularity is scale-free in that sense and is what the other methods here
+#'   optimize, so it is the more predictable default.
+#' @param resolution Numeric, used by \code{method = "leiden"} only. Resolution
+#'   of the objective function; higher values give more, smaller communities.
+#'   Default is \code{1}. Under \code{"CPM"} this is a target edge density and
+#'   must be chosen on the scale of the edge weights.
+#' @param n_iterations Integer, used by \code{method = "leiden"} only. Number of
+#'   refinement iterations; negative values iterate until no improvement.
+#'   Default is \code{2}, matching \pkg{igraph}.
 #' @param return_subgraphs Logical. If \code{TRUE}, returns a list of induced subgraphs
 #'   for each detected module.
 #' @param plot Logical. If \code{TRUE}, generates a network plot colored by module.
@@ -27,6 +42,13 @@
 #'   \item{\code{module_table}}{Deprecated alias for \code{result}, kept for
 #'     backward compatibility.}
 #'   \item{\code{n_modules}}{The number of modules that meet the \code{min_size} threshold.}
+#'   \item{\code{modularity}}{The modularity \eqn{Q} of the partition the
+#'     algorithm returned, from \code{\link[igraph]{modularity}}, computed
+#'     before any \code{min_size} filtering and using edge strengths when
+#'     weights are supplied. \code{NA} when the partition does not cover the
+#'     graph, which happens for \code{method = "spinglass"} on a disconnected
+#'     graph. Reported because \eqn{Q} is the standard way to compare two
+#'     partitions of one graph, and no method here returns it directly.}
 #'   \item{\code{subgraphs}}{A named list of subgraphs for each module (only if \code{return_subgraphs = TRUE}).}
 #'   \item{\code{method}}{The community detection method used.}
 #'   \item{\code{graph}}{The input graph with assigned 'module' and 'color' as vertex attributes, if \code{plot = TRUE}.}
@@ -71,6 +93,9 @@ find_modules <- function(graph,
                          method = "louvain",
                          min_size = 3,
                          no.of.communities = NULL, # only required for 'fluid_communities' method.
+                         objective_function = c("modularity", "CPM"),
+                         resolution = 1,
+                         n_iterations = 2,
                          return_subgraphs = FALSE,
                          plot = TRUE,
                          label = FALSE,
@@ -80,6 +105,29 @@ find_modules <- function(graph,
   # --- Validate input ---
   graph <- as_netkit_graph(graph, backfill_names = TRUE)
   w <- as_netkit_weights(graph, weights, weight_type)
+
+  # Read before match.arg(): assigning to a formal makes missing() report FALSE
+  # for it ever after, so testing afterwards would fire this warning on every
+  # call rather than on the ones that actually supplied the argument.
+  leiden_args_given <- !missing(objective_function) || !missing(resolution) ||
+    !missing(n_iterations)
+
+  objective_function <- match.arg(objective_function)
+
+  # The Leiden controls are silently inert under any other method, which is
+  # exactly the sort of ignored argument that makes a tuning session look like
+  # the algorithm is insensitive to its parameters.
+  if (method != "leiden" && leiden_args_given) {
+    warning(sprintf(
+      paste0("'objective_function', 'resolution' and 'n_iterations' apply to ",
+             "method = \"leiden\" only and are ignored by method = \"%s\"."),
+      method
+    ), call. = FALSE)
+  }
+
+  if (!is.numeric(resolution) || length(resolution) != 1 || resolution <= 0) {
+    stop("'resolution' must be a single positive number.", call. = FALSE)
+  }
 
   if (w$weighted && method == "fluid_communities") {
     warning("Method 'fluid_communities' does not support edge weights; ",
@@ -139,7 +187,15 @@ find_modules <- function(graph,
       w <- collapsed$w
       message("Input graph converted to undirected for Leiden clustering.")
     }
-    comm_result <- cluster_leiden(graph, weights = w$strength)
+    # Every control is passed explicitly. Relying on igraph's defaults here
+    # meant CPM at resolution 1: on a weighted graph with weights below 1 no
+    # grouping ever beats a singleton, so the method returned one community per
+    # node and min_size then discarded all of them, leaving an empty result
+    # table and no indication of why.
+    comm_result <- cluster_leiden(graph, weights = w$strength,
+                                  objective_function = objective_function,
+                                  resolution = resolution,
+                                  n_iterations = n_iterations)
   } else if (method == "spinglass") {
     # Extract the Largest Connected Component (LCC)
     comps <- components(graph)
@@ -167,6 +223,21 @@ find_modules <- function(graph,
   mem <- membership(comm_result)
   node_names <- names(mem)
 
+  # Q of the partition as returned, before min_size filtering: dropping small
+  # modules leaves the membership incomplete, and Q of a partial partition is
+  # not Q of anything the algorithm proposed. A length mismatch means the
+  # clustering ran on a subgraph -- spinglass on the LCC -- so there is no
+  # partition of `graph` to score.
+  modularity_score <- if (length(mem) == vcount(graph)) {
+    tryCatch(
+      igraph::modularity(graph, membership = as.integer(mem),
+                         weights = w$strength),
+      error = function(e) NA_real_
+    )
+  } else {
+    NA_real_
+  }
+
   module_df <- data.frame(
     node = node_names,
     module = as.integer(mem),
@@ -177,6 +248,19 @@ find_modules <- function(graph,
   module_sizes <- table(module_df$module)
   valid_modules <- as.integer(names(module_sizes[module_sizes >= min_size]))
   module_df <- module_df %>% dplyr::filter(module %in% valid_modules)
+
+  # An empty result is a legitimate outcome -- a graph may genuinely have no
+  # module of the requested size -- but it is indistinguishable from a
+  # misconfigured algorithm, and silently returning a zero-row table sends the
+  # caller looking in the wrong place. Say which of the two it is.
+  if (nrow(module_df) == 0) {
+    warning(sprintf(
+      paste0("Method '%s' found %d communities but none has at least ",
+             "min_size = %d nodes (largest: %d), so the result is empty. ",
+             "Lower 'min_size', or check the algorithm's settings."),
+      method, length(module_sizes), min_size, max(module_sizes)
+    ), call. = FALSE)
+  }
 
   # --- Optional subgraphs ---
   subgraph_list <- NULL
@@ -233,6 +317,7 @@ find_modules <- function(graph,
     result = as_tibble(module_df),
     module_table = as_tibble(module_df),
     n_modules = length(valid_modules),
+    modularity = modularity_score,
     subgraphs = if (return_subgraphs) subgraph_list else NULL,
     method = method,
     graph = graph

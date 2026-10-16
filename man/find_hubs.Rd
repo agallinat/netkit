@@ -81,6 +81,43 @@ This function identifies hub nodes in an \code{igraph} network based on
 degree and betweenness centrality using either z-score or quantile thresholds.
 Optionally, it visualizes the classification using a scatter plot with marginal histograms.
 }
+\section{Choosing a method}{
+
+
+The two methods ask different questions and fail in opposite directions.
+
+\code{"zscore"} asks whether a vertex is unusual \emph{relative to the spread of this
+graph}, which is the meaningful definition of a hub, but its thresholds are
+only reachable if the metric has a tail to reach them. The defaults of 3 and
+1 are calibrated for a scale-free degree distribution. On a dense graph -- a
+thresholded correlation matrix, say -- the degree distribution is
+near-Gaussian, the largest z-score a few hundred vertices can produce is
+around 2 to 3, and \code{degree_threshold = 3} is therefore \emph{unreachable} rather
+than unmet. The function now warns when that happens instead of returning an
+empty selection in silence.
+
+\code{"quantile"} asks which vertices are in the top few percent, which is always
+answerable -- and that is its weakness: it returns a non-empty selection
+whether or not the graph has any hub structure at all. On a ring, where every
+vertex is identical, \code{degree_quantile = 0.95} marks \emph{every} vertex a hub,
+because every tied value is at or above the 95th percentile. Use it when you
+want a fixed-size shortlist from a graph you already believe has hubs; use
+\code{"zscore"} when the existence of hubs is itself the question.
+
+When a metric takes the same value at every vertex the standardization is
+undefined. \code{degree_metric} and \code{betweenness_metric} are then \code{NA}, which is
+what an undefined z-score should report, while \code{is_hub} is \code{FALSE}: no vertex
+is unusual when none differs from any other.
+
+A vertex with betweenness of exactly zero is never a hub, whatever the degree
+threshold says. A hub is defined by high degree \emph{and} high betweenness, and
+zero is not high. On a complete graph no vertex mediates any path, so none is
+a hub however many edges it carries -- which is the right answer. In practice
+this guard changes nothing on a scale-free graph, where a high-degree vertex
+has paths through it; it is there because "in practice" is not a contract.
+See \code{\link[=find_bottlenecks]{find_bottlenecks()}}, where the same arithmetic had a much larger effect.
+}
+
 \section{Edge weights}{
 
 

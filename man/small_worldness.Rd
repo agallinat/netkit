@@ -54,6 +54,15 @@ so it is omitted rather than shipped unreliable.
 graphs of different size -- use it to ask whether one graph is small-world,
 not which of two is more so.
 }
+\section{Parallel execution}{
+
+
+The null ensemble is summarized with \code{\link[future.apply:future_lapply]{future.apply::future_lapply()}} under
+whichever \pkg{future} plan is active; see the same section of
+\code{\link[=metric_significance]{metric_significance()}}. This function sets no plan, so the default is
+sequential.
+}
+
 \examples{
 g <- igraph::sample_smallworld(1, 60, 4, 0.05)
 

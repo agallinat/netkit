@@ -9,11 +9,11 @@ test_that("node-classification functions return the full plot/result/graph/metho
   # plot/roles_definitions/result only, with no `graph` and no `method`, and
   # nothing in this file noticed. Listing it by name is what stops that
   # recurring.
-  classifiers <- list(
+  classifiers <- without_empty_selection(list(
     find_hubs        = find_hubs(g, plot = FALSE),
     find_bottlenecks = find_bottlenecks(g, plot = FALSE),
     calculate_roles  = calculate_roles(g, cluster.method = "louvain", plot = FALSE)
-  )
+  ))
   for (nm in names(classifiers)) {
     res <- classifiers[[nm]]
     expect_type(res, "list")
@@ -33,14 +33,18 @@ test_that("every analysis function exposes a `result` table", {
   # find_modules() and robustness_analysis() historically used `module_table`
   # and `summary` instead; both now also carry `result`, so the vocabulary has
   # no exceptions left to remember.
-  results <- list(
+  results <- without_empty_selection(list(
     find_hubs           = find_hubs(g, plot = FALSE),
     find_bottlenecks    = find_bottlenecks(g, plot = FALSE),
     calculate_roles     = calculate_roles(g, cluster.method = "louvain", plot = FALSE),
     find_modules        = find_modules(g, plot = FALSE),
     robustness_analysis = robustness_analysis(g, removal_strategy = "degree",
-                                              steps = 5, plot = FALSE)
-  )
+                                              steps = 5, plot = FALSE),
+    # Added once greedy_seed_selection() gained a per-seed diagnostic table.
+    greedy_seed_selection = without_leaf_warning(
+      greedy_seed_selection(g, target_nodes = c("n10", "n11"), k = 2,
+                            plot = FALSE))
+  ))
   for (nm in names(results)) {
     expect_true("result" %in% names(results[[nm]]), info = nm)
     expect_s3_class(results[[nm]]$result, "data.frame")
@@ -53,8 +57,8 @@ test_that("every analysis function exposes a `result` table", {
 })
 
 test_that("`plot = FALSE` suppresses the plot object", {
-  expect_null(find_hubs(g, plot = FALSE)$plot)
-  expect_null(find_bottlenecks(g, plot = FALSE)$plot)
+  expect_null(without_empty_selection(find_hubs(g, plot = FALSE))$plot)
+  expect_null(without_empty_selection(find_bottlenecks(g, plot = FALSE))$plot)
 })
 
 test_that("`plot = TRUE` returns a plot object rather than drawing one", {
@@ -63,8 +67,12 @@ test_that("`plot = TRUE` returns a plot object rather than drawing one", {
   # already-assembled gtable rather than a ggplot. Assembling that gtable needs a
   # graphics device, so these go through draw_quietly() even though nothing is
   # being plotted on purpose.
-  expect_s3_class(draw_quietly(find_hubs(g, plot = TRUE))$plot, "ggExtraPlot")
-  expect_s3_class(draw_quietly(find_bottlenecks(g, plot = TRUE))$plot, "ggExtraPlot")
+  expect_s3_class(
+    without_empty_selection(draw_quietly(find_hubs(g, plot = TRUE)))$plot,
+    "ggExtraPlot")
+  expect_s3_class(
+    without_empty_selection(draw_quietly(find_bottlenecks(g, plot = TRUE)))$plot,
+    "ggExtraPlot")
 
   expect_s3_class(calculate_roles(g, cluster.method = "louvain", plot = TRUE)$plot, "ggplot")
 })
@@ -80,7 +88,7 @@ test_that("every plot-returning function keeps a `plot` element in both modes", 
   # The return shape must not depend on the arguments: `plot` is always present,
   # and NULL when plot = FALSE. calculate_roles() and robustness_analysis() used
   # to drop the name entirely, which made names() and str() vary by call.
-  off <- list(
+  off <- without_empty_selection(list(
     find_hubs             = find_hubs(g, plot = FALSE),
     find_bottlenecks      = find_bottlenecks(g, plot = FALSE),
     calculate_roles       = calculate_roles(g, cluster.method = "louvain", plot = FALSE),
@@ -89,20 +97,20 @@ test_that("every plot-returning function keeps a `plot` element in both modes", 
                                                 plot = FALSE, seed = 1),
     greedy_seed_selection = greedy_seed_selection(g, target_nodes = c("n10", "n11"),
                                                   k = 2, plot = FALSE)
-  )
+  ))
   for (nm in names(off)) {
     expect_true("plot" %in% names(off[[nm]]), info = nm)
     expect_null(off[[nm]]$plot, info = nm)
   }
 
-  on <- list(
+  on <- without_empty_selection(list(
     find_hubs           = draw_quietly(find_hubs(g, plot = TRUE)),
     find_bottlenecks    = draw_quietly(find_bottlenecks(g, plot = TRUE)),
     calculate_roles     = calculate_roles(g, cluster.method = "louvain", plot = TRUE),
     robustness_analysis = robustness_analysis(g, removal_strategy = "degree",
                                               steps = 5, n_reps = 1,
                                               plot = TRUE, seed = 1)
-  )
+  ))
   for (nm in names(on)) {
     expect_true("plot" %in% names(on[[nm]]), info = nm)
     expect_false(is.null(on[[nm]]$plot), info = nm)
@@ -119,11 +127,11 @@ test_that("the plot element is named `plot` everywhere, including compare_networ
 })
 
 test_that("the annotated graph carries the new vertex attribute and chains onward", {
-  hubs <- find_hubs(g, plot = FALSE)
+  hubs <- without_empty_selection(find_hubs(g, plot = FALSE))
   expect_true("is_hub" %in% igraph::vertex_attr_names(hubs$graph))
   expect_type(igraph::V(hubs$graph)$is_hub, "logical")
 
-  bottle <- find_bottlenecks(hubs$graph, plot = FALSE)
+  bottle <- without_empty_selection(find_bottlenecks(hubs$graph, plot = FALSE))
   expect_true(all(c("is_hub", "is_bottleneck") %in%
                     igraph::vertex_attr_names(bottle$graph)))
 
@@ -136,7 +144,8 @@ test_that("the annotated graph carries the new vertex attribute and chains onwar
 })
 
 test_that("node-level result tables cover the graph's vertices exactly once", {
-  for (res in list(find_hubs(g, plot = FALSE), find_bottlenecks(g, plot = FALSE))) {
+  for (res in without_empty_selection(list(find_hubs(g, plot = FALSE),
+                                           find_bottlenecks(g, plot = FALSE)))) {
     expect_setequal(res$result$node, igraph::V(g)$name)
     expect_false(any(duplicated(res$result$node)))
   }

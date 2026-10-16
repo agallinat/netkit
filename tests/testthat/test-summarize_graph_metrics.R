@@ -88,3 +88,45 @@ test_that("Avg_betweenness is skipped above the 5000-node guard", {
   big <- igraph::make_ring(5001)
   expect_true(is.na(suppressWarnings(summarize_graph_metrics(big))$Avg_betweenness))
 })
+
+test_that("Modularity is reproducible across identical calls", {
+  # Louvain randomizes its vertex visiting order, so this was the one metric in
+  # the summary that was not a function of the graph: repeated calls on one
+  # graph returned values spanning roughly 0.356 to 0.366, which is larger than
+  # many of the differences the metric gets used to argue about.
+  g <- test_graph()
+  values <- replicate(8, summarize_graph_metrics(g)$Modularity)
+  expect_equal(length(unique(values)), 1)
+
+  gw <- test_graph_weighted()
+  wvalues <- replicate(5, summarize_graph_metrics(gw, weights = "weight")$Modularity)
+  expect_equal(length(unique(wvalues)), 1)
+})
+
+test_that("seeding Modularity does not disturb the caller's random stream", {
+  # The fix must not trade one defect for another: seeding globally would reset
+  # the caller's stream, which is the defect robustness_analysis() had.
+  g <- test_graph()
+
+  set.seed(99); before <- runif(3)
+  set.seed(99); invisible(summarize_graph_metrics(g)); after <- runif(3)
+  expect_equal(before, after)
+
+  # And with no .Random.seed in existence, none must be left behind.
+  if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+    rm(".Random.seed", envir = globalenv())
+  }
+  invisible(summarize_graph_metrics(g))
+  expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
+})
+
+test_that("seed = NULL opts back in to the ambient stream", {
+  g <- test_graph()
+  set.seed(7)
+  a <- summarize_graph_metrics(g, seed = NULL)$Modularity
+  set.seed(7)
+  b <- summarize_graph_metrics(g, seed = NULL)$Modularity
+  # Same ambient seed, same answer -- so the argument is honoured rather than
+  # ignored -- while the value is free to differ from the default-seed one.
+  expect_equal(a, b)
+})

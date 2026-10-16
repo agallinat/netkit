@@ -27,8 +27,8 @@ test_that("unit weights reproduce the unweighted result exactly", {
 
   # find_hubs() / find_bottlenecks()
   for (fn in list(find_hubs, find_bottlenecks)) {
-    wa <- fn(gw, plot = FALSE, weights = "weight")$result
-    wb <- fn(gu, plot = FALSE)$result
+    wa <- without_empty_selection(fn(gw, plot = FALSE, weights = "weight"))$result
+    wb <- without_empty_selection(fn(gu, plot = FALSE))$result
     expect_equal(wa$degree_metric, wb$degree_metric, tolerance = 1e-8)
     expect_equal(wa$betweenness, wb$betweenness, tolerance = 1e-8)
     expect_equal(wa[[ncol(wa)]], wb[[ncol(wb)]])   # the is_* flag
@@ -89,16 +89,16 @@ test_that("the two weight_types are reciprocal, not interchangeable", {
 
   # Declaring w a strength must equal declaring 1/w a distance: that is the
   # conversion as_netkit_weights() performs, checked from the outside.
-  as_strength <- find_hubs(g, plot = FALSE, weights = w,
-                           weight_type = "strength")$result
-  as_distance <- find_hubs(g, plot = FALSE, weights = 1 / w,
-                           weight_type = "distance")$result
+  as_strength <- without_empty_selection(
+    find_hubs(g, plot = FALSE, weights = w, weight_type = "strength"))$result
+  as_distance <- without_empty_selection(
+    find_hubs(g, plot = FALSE, weights = 1 / w, weight_type = "distance"))$result
   expect_equal(as_strength$betweenness, as_distance$betweenness, tolerance = 1e-8)
 
   # And the two readings of the *same* numbers must differ, or the declaration
   # would be doing nothing.
-  flipped <- find_hubs(g, plot = FALSE, weights = w,
-                       weight_type = "distance")$result
+  flipped <- without_empty_selection(
+    find_hubs(g, plot = FALSE, weights = w, weight_type = "distance"))$result
   expect_false(isTRUE(all.equal(as_strength$betweenness, flipped$betweenness)))
 })
 
@@ -184,7 +184,8 @@ test_that("a weight attribute that is being ignored produces a warning", {
   g <- test_graph_weighted()
 
   expect_warning(summarize_graph_metrics(g), "being ignored")
-  expect_warning(find_hubs(g, plot = FALSE), "being ignored")
+  expect_warning(without_empty_selection(find_hubs(g, plot = FALSE)),
+                 "being ignored")
   expect_warning(prepare_diffusion(g, method = "rwr"), "being ignored")
 
   # Naming the attribute, or a graph that has none, is silent.

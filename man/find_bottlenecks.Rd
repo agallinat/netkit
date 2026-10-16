@@ -79,6 +79,39 @@ and high betweenness centrality. The function supports both standardized (z-scor
 and quantile-based thresholding. Optionally, it produces a 2D scatter plot with
 bottlenecks highlighted.
 }
+\section{Empty selections}{
+
+
+A bottleneck must satisfy two criteria at once -- low degree \emph{and} high
+betweenness -- and the conjunction is frequently empty for reasons that have
+nothing to do with the thresholds. In a dense graph there are low-degree
+vertices and there are high-betweenness vertices, but rarely one that is
+both: with many alternative routes available, a poorly connected vertex lies
+on few shortest paths. That is a real answer to the question, and the
+function now says so rather than returning an empty table in silence. The
+warning distinguishes it from the other two causes -- a threshold no vertex
+can reach, and a metric with no variance at all.
+
+See the "Choosing a method" section of \code{\link[=find_hubs]{find_hubs()}} for the trade-off
+between \code{"zscore"} and \code{"quantile"}, which applies identically here.
+
+A vertex with betweenness of exactly zero is never selected, whatever the
+thresholds. A bottleneck lies on shortest paths, and such a vertex lies on
+none. This is a necessary guard rather than a refinement: betweenness is
+heavily zero-inflated on a sparse graph -- 87\% of the vertices of a
+2000-vertex scale-free graph have betweenness 0 -- which puts the 75th
+percentile \emph{at} zero, and an inclusive \code{>=} comparison against zero then
+admits every one of them. The default quantile call used to return 1731 of
+2000 vertices as bottlenecks, every one of them with betweenness exactly
+zero. No choice of quantile defends against that, because the quantile of a
+mostly-zero distribution is zero.
+
+When a metric takes the same value at every vertex the standardization is
+undefined. \code{degree_metric} and \code{betweenness_metric} are then \code{NA}, and
+\code{is_bottleneck} is \code{FALSE}: no vertex is unusual when none differs from any
+other.
+}
+
 \section{Edge weights}{
 
 
@@ -112,9 +145,18 @@ needs. A \code{"strength"} is converted to a distance by reciprocal
 }
 
 \examples{
-g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
-res <- find_bottlenecks(g, method = "quantile", plot = FALSE)
+# Two dense clusters joined by a two-vertex bridge. The bridge vertices have
+# low degree and carry every path between the clusters, which is exactly the
+# low-degree, high-betweenness signature a bottleneck is defined by -- a
+# scale-free graph has no such vertex, so the defaults find nothing there.
+g <- igraph::disjoint_union(igraph::make_full_graph(6),
+                            igraph::make_full_graph(6))
+igraph::V(g)$name <- c(paste0("L", 1:6), paste0("R", 1:6))
+g <- igraph::add_vertices(g, 2, name = c("b1", "b2"))
+g <- igraph::add_edges(g, c("L1", "b1", "b1", "b2", "b2", "R1"))
+
+res <- find_bottlenecks(g, plot = FALSE)
 res$method
-head(res$result)
+res$result[res$result$is_bottleneck, c("node", "degree", "betweenness")]
 
 }

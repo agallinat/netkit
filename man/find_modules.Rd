@@ -9,6 +9,9 @@ find_modules(
   method = "louvain",
   min_size = 3,
   no.of.communities = NULL,
+  objective_function = c("modularity", "CPM"),
+  resolution = 1,
+  n_iterations = 2,
   return_subgraphs = FALSE,
   plot = TRUE,
   label = FALSE,
@@ -32,6 +35,24 @@ Modules smaller than this size are discarded. Default is 3.}
 
 \item{no.of.communities}{Integer. Required only when \code{method = "fluid_communities"}.
 Specifies the number of communities to find.}
+
+\item{objective_function}{Character, used by \code{method = "leiden"} only.
+Either \code{"modularity"} (the default) or \code{"CPM"}, the constant
+Potts model. Note that this differs from the \pkg{igraph} default of
+\code{"CPM"}: CPM at \code{resolution = 1} compares every edge against a
+density of 1, which on a weighted graph whose weights are below 1 makes
+every singleton optimal, so the algorithm returns one community per node.
+Modularity is scale-free in that sense and is what the other methods here
+optimize, so it is the more predictable default.}
+
+\item{resolution}{Numeric, used by \code{method = "leiden"} only. Resolution
+of the objective function; higher values give more, smaller communities.
+Default is \code{1}. Under \code{"CPM"} this is a target edge density and
+must be chosen on the scale of the edge weights.}
+
+\item{n_iterations}{Integer, used by \code{method = "leiden"} only. Number of
+refinement iterations; negative values iterate until no improvement.
+Default is \code{2}, matching \pkg{igraph}.}
 
 \item{return_subgraphs}{Logical. If \code{TRUE}, returns a list of induced subgraphs
 for each detected module.}
@@ -59,6 +80,13 @@ A list with the following components:
 \item{\code{module_table}}{Deprecated alias for \code{result}, kept for
 backward compatibility.}
 \item{\code{n_modules}}{The number of modules that meet the \code{min_size} threshold.}
+\item{\code{modularity}}{The modularity \eqn{Q} of the partition the
+algorithm returned, from \code{\link[igraph]{modularity}}, computed
+before any \code{min_size} filtering and using edge strengths when
+weights are supplied. \code{NA} when the partition does not cover the
+graph, which happens for \code{method = "spinglass"} on a disconnected
+graph. Reported because \eqn{Q} is the standard way to compare two
+partitions of one graph, and no method here returns it directly.}
 \item{\code{subgraphs}}{A named list of subgraphs for each module (only if \code{return_subgraphs = TRUE}).}
 \item{\code{method}}{The community detection method used.}
 \item{\code{graph}}{The input graph with assigned 'module' and 'color' as vertex attributes, if \code{plot = TRUE}.}

@@ -36,11 +36,51 @@
 #'   \item{\code{graph}}{The original graph with a new vertex attribute \code{is_bottleneck} (logical).}
 #' }
 #'
+#' @section Empty selections:
+#'
+#' A bottleneck must satisfy two criteria at once -- low degree *and* high
+#' betweenness -- and the conjunction is frequently empty for reasons that have
+#' nothing to do with the thresholds. In a dense graph there are low-degree
+#' vertices and there are high-betweenness vertices, but rarely one that is
+#' both: with many alternative routes available, a poorly connected vertex lies
+#' on few shortest paths. That is a real answer to the question, and the
+#' function now says so rather than returning an empty table in silence. The
+#' warning distinguishes it from the other two causes -- a threshold no vertex
+#' can reach, and a metric with no variance at all.
+#'
+#' See the "Choosing a method" section of [find_hubs()] for the trade-off
+#' between `"zscore"` and `"quantile"`, which applies identically here.
+#'
+#' A vertex with betweenness of exactly zero is never selected, whatever the
+#' thresholds. A bottleneck lies on shortest paths, and such a vertex lies on
+#' none. This is a necessary guard rather than a refinement: betweenness is
+#' heavily zero-inflated on a sparse graph -- 87% of the vertices of a
+#' 2000-vertex scale-free graph have betweenness 0 -- which puts the 75th
+#' percentile *at* zero, and an inclusive `>=` comparison against zero then
+#' admits every one of them. The default quantile call used to return 1731 of
+#' 2000 vertices as bottlenecks, every one of them with betweenness exactly
+#' zero. No choice of quantile defends against that, because the quantile of a
+#' mostly-zero distribution is zero.
+#'
+#' When a metric takes the same value at every vertex the standardization is
+#' undefined. `degree_metric` and `betweenness_metric` are then `NA`, and
+#' `is_bottleneck` is `FALSE`: no vertex is unusual when none differs from any
+#' other.
+#'
 #' @examples
-#' g <- igraph::sample_pa(80, power = 1.5, directed = FALSE)
-#' res <- find_bottlenecks(g, method = "quantile", plot = FALSE)
+#' # Two dense clusters joined by a two-vertex bridge. The bridge vertices have
+#' # low degree and carry every path between the clusters, which is exactly the
+#' # low-degree, high-betweenness signature a bottleneck is defined by -- a
+#' # scale-free graph has no such vertex, so the defaults find nothing there.
+#' g <- igraph::disjoint_union(igraph::make_full_graph(6),
+#'                             igraph::make_full_graph(6))
+#' igraph::V(g)$name <- c(paste0("L", 1:6), paste0("R", 1:6))
+#' g <- igraph::add_vertices(g, 2, name = c("b1", "b2"))
+#' g <- igraph::add_edges(g, c("L1", "b1", "b1", "b2", "b2", "R1"))
+#'
+#' res <- find_bottlenecks(g, plot = FALSE)
 #' res$method
-#' head(res$result)
+#' res$result[res$result$is_bottleneck, c("node", "degree", "betweenness")]
 #'
 #' @param weights Optional edge weights: `NULL` (default) to ignore them, the
 #'   name of an edge attribute, or a numeric vector of length
@@ -91,9 +131,19 @@ find_bottlenecks <- function(graph,
   deg_val <- if (log_transform) log1p(deg) else deg
   btw_val <- if (log_transform) log1p(btw) else btw
 
+  deg_degenerate <- FALSE
+  btw_degenerate <- FALSE
+
   if (method == "zscore") {
-    deg_score <- scale(deg_val)[, 1]
-    btw_score <- scale(btw_val)[, 1]
+    # Via standardize_node_metric() rather than scale() directly: on a graph
+    # where every vertex has the same degree, scale() returns NaN throughout and
+    # the comparisons below are then NA, not FALSE.
+    deg_std <- standardize_node_metric(deg_val)
+    btw_std <- standardize_node_metric(btw_val)
+    deg_score <- deg_std$z
+    btw_score <- btw_std$z
+    deg_degenerate <- deg_std$degenerate
+    btw_degenerate <- btw_std$degenerate
     is_bottleneck <- deg_score <= degree_threshold & btw_score >= betweenness_threshold
   } else if (method == "quantile") {
     deg_score <- deg_val
@@ -103,6 +153,48 @@ find_bottlenecks <- function(graph,
     degree_threshold <- deg_cutoff
     betweenness_threshold <- btw_cutoff
     is_bottleneck <- deg_score <= degree_threshold & btw_score >= betweenness_threshold
+  }
+
+  # A vertex whose metric is undefined is not a bottleneck. Leaving the NA in
+  # place wrote an all-NA vertex attribute onto the graph, which every
+  # downstream filter then silently dropped.
+  is_bottleneck[is.na(is_bottleneck)] <- FALSE
+
+  # A bottleneck lies on shortest paths. A vertex with betweenness of exactly
+  # zero lies on none, so it cannot be one whatever the thresholds say -- and
+  # under `method = "quantile"` they frequently did say so. Betweenness is
+  # heavily zero-inflated on a sparse graph: 87% of the vertices of a
+  # 2000-vertex scale-free graph have betweenness 0, which puts the 75th
+  # percentile *at* zero, and `>=` then admits every one of them. The default
+  # call returned 1731 of 2000 vertices as bottlenecks, every single one with
+  # betweenness exactly 0. A quantile cutoff cannot defend against this on its
+  # own: the problem is that the quantile of a mostly-zero distribution is zero.
+  is_bottleneck <- is_bottleneck & btw > 0
+
+  # An empty selection used to be returned in silence. Here the conjunction is
+  # the usual culprit rather than the thresholds: a dense graph has low-degree
+  # vertices and high-betweenness vertices but rarely a vertex that is both, so
+  # the warning distinguishes that from an unreachable threshold.
+  if (!any(is_bottleneck)) {
+    criterion <- if (method == "zscore") {
+      c("degree_threshold", "betweenness_threshold")
+    } else {
+      c(sprintf("the degree %s quantile", format(degree_quantile)),
+        sprintf("the betweenness %s quantile", format(betweenness_quantile)))
+    }
+    warn_empty_selection(
+      "find_bottlenecks", "bottleneck nodes", method,
+      list(
+        list(metric = criterion[1], label = "degree metric", direction = "<=",
+             threshold = degree_threshold,
+             attained = suppressWarnings(min(deg_score, na.rm = TRUE)),
+             degenerate = deg_degenerate),
+        list(metric = criterion[2], label = "betweenness metric",
+             direction = ">=", threshold = betweenness_threshold,
+             attained = suppressWarnings(max(btw_score, na.rm = TRUE)),
+             degenerate = btw_degenerate)
+      )
+    )
   }
 
   # Compile result

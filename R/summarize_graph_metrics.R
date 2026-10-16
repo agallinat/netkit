@@ -10,6 +10,13 @@
 #'   `igraph::ecount(graph)`. See [netkit-weights].
 #' @param weight_type Either `"strength"` (default) or `"distance"`. See
 #'   [netkit-weights].
+#' @param seed Integer or `NULL`. Seed for the one metric computed by a
+#'   randomized algorithm, `Modularity`, whose Louvain run visits vertices in a
+#'   random order. Default is `1`, which makes the whole summary a deterministic
+#'   function of the graph. The seed is applied locally and the caller's random
+#'   stream is restored afterwards, so this cannot affect anything else. Pass
+#'   `NULL` to use the ambient stream instead, for example to sample the
+#'   variability of `Modularity` deliberately.
 #'
 #' @return A one-row `data.frame`, each column a graph-level metric.
 #'
@@ -78,7 +85,8 @@
 #' @export
 summarize_graph_metrics <- function(graph,
                                     weights = NULL,
-                                    weight_type = c("strength", "distance")) {
+                                    weight_type = c("strength", "distance"),
+                                    seed = 1) {
 
   # --- Validate input ---
   graph <- as_netkit_graph(graph)
@@ -160,9 +168,17 @@ summarize_graph_metrics <- function(graph,
   # Modularity (via Louvain, fast for large graphs). Community detection reads a
   # weight as a strength, which is the one place igraph's implicit default
   # already agrees with netkit's.
+  #
+  # Louvain randomizes its vertex visiting order, so this is the one metric here
+  # that is not a function of the graph alone. Seeded locally -- see
+  # with_local_seed() -- so that two summaries of the same graph agree and the
+  # caller's stream is left untouched.
   if (nodes > 2) {
     mod_score <- tryCatch({
-      igraph::modularity(cluster_louvain(graph, weights = w$strength))
+      with_local_seed(
+        seed,
+        igraph::modularity(cluster_louvain(graph, weights = w$strength))
+      )
     }, error = function(e) NA)
   } else {
     mod_score <- NA

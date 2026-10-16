@@ -94,6 +94,44 @@ without_progress <- function(expr) {
   res
 }
 
+# find_hubs() and find_bottlenecks() warn when their thresholds select no
+# vertices, which the z-score defaults do on graphs of the size used here --
+# find_bottlenecks() does it on nearly every graph, because a right-skewed degree
+# distribution has almost no left tail for `degree_threshold = -1` to reach.
+# Tests whose subject is something else route the call through this.
+#
+# Deliberately narrow: it muffles only that one warning and lets every other one
+# through, so a genuinely new warning still fails the "exactly one warning in the
+# suite" baseline rather than hiding behind a blanket suppressWarnings(). The
+# warning itself is asserted in test-node-classification.R.
+without_empty_selection <- function(expr) {
+  withCallingHandlers(
+    force(expr),
+    warning = function(w) {
+      if (grepl("found no (hub|bottleneck) nodes", conditionMessage(w))) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
+# greedy_seed_selection() warns when most of its picks have degree 1, which on a
+# scale-free fixture is the usual outcome: symmetric normalization makes a leaf
+# adjacent to a target the most efficient injection point in the graph. Tests
+# whose subject is something else route through this. Narrow for the same reason
+# as without_empty_selection(). The warning is asserted in
+# test-greedy_seed_selection.R.
+without_leaf_warning <- function(expr) {
+  withCallingHandlers(
+    force(expr),
+    warning = function(w) {
+      if (grepl("have degree 1", conditionMessage(w))) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
 # plot_Net() and highlight_nodes() draw with base graphics. Without a device, R
 # silently writes an Rplots.pdf into the test directory; this routes drawing to
 # the null device and always closes it.

@@ -55,6 +55,9 @@ The last is the informative companion to Jaccard when the two networks
 differ greatly in size -- a small network nested inside a large one scores
 near 1 on overlap and near 0 on Jaccard. Each is \code{NaN} where its
 denominator is empty.}
+\item{\code{edge_enrichment}}{A one-row data frame placing
+\code{shared_edges} against the number expected if the two edge sets were
+drawn independently. See the "Shared edges against chance" section.}
 \item{\code{ks_test}}{The Kolmogorov-Smirnov test comparing the two degree
 distributions, as returned by \code{\link[stats:ks.test]{stats::ks.test()}}.}
 }
@@ -64,6 +67,53 @@ This function compares two networks using summary metrics, degree distributions,
 and topological similarity measures. It overlays the complementary cumulative
 frequency distributions (CCDFs) of degree and returns a combined report.
 }
+\section{Shared edges against chance}{
+
+
+A count of shared edges is not interpretable on its own: two large dense
+networks share many edges by arithmetic alone, and the question is always
+whether they share more than that. \code{edge_enrichment} answers it by treating
+each network's edge set as a draw from the pool of vertex pairs the two
+networks could possibly agree on:
+
+\describe{
+\item{\code{n_shared_nodes}}{Vertices present in both networks. An edge can
+only be shared if both its endpoints are, so this is the vertex set the
+test is conducted on -- not the union, which would include pairs neither
+network could ever have reported.}
+\item{\code{n_possible_edges}}{\eqn{\binom{n}{2}} over those vertices: the
+size of the pool.}
+\item{\code{edges1}, \code{edges2}}{Distinct non-loop edges of each network
+lying inside that vertex set -- the two draws. These are generally smaller
+than the \code{Edges} column of \code{global_topology}, which counts every edge of
+each network whether or not its endpoints are shared.}
+\item{\code{shared_edges}}{Edges drawn by both.}
+\item{\code{expected_shared_edges}}{\eqn{m_1 m_2 / \binom{n}{2}}, the
+expectation under independence.}
+\item{\code{fold_enrichment}}{Observed over expected. Above 1 means the two
+networks agree more than chance, below 1 less.}
+\item{\code{p_value}}{A one-sided hypergeometric (Fisher) upper-tail
+probability of seeing at least this many shared edges, from
+\code{\link[stats:Hypergeometric]{stats::phyper()}}. One-sided: it tests enrichment, not depletion.}
+}
+
+Direction and multiplicity are collapsed before counting, matching the
+treatment in \code{similarity} -- an edge is an unordered pair of vertex
+identifiers, counted once. Self-loops are excluded, since
+\eqn{\binom{n}{2}} does not contain them.
+
+The independence assumption is the usual one for this test and is only
+approximately true of networks: both edge sets are constrained by their degree
+sequences, and two networks over the same vertices tend to share hubs. Read
+\code{fold_enrichment} as a scale for the overlap rather than as a calibrated
+significance test; for a calibrated one, permute within the degree sequence
+using \code{\link[=null_model]{null_model()}}.
+
+Where the pool is empty -- fewer than two shared vertices -- the expectation
+is \code{NaN} and \code{p_value} is \code{NA}, rather than a number computed from a
+denominator of zero.
+}
+
 \section{Edge weights}{
 
 
@@ -102,5 +152,9 @@ g2 <- igraph::sample_gnp(80, 0.05, directed = FALSE)
 res <- compare_networks(g1, g2)
 res$global_topology
 res$ks_test
+
+# Two unrelated networks over the same vertices: the shared edges are about
+# as many as chance gives, so fold_enrichment sits near 1.
+res$edge_enrichment
 
 }

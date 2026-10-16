@@ -11,8 +11,9 @@ test_that("edge-list data.frames are accepted wherever an igraph is", {
   expect_s3_class(summarize_graph_metrics(el), "data.frame")
   expect_s3_class(plot_CCDF(el), "ggplot")
   expect_type(find_modules(el, plot = FALSE), "list")
-  expect_type(find_hubs(el, plot = FALSE), "list")
-  expect_type(find_bottlenecks(el, plot = FALSE), "list")
+  expect_type(without_empty_selection(find_hubs(el, plot = FALSE)), "list")
+  expect_type(without_empty_selection(find_bottlenecks(el, plot = FALSE)),
+              "list")
   expect_type(prepare_diffusion(el, method = "laplacian"), "list")
   expect_s3_class(network_diffusion(el, seed_nodes = "n1"), "data.frame")
   expect_type(

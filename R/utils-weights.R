@@ -171,6 +171,34 @@ describe_weights <- function(w) {
   sprintf("weighted by '%s' (interpreted as %s)", w$name, w$type)
 }
 
+#' Resolve a weight argument to the raw values the caller supplied
+#'
+#' Internal. `as_netkit_weights()` derives a strength/cost pair, which is what a
+#' metric needs. [null_model()] needs something different: the values exactly as
+#' supplied, because it permutes them across the null graph's edges and leaves
+#' the *interpretation* to whoever consumes the ensemble. Converting them here
+#' and converting back downstream would round-trip a reciprocal for no reason.
+#'
+#' Validation is delegated, so a bad `weights` argument fails identically here
+#' and everywhere else in netkit. Declaring `type = "strength"` makes
+#' `$strength` the supplied vector unchanged, which is the point.
+#'
+#' @param graph An `igraph` object, already normalized by `as_netkit_graph()`.
+#' @param weights `NULL`, the name of an edge attribute, or a numeric vector.
+#' @param arg Name of the caller's argument, for error messages.
+#'
+#' @return `NULL`, or the supplied values as a numeric vector.
+#'
+#' @keywords internal
+#' @noRd
+netkit_raw_weights <- function(graph, weights, arg = "weights") {
+  if (is.null(weights)) {
+    return(NULL)
+  }
+  as_netkit_weights(graph, weights, type = "strength", arg = arg,
+                    warn_unused = FALSE)$strength
+}
+
 #' Build a diffusion seed vector
 #'
 #' Internal. Turns a seed specification into the \eqn{f_0} vector that the

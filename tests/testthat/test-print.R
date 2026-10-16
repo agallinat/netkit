@@ -7,7 +7,7 @@
 g <- test_graph(n = 40)
 
 test_that("printing a result is a short summary, not a dump of the graph", {
-  res <- find_hubs(g, plot = FALSE)
+  res <- without_empty_selection(find_hubs(g, plot = FALSE))
   out <- capture.output(print(res))
 
   # The default method prints the whole 40-row tibble and the igraph edge list.
@@ -62,7 +62,7 @@ test_that("a diffusion kernel prints its shape rather than its matrices", {
 })
 
 test_that("classing the returns leaves their list semantics untouched", {
-  res <- find_hubs(g, plot = FALSE)
+  res <- without_empty_selection(find_hubs(g, plot = FALSE))
 
   expect_type(res, "list")
   expect_true(is.list(res))
@@ -77,7 +77,7 @@ test_that("classing the returns leaves their list semantics untouched", {
 })
 
 test_that("print returns its argument invisibly", {
-  res <- find_hubs(g, plot = FALSE)
+  res <- without_empty_selection(find_hubs(g, plot = FALSE))
   capture.output(expect_invisible(print(res)))
 
   capture.output(out <- print(res))
@@ -88,28 +88,43 @@ test_that("print returns its argument invisibly", {
   expect_identical(out_null, nulls)
 })
 
-test_that("results with no method and no table still print their elements", {
-  # greedy_seed_selection() and compare_networks() carry neither `method` nor
-  # `result`, so the printer has nothing to lead with. It must still list what
-  # is there rather than printing an empty header.
-  res <- greedy_seed_selection(g, target_nodes = c("n10", "n11"), k = 2,
-                               plot = FALSE)
+test_that("results with no table still print their elements", {
+  # compare_networks() carries neither `method` nor `result`, so the printer has
+  # nothing to lead with. It must still list what is there rather than printing
+  # an empty header.
+  cmp <- capture.output(print(compare_networks(g, test_graph_gnp())))
+  expect_lt(length(cmp), 12)
+  expect_true(any(grepl("$similarity", cmp, fixed = TRUE)))
+  expect_true(any(grepl("$edge_enrichment", cmp, fixed = TRUE)))
+
+  # greedy_seed_selection() used to be the other example here. It now carries
+  # both a `method` and a `result` table, so it belongs with the normal case
+  # below; compare_networks() is the only remaining return with neither.
+})
+
+test_that("greedy_seed_selection() prints its method, its table and its vectors", {
+  res <- without_leaf_warning(
+    greedy_seed_selection(g, target_nodes = c("n10", "n11"), k = 2,
+                          plot = FALSE))
   out <- capture.output(print(res))
 
-  expect_lt(length(out), 10)
+  # Three sections, and still a summary rather than a dump: the default method
+  # would print the whole tibble plus four vectors with no structure.
+  expect_lt(length(out), 25)
+  expect_true(any(grepl("^Method: Greedy seed selection", out)))
+  expect_true(any(grepl("$result", out, fixed = TRUE)))
   expect_true(any(grepl("$selected_seeds", out, fixed = TRUE)))
   expect_true(any(grepl("$final_target_score", out, fixed = TRUE)))
-
-  cmp <- capture.output(print(compare_networks(g, test_graph_gnp())))
-  expect_lt(length(cmp), 10)
-  expect_true(any(grepl("$similarity", cmp, fixed = TRUE)))
+  # The per-seed diagnostic columns are what the table is for, so they have to
+  # survive the summarized printing.
+  expect_true(any(grepl("gain_z", out, fixed = TRUE)))
 })
 
 test_that("a present plot is described, not drawn", {
   # The printer must never trigger a device: describing the slot is the whole
   # point. find_hubs() carries a ggExtra gtable rather than a ggplot, so both
   # spellings have to be recognized.
-  res <- draw_quietly(find_hubs(g, plot = TRUE))
+  res <- without_empty_selection(draw_quietly(find_hubs(g, plot = TRUE)))
   out <- capture.output(print(res))
 
   expect_true(any(grepl("print(x$plot) to draw", out, fixed = TRUE)))
@@ -119,7 +134,7 @@ test_that("a present plot is described, not drawn", {
 test_that("every list-returning function carries the netkit_result class", {
   # Listing them by name is what stops a new function from quietly skipping
   # as_netkit_result() and printing as a raw list.
-  results <- list(
+  results <- without_empty_selection(list(
     find_hubs             = find_hubs(g, plot = FALSE),
     find_bottlenecks      = find_bottlenecks(g, plot = FALSE),
     calculate_roles       = calculate_roles(g, cluster.method = "louvain",
@@ -137,7 +152,7 @@ test_that("every list-returning function carries the netkit_result class", {
                                                 steps = 5, plot = FALSE),
     greedy_seed_selection = greedy_seed_selection(g, target_nodes = "n10",
                                                   k = 1, plot = FALSE)
-  )
+  ))
 
   for (nm in names(results)) {
     expect_s3_class(results[[nm]], "netkit_result")

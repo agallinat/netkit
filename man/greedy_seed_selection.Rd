@@ -16,7 +16,8 @@ greedy_seed_selection(
   normalize = TRUE,
   plot = TRUE,
   weights = NULL,
-  weight_type = c("strength", "distance")
+  weight_type = c("strength", "distance"),
+  objective = c("total", "coverage")
 )
 }
 \arguments{
@@ -39,7 +40,11 @@ If NULL (default), all non-target nodes are used.}
 
 \item{k}{Number of seed nodes to select (default = 5).}
 
-\item{normalize}{Logical; whether to normalize the cumulative diffusion score over the target nodes (default = TRUE).}
+\item{normalize}{Logical; whether to symmetrically normalize the adjacency
+matrix before diffusing, passed through to \code{\link[=network_diffusion]{network_diffusion()}}
+(default = TRUE). This controls the diffusion kernel, \emph{not} the target
+score: it was previously documented as normalizing the cumulative score
+over the target nodes, which it has never done.}
 
 \item{plot}{Logical; whether to plot the progression of target diffusion score as seeds are selected (default = TRUE).}
 
@@ -49,13 +54,40 @@ name of an edge attribute, or a numeric vector of length
 
 \item{weight_type}{Either \code{"strength"} (default) or \code{"distance"}. See
 \link{netkit-weights}.}
+
+\item{objective}{What the greedy search maximizes:
+\describe{
+\item{\code{"total"}}{The default, and the historical behaviour: the summed
+diffusion score over \code{target_nodes}. Be aware that this makes the
+greedy search redundant -- see "Why the greedy search is not greedy".}
+\item{\code{"coverage"}}{A saturating objective, which makes the search
+genuinely greedy: signal delivered to a target that is already well
+served counts for progressively less, so the selection spreads across
+the target set instead of concentrating on whichever target is easiest
+to reach.}
+}}
 }
 \value{
 A list with the following elements:
 \describe{
-\item{selected}{Character vector of selected seed node names.}
-\item{final_target_score}{Final cumulative (or normalized) diffusion score over the target nodes.}
-\item{scores_at_each_step}{Vector of target scores at each greedy selection step.}
+\item{selected_seeds}{Character vector of selected seed node names, in the
+order they were chosen.}
+\item{final_target_score}{Final cumulative diffusion score over the target nodes.}
+\item{scores_at_each_step}{Vector of target scores at each greedy selection
+step. Always the summed diffusion score over the targets, whichever
+\code{objective} was used, so the two objectives' selections are comparable on
+one scale.}
+\item{objective_at_each_step}{The value of the objective actually being
+maximized at each step. Identical to \code{scores_at_each_step} under
+\code{objective = "total"}; under \code{"coverage"} it is an effective number of
+targets reached, bounded by \code{length(target_nodes)}.}
+\item{result}{A tibble with one row per selected seed: \code{step}, \code{node},
+\code{degree}, \code{gain} (the marginal gain that pick bought), \code{gain_z} (that
+gain standardized against candidates of comparable degree -- see "Reading
+\code{gain_z}"), \code{cumulative_score} and \code{objective}.}
+\item{plot}{A \code{ggplot2} object showing the progression, or \code{NULL}.}
+\item{method}{A description of the objective and diffusion used, including
+whether the selection reduces to a top-k ranking.}
 }
 }
 \description{
@@ -64,15 +96,105 @@ such that the resulting diffusion signal on a specified set of target nodes is m
 It supports multiple diffusion models (Laplacian, Heat Kernel, Random Walk with Restart).
 }
 \details{
-This function uses a stepwise greedy heuristic. At each step, it evaluates the marginal gain in target score from
-adding each candidate node to the current seed set, and selects the one with the highest gain. This is repeated for \code{k} steps.
+This function uses a stepwise greedy heuristic. At each step it evaluates the
+marginal gain in the objective from adding each candidate to the current seed
+set and selects the one with the highest gain, repeated for \code{k} steps.
 
-Note: The score of each candidate at every step is recomputed via a full diffusion run, making the function computationally
-intensive for large graphs or large \code{k}.
-
-The target score can be interpreted as either the total or average diffusion signal received by the target nodes.
-Normalization helps scale results across networks of different sizes.
+The target score is the sum of the diffusion scores over \code{target_nodes}. It
+is a total, never an average, and \code{normalize} does not change that -- it
+changes the kernel the scores come from.
 }
+\section{Why the greedy search is not greedy}{
+
+
+Under \code{objective = "total"} this function cannot do better than ranking the
+candidates once, and it is worth being explicit about why.
+
+Diffusion is a \emph{linear} operator. The signal a seed set delivers to a target
+is therefore exactly the sum of what each member delivers on its own, so the
+total target score is a modular set function: the gain from adding a
+candidate does not depend on which candidates were already chosen. Every step
+of the search consequently ranks the remaining candidates in the same order
+as the first step did, and the result is precisely the \code{k} candidates with
+the largest single-seed contributions. A greedy search is only worth running
+against an objective with \emph{interacting} terms, and this one has none.
+
+\code{objective = "coverage"} supplies the interaction. Each target's accumulated
+signal is passed through a saturating transform before being summed, so the
+second seed to serve an already-well-covered target adds little and the
+search is pushed toward targets nothing has reached yet. That function is
+submodular rather than modular, which is the condition under which greedy
+selection is both non-trivial and known to be near-optimal.
+}
+
+\section{What gets selected, and why it may not be what you want}{
+
+
+With \code{normalize = TRUE} the kernel is symmetrically normalized, so an edge
+into a vertex of degree \eqn{d} carries weight \eqn{1/\sqrt{d}}. A vertex of
+degree 1 adjacent to a target is therefore the most efficient single place to
+inject signal that exists in the graph: it has nowhere else to send it.
+
+The consequence is that this function will often return leaves hanging off
+the targets. That is the correct answer to the question as posed and usually
+not the answer that was wanted, since a degree-1 vertex in a biological
+network is more often a gap in the annotation than a controllable
+intervention point. The function warns when more than half the selection has
+degree 1. To get something actionable, restrict \code{candidate_nodes} to vertices
+you could actually perturb, or set \code{normalize = FALSE} to stop rewarding low
+degree.
+}
+
+\section{Reading \code{gain_z}}{
+
+
+Because the raw \code{gain} is largely a restatement of degree, \code{result} also
+reports \code{gain_z}: the pick's gain standardized against the gains of the
+candidates closest to it in degree. It separates the two reasons a vertex can
+look good.
+
+A \code{gain_z} near zero means the vertex is typical of its degree class -- it
+was selected \emph{because of} its degree, and any other vertex of the same degree
+in the same position would have served as well. A large \code{gain_z} means the
+vertex outperforms others as poorly (or as well) connected as itself, which
+is a statement about where it sits in the graph rather than about how many
+edges it has. When a selection is full of leaves, \code{gain_z} is what tells you
+whether any of them is individually worth attention.
+
+Two details to read it correctly. The comparison pool is the candidates still
+\emph{available} at that step, not the original candidate set, so \code{gain_z} answers
+"how unusual was this pick among the alternatives at the moment it was made".
+A consequence is that it can climb across steps while \code{gain} stays flat: once
+the other strong leaves have been taken, the leaf picked fourth really does
+stand out further among what remains. That is not increasing importance.
+
+And it is \code{NA} only when every comparable candidate has an identical gain,
+which needs a vertex-transitive arrangement such as a complete graph.
+Equal \emph{degrees} are not enough and are in fact the best case: on a ring every
+candidate has degree 2, so the pool is the whole candidate set and \code{gain_z}
+measures position with no degree confound left in it at all.
+}
+
+\section{Performance}{
+
+
+Every diffusion is computed once, in a single batched pass over
+\code{candidate_nodes}, and the search is then arithmetic on the resulting
+\code{length(target_nodes)} x \code{length(candidate_nodes)} matrix. The previous
+implementation ran a full diffusion for every candidate at every step --
+\code{k * length(candidate_nodes)} diffusions, recomputing at step 3 what it had
+already computed at step 1.
+
+On a 2000-vertex graph with 4 targets and \code{k = 8}, that is 15968 diffusions
+and 15.7 s, against 0.37 s now, for the same selection and the same scores to
+within 3e-16.
+
+One consequence is worth noting for \code{method = "rwr"}, whose iterative solve
+is only additive up to its convergence tolerance: the selected \emph{set} is
+unchanged, but the order within it may differ from older versions by
+differences of around 1e-9, which were arbitrary to begin with.
+}
+
 \section{Edge weights}{
 
 
@@ -113,6 +235,14 @@ target <- c("1", "2", "3")
 res <- greedy_seed_selection(g, target_nodes = target, k = 3, plot = FALSE)
 res$selected_seeds
 res$scores_at_each_step
+
+# The default objective is additive, so that selection is just the top 3
+# single-seed contributions. `"coverage"` saturates each target's share, which
+# spreads the selection over the target set instead.
+cov <- greedy_seed_selection(g, target_nodes = target, k = 3,
+                             objective = "coverage", plot = FALSE)
+cov$selected_seeds
+cov$objective_at_each_step   # bounded by length(target_nodes)
 
 }
 \seealso{

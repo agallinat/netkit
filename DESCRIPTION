@@ -1,7 +1,7 @@
 Package: netkit
 Type: Package
 Title: Network Topology, Diffusion and Robustness Analysis
-Version: 0.1.0
+Version: 0.1.2
 Authors@R:
     person("Alex", "Gallinat", email = "alex.gaoc@gmail.com",
            role = c("aut", "cre"))

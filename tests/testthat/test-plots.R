@@ -82,3 +82,30 @@ test_that("layout_horizontal_tree() rotates igraph's vertical tree layout", {
   expect_equal(span(horizontal, 1), span(vertical, 2), tolerance = 1e-8)
   expect_equal(span(horizontal, 2), span(vertical, 1), tolerance = 1e-8)
 })
+
+test_that("frame.color is resolved from frame.color, not from color", {
+  # The branch deciding whether frame.color names a vertex attribute used to
+  # test `color` instead, so the two arguments could only be used in matching
+  # forms. Each case below took the wrong branch: the first looked up an
+  # attribute named "black", the second painted every frame with the literal
+  # string "grp". Both are asserted because they are different wrong branches.
+  g <- test_graph(n = 20)
+  igraph::V(g)$grp <- rep(c("red", "blue"), length.out = igraph::vcount(g))
+
+  # Attribute-mapped fill with a literal frame.
+  expect_no_error(draw_quietly(plot_Net(g, color = "grp", frame.color = "black")))
+
+  # Literal fill with an attribute-mapped frame. Under the old branch this
+  # passed the literal string "grp" to plot.igraph as a colour and errored.
+  expect_no_error(draw_quietly(plot_Net(g, color = "skyblue",
+                                        frame.color = "grp")))
+
+  # plot_Net() draws rather than returning the graph, so the resolution cannot
+  # be inspected directly. This discriminates instead: a literal frame.color
+  # that is not a colour name must reach plot.igraph and fail there. Under the
+  # old branch, `color` naming an attribute sent this down the attribute path,
+  # which looked up a non-existent attribute, got NULL, set nothing, and drew
+  # happily -- so the argument was silently discarded.
+  expect_error(draw_quietly(plot_Net(g, color = "grp",
+                                     frame.color = "notacolour")))
+})
