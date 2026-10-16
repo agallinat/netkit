@@ -196,107 +196,179 @@ calculate_roles <- function(graph,
     role = NA_character_
   )
 
-  # Compute within-module z-score. NA modules are skipped rather than treated as a
-  # module of their own: a membership vector containing NAs would otherwise select
-  # NA node names and make induced_subgraph() fail with "Invalid vertex names".
-  # Those nodes keep z = NA and so are classified with role = NA.
-  for (mod in unique(roles_df$module[!is.na(roles_df$module)])) {
-    idx <- which(roles_df$module == mod)
-    mod_nodes <- roles_df$node[idx]
-    if (length(mod_nodes) <= 1) {
-      roles_df$z[idx] <- 0
-      next
-    }
+  # Compute within-module z-score.
+  #
+  # Modules indexed by vertex position, as small integer codes, so every tally
+  # below is an arithmetic pass rather than a lookup by name. NA membership stays
+  # NA: such vertices keep z = NA and so are classified with role = NA. Treating
+  # them as a module of their own would be wrong, and the previous code could not
+  # have done so anyway -- it selected node names by module and an NA name makes
+  # induced_subgraph() fail with "Invalid vertex names".
+  gnames <- igraph::V(graph)$name
+  n_v <- igraph::vcount(graph)
 
-    # Carry strengths into the subgraph as an edge attribute: induced_subgraph()
-    # drops the edges leaving the module, so a positional index into the
-    # whole-graph weight vector would misalign.
-    subg <- igraph::induced_subgraph(
-      if (w$weighted) igraph::set_edge_attr(graph, ".netkit_s", value = w$strength) else graph,
-      mod_nodes
-    )
-    ki <- if (w$weighted) {
-      igraph::strength(subg, weights = igraph::edge_attr(subg, ".netkit_s"))
-    } else {
-      igraph::degree(subg)
-    }
-    mean_ki <- mean(ki)
-    sd_ki <- stats::sd(ki)
+  mod_by_pos <- membership[match(gnames, names(membership))]
+  mod_levels <- sort(unique(mod_by_pos[!is.na(mod_by_pos)]))
+  mod_code <- match(mod_by_pos, mod_levels)
+  n_mod <- length(mod_levels)
 
-    z_vals <- if (is.na(sd_ki) || sd_ki == 0) rep(0, length(ki)) else (ki - mean_ki) / sd_ki
-    roles_df$z[match(names(ki), roles_df$node)] <- z_vals
+  # Within-module degree in one pass over the edge list, rather than one
+  # induced_subgraph() per module. The subgraph approach is O(modules x (V + E)):
+  # with min_size = 1 a 6000-vertex graph can carry thousands of modules, and
+  # induced_subgraph() then accounted for the bulk of the runtime -- 1.32 s at
+  # 3000 modules against 0.07 s at 10. An edge contributes to its endpoints'
+  # within-module degree exactly when both ends share a module, which is the same
+  # thing induced_subgraph() computes by building the subgraph first.
+  #
+  # Self-loops and parallel edges land where igraph::degree(loops = TRUE) and
+  # igraph::strength() put them: a self-loop adds its contribution to the vertex
+  # twice, once per endpoint, and parallel edges count separately.
+  el <- igraph::as_edgelist(graph, names = FALSE)
+  e_from <- el[, 1L]
+  e_to <- el[, 2L]
+  # Both endpoints need the non-NA guard, not just one: `TRUE & NA` is NA, so
+  # testing only `e_from` let an edge to an unknown-module neighbor put an NA
+  # into `internal` and from there into a subscript.
+  internal <- !is.na(mod_code[e_from]) & !is.na(mod_code[e_to]) &
+    mod_code[e_from] == mod_code[e_to]
+  e_val <- if (w$weighted) w$strength else rep.int(1, igraph::ecount(graph))
+
+  within_deg <- numeric(n_v)
+  if (any(internal)) {
+    contrib <- c(e_val[internal], e_val[internal])
+    ends_v <- c(e_from[internal], e_to[internal])
+    acc <- rowsum(contrib, ends_v, reorder = FALSE)
+    within_deg[as.integer(rownames(acc))] <- acc[, 1L]
   }
 
-  # Compute participation coefficient
-  for (i in seq_len(nrow(roles_df))) {
-    node <- roles_df$node[i]
-    nbrs <- igraph::neighbors(graph, node, mode = "all")
-    if (length(nbrs) == 0) {
-      roles_df$p[i] <- 0
-      next
-    }
+  # Per-module mean and sample sd, computed in two passes so the variance is a
+  # sum of squared deviations rather than E[x^2] - E[x]^2. The one-pass form
+  # cancels badly, and z feeds a hub threshold, so the difference would be a
+  # misclassification rather than a rounding artifact.
+  valid <- !is.na(mod_code)
+  code_v <- mod_code[valid]
+  cnt <- tabulate(code_v, nbins = max(n_mod, 1L))
 
-    neighbor_names <- igraph::V(graph)$name[nbrs]
-    neighbor_modules <- membership[neighbor_names]
+  sum_m <- numeric(max(n_mod, 1L))
+  if (length(code_v)) {
+    acc <- rowsum(within_deg[valid], code_v, reorder = FALSE)
+    sum_m[as.integer(rownames(acc))] <- acc[, 1L]
+  }
+  mean_m <- ifelse(cnt > 0, sum_m / cnt, NA_real_)
 
-    # Unweighted: count neighbors per module. Weighted: sum the strengths of the
-    # edges reaching each module, which is the weighted generalization -- a node
-    # tied to one module by a strong edge and to another by a weak one is not a
-    # connector, though counting alone would say it is.
-    #
-    # tapply() rather than table(): both drop NA-module neighbors, which is what
-    # keeps the numerator and the denominator derived from the same place (the
-    # defect this function had twice before).
-    k_i_m <- if (w$weighted) {
-      # Pair each incident edge with its *own* far endpoint, rather than zipping
-      # incident() against neighbors(). Those two are both sorted, but by edge id
-      # and by vertex id respectively, so they are not guaranteed to correspond --
-      # and a mis-pairing here would attribute one neighbor's strength to another
-      # neighbor's module and still produce a coefficient in [0, 1].
-      e_ids <- igraph::incident(graph, node, mode = "all")
-      ends <- igraph::ends(graph, e_ids, names = TRUE)
-      far <- ifelse(ends[, 1] == node, ends[, 2], ends[, 1])
-      e_mod <- membership[far]
-      s_e <- w$strength[as.numeric(e_ids)]
+  dev <- within_deg - mean_m[mod_code]
+  ss_m <- numeric(max(n_mod, 1L))
+  if (length(code_v)) {
+    acc <- rowsum(dev[valid]^2, code_v, reorder = FALSE)
+    ss_m[as.integer(rownames(acc))] <- acc[, 1L]
+  }
+  # cnt == 1 gives NA, which the zero-variance branch below turns into z = 0 --
+  # the same answer the old `length(mod_nodes) <= 1` short-circuit gave.
+  sd_m <- ifelse(cnt > 1, sqrt(ss_m / (cnt - 1)), NA_real_)
 
-      keep <- !is.na(e_mod)
-      if (!any(keep)) {
-        stats::setNames(numeric(0), character(0))
-      } else {
-        tapply(s_e[keep], e_mod[keep], sum)
-      }
-    } else {
-      table(neighbor_modules)
-    }
+  sd_v <- sd_m[mod_code]
+  z_by_pos <- ifelse(is.na(sd_v) | sd_v == 0, 0, dev / sd_v)
+  z_by_pos[!valid] <- NA_real_
 
-    # The denominator must be the number of neighbors actually tallied, not the
-    # node's full degree: table() drops neighbors with NA membership, so using
-    # the full degree makes the fractions sum to less than 1 and inflates P.
-    # These agree whenever every neighbor has a module, and stay well defined
-    # when some do not.
-    k_i <- sum(k_i_m)
+  roles_df$z <- unname(z_by_pos)[match(roles_df$node, gnames)]
 
-    roles_df$p[i] <- if (k_i == 0) NA_real_ else 1 - sum((k_i_m / k_i)^2)
+  # Compute participation coefficient.
+  #
+  # One aggregation over the whole graph rather than one pass per vertex. The
+  # per-vertex loop this replaces called neighbors(graph, node) with a character
+  # `node`, so igraph resolved a name on every iteration, and then evaluated
+  # `igraph::V(graph)$name[nbrs]`, which materializes the entire name vector to
+  # take a handful of elements from it. Both are inside the loop, so the work grew
+  # as the square of the vertex count: at 6000 vertices, vertex.attributes() alone
+  # was 42% of the runtime and the name machinery about 80% of it between them.
+  #
+  # The neighbor and incident-edge lists come from adjacent_vertices() and
+  # incident_edges(), which are the batched forms of the neighbors() and
+  # incident() calls used before. Using the same primitives keeps the treatment of
+  # self-loops and parallel edges identical rather than re-deriving it.
+  #
+  # `gnames`, `mod_code` and `n_mod` are the ones built for the z-score above:
+  # modules as small integer codes indexed by vertex position, so a neighbor's
+  # module is an integer lookup and can index a matrix column directly.
+  if (w$weighted) {
+    # Pair each incident edge with its *own* far endpoint. Zipping incident()
+    # against neighbors() would not do: both are sorted, but by edge id and by
+    # vertex id respectively, so a mis-pairing would attribute one neighbor's
+    # strength to another neighbor's module and still produce a coefficient in
+    # [0, 1].
+    inc <- igraph::incident_edges(graph, igraph::V(graph), mode = "all")
+    e_of_pair <- as.integer(unlist(inc, use.names = FALSE))
+    owner <- rep.int(seq_len(n_v), lengths(inc))
+
+    ea <- el[e_of_pair, 1L]
+    eb <- el[e_of_pair, 2L]
+    far <- ifelse(ea == owner, eb, ea)
+
+    pair_mod <- mod_code[far]
+    pair_val <- w$strength[e_of_pair]
+    deg_all <- lengths(inc)
+  } else {
+    nbr <- igraph::adjacent_vertices(graph, igraph::V(graph), mode = "all")
+    pair_mod <- mod_code[as.integer(unlist(nbr, use.names = FALSE))]
+    owner <- rep.int(seq_len(n_v), lengths(nbr))
+    pair_val <- rep.int(1, length(owner))
+    deg_all <- lengths(nbr)
   }
 
-  # Classify roles based on z and p
-  for (i in seq_len(nrow(roles_df))) {
-    z <- roles_df$z[i]
-    p <- roles_df$p[i]
+  # Neighbors whose module is unknown are dropped, so the numerator and the
+  # denominator are both derived from the surviving pairs -- the same place. The
+  # denominator must not be the node's full degree: dropping a neighbor from the
+  # tally while still dividing by the full degree makes the fractions sum to less
+  # than 1 and inflates P, which is the defect this function shipped once before.
+  keep <- !is.na(pair_mod)
 
-    if (is.na(z) || is.na(p)) {
-      roles_df$role[i] <- NA
-    } else if (z < hub_z) {
-      if (p <= th[["R1_R2"]]) roles_df$role[i] <- "R1"
-      else if (p <= th[["R2_R3"]]) roles_df$role[i] <- "R2"
-      else if (p <= th[["R3_R4"]]) roles_df$role[i] <- "R3"
-      else roles_df$role[i] <- "R4"
-    } else {
-      if (p <= th[["R5_R6"]]) roles_df$role[i] <- "R5"
-      else if (p <= th[["R6_R7"]]) roles_df$role[i] <- "R6"
-      else roles_df$role[i] <- "R7"
-    }
+  # Duplicate (vertex, module) entries are summed by sparseMatrix, which is what
+  # makes this a tally. Unweighted that counts neighbors per module; weighted it
+  # sums the strengths of the edges reaching each module -- the weighted
+  # generalization, under which a node tied to one module by a strong edge and to
+  # another by a weak one is not a connector, though counting alone would say so.
+  k_im <- Matrix::sparseMatrix(
+    i = owner[keep], j = pair_mod[keep], x = pair_val[keep],
+    dims = c(n_v, max(n_mod, 1L))
+  )
+
+  k_i <- Matrix::rowSums(k_im)
+  sum_sq <- Matrix::rowSums(k_im * k_im)
+
+  # Zero-tally modules contribute nothing to the sum of squares, so restricting
+  # to the modules a node actually touches is unnecessary: 1 - sum((k_im/k_i)^2)
+  # expands to 1 - sum_sq / k_i^2.
+  # unname(): lengths() carries the vertex names and ifelse() propagates the
+  # attributes of its first argument, which would otherwise make `p` a named
+  # column rather than a plain numeric one.
+  p_by_pos <- unname(ifelse(deg_all == 0, 0,
+                            ifelse(k_i == 0, NA_real_, 1 - sum_sq / k_i^2)))
+
+  roles_df$p <- p_by_pos[match(roles_df$node, gnames)]
+
+  # Classify roles based on z and p.
+  #
+  # Vectorized over the table rather than one pass per row. findInterval() encodes
+  # the same ladder of comparisons: the boundaries are upper-inclusive, so
+  # rightmost.closed is wrong here and the interval index is taken on `-p` against
+  # the negated, reversed breaks -- which is what makes `p <= b` rather than
+  # `p < b` the test, matching the published definition and the shaded plot bands.
+  nonhub <- c(th[["R1_R2"]], th[["R2_R3"]], th[["R3_R4"]])
+  hub <- c(th[["R5_R6"]], th[["R6_R7"]])
+
+  pick <- function(p, breaks, labels) {
+    labels[length(breaks) + 1L - findInterval(-p, -rev(breaks))]
   }
+
+  is_hub <- !is.na(roles_df$z) & roles_df$z >= hub_z
+  role <- rep(NA_character_, nrow(roles_df))
+  ok <- !is.na(roles_df$z) & !is.na(roles_df$p)
+
+  idx <- ok & !is_hub
+  role[idx] <- pick(roles_df$p[idx], nonhub, c("R1", "R2", "R3", "R4"))
+  idx <- ok & is_hub
+  role[idx] <- pick(roles_df$p[idx], hub, c("R5", "R6", "R7"))
+  roles_df$role <- role
 
 
   # Plot if requested

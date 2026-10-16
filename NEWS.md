@@ -182,6 +182,38 @@ than estimates.
   diffusions and 15.7 s, against 0.37 s now, for the same selection and the
   same scores to within 3e-16.
 
+* **`calculate_roles()` computes z and P by whole-graph aggregation**, which is
+  29x faster on the 6000-vertex / 78000-edge graph the external review timed:
+  2.06 s to 0.07 s for the role arithmetic, and 2.1 s to 0.23 s for a complete
+  `cluster.method = "louvain"` call. Both numbers were measured before and
+  after, and z, P and every assigned role are unchanged to floating point.
+
+  The profile contradicted the obvious reading twice over, which is why the
+  figures above are for the arithmetic rather than for the default call. The
+  participation loop called `neighbors(graph, node)` with a character `node`, so
+  igraph resolved a vertex name on each of 6000 iterations, and then evaluated
+  `V(graph)$name[nbrs]`, materializing the whole 6000-element name vector to
+  read a handful of entries from it. `vertex.attributes()` alone was 42% of
+  the runtime and the name machinery about 80% of it between them -- the tally
+  arithmetic the loop existed to perform barely registered. The neighbor tally
+  is now one sparse matrix over the whole graph, and the within-module degree
+  one pass over the edge list.
+
+  Removing that exposed a second cost of the same shape underneath it: the
+  within-module z-score built an `induced_subgraph()` per module, which is
+  O(modules x (V + E)). Because `calculate_roles()` deliberately calls
+  `find_modules(min_size = 1)`, a graph can carry thousands of modules, and the
+  cost grew accordingly -- 0.07 s at 10 modules against 1.32 s at 3000. An edge
+  contributes to its endpoints' within-module degree exactly when both ends
+  share a module, so no subgraph is needed; 3000 modules now costs 0.129 s, and
+  the runtime is close to flat in the module count.
+
+  The role arithmetic was never the 2.7 min the review reported. On the same
+  graph a default call takes about 57 s, of which 56-odd is
+  `igraph::cluster_spinglass()` -- so the remaining cost is the
+  `cluster.method = "spinglass"` default, not netkit's own work. That default is
+  unchanged here, since changing it would change results.
+
 * The diffusion maths now has a single implementation, `diffuse_columns()`,
   which takes any number of seed vectors at once; `network_diffusion()` calls it
   with one column. Batching is bit-identical for `"laplacian"` and `"heat"`.

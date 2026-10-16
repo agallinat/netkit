@@ -265,3 +265,173 @@ test_that("the returned graph carries the classification and chains onward", {
   expect_true("score" %in% igraph::vertex_attr_names(res$graph))
   expect_silent(find_hubs(res$graph, plot = FALSE))
 })
+
+# --- z and P against a direct reference implementation ----------------------
+#
+# z and P are computed by whole-graph aggregation: within-module degree from one
+# pass over the edge list, and the per-module neighbor tally from one sparse
+# matrix. The implementations they replaced built an induced_subgraph() per
+# module and called neighbors() once per vertex. These tests pin the new
+# arithmetic against that older, slower, obviously-correct formulation rather
+# than against recorded output, so a future rewrite has something to answer to.
+
+ref_z <- function(g, memb, wname = NULL) {
+  gn <- igraph::V(g)$name
+  if (is.null(names(memb))) memb <- stats::setNames(memb, gn)
+  z <- stats::setNames(rep(NA_real_, length(gn)), gn)
+  for (mod in unique(memb[!is.na(memb)])) {
+    nodes <- names(memb)[!is.na(memb) & memb == mod]
+    if (length(nodes) <= 1) {
+      z[nodes] <- 0
+      next
+    }
+    gg <- if (is.null(wname)) {
+      g
+    } else {
+      igraph::set_edge_attr(g, ".s", value = igraph::edge_attr(g, wname))
+    }
+    sub <- igraph::induced_subgraph(gg, nodes)
+    ki <- if (is.null(wname)) {
+      igraph::degree(sub)
+    } else {
+      igraph::strength(sub, weights = igraph::edge_attr(sub, ".s"))
+    }
+    s <- stats::sd(ki)
+    z[names(ki)] <- if (is.na(s) || s == 0) rep(0, length(ki)) else (ki - mean(ki)) / s
+  }
+  z
+}
+
+ref_p <- function(g, memb, wname = NULL) {
+  gn <- igraph::V(g)$name
+  if (is.null(names(memb))) memb <- stats::setNames(memb, gn)
+  strength <- if (is.null(wname)) NULL else igraph::edge_attr(g, wname)
+  vapply(gn, function(node) {
+    nbrs <- igraph::neighbors(g, node, mode = "all")
+    if (length(nbrs) == 0) return(0)
+    if (is.null(strength)) {
+      mods <- memb[gn[as.integer(nbrs)]]
+      mods <- mods[!is.na(mods)]
+      if (!length(mods)) return(NA_real_)
+      k <- as.numeric(table(mods))
+    } else {
+      e <- igraph::incident(g, node, mode = "all")
+      en <- igraph::ends(g, e, names = TRUE)
+      far <- ifelse(en[, 1] == node, en[, 2], en[, 1])
+      m <- memb[far]
+      ok <- !is.na(m)
+      if (!any(ok)) return(NA_real_)
+      k <- as.numeric(tapply(strength[as.integer(e)][ok], m[ok], sum))
+    }
+    1 - sum((k / sum(k))^2)
+  }, numeric(1))
+}
+
+expect_matches_reference <- function(g, memb, wname = NULL) {
+  res <- suppressWarnings(
+    calculate_roles(g, communities = memb, plot = FALSE, weights = wname))
+  got_z <- stats::setNames(res$result$z, res$result$node)
+  got_p <- stats::setNames(res$result$p, res$result$node)
+  expect_equal(unname(got_z), unname(ref_z(g, memb, wname)[names(got_z)]))
+  expect_equal(unname(got_p), unname(ref_p(g, memb, wname)[names(got_p)]))
+}
+
+test_that("z and P match a per-module, per-vertex reference implementation", {
+  set.seed(9)
+  g <- igraph::sample_gnp(60, 0.08, directed = FALSE)
+  igraph::V(g)$name <- paste0("n", seq_len(60))
+  expect_matches_reference(g, igraph::membership(igraph::cluster_louvain(g)))
+
+  igraph::E(g)$wt <- stats::runif(igraph::ecount(g), 0.5, 5)
+  expect_matches_reference(g, igraph::membership(igraph::cluster_louvain(g)), "wt")
+})
+
+test_that("z and P match the reference on a directed graph", {
+  # Within-module degree and the neighbor tally both read mode = "all", so an
+  # edge contributes to each endpoint regardless of direction.
+  set.seed(4)
+  g <- igraph::sample_pa(50, directed = TRUE)
+  igraph::V(g)$name <- paste0("n", seq_len(50))
+  memb <- stats::setNames(rep(1:5, length.out = 50), igraph::V(g)$name)
+
+  expect_matches_reference(g, memb)
+  igraph::E(g)$wt <- stats::runif(igraph::ecount(g), 0.5, 5)
+  expect_matches_reference(g, memb, "wt")
+})
+
+test_that("self-loops and parallel edges are tallied as igraph counts them", {
+  # The edge-list pass has to reproduce degree(loops = TRUE): a self-loop adds
+  # its contribution twice, once per endpoint, and parallel edges count
+  # separately. Getting this wrong would shift z without making it invalid.
+  g <- igraph::graph_from_edgelist(
+    as.matrix(data.frame(a = c(1, 1, 2, 2, 3, 4, 4),
+                         b = c(2, 2, 3, 2, 1, 4, 5))), directed = FALSE)
+  igraph::V(g)$name <- paste0("n", seq_len(igraph::vcount(g)))
+  memb <- stats::setNames(c(1, 1, 2, 2, 2), igraph::V(g)$name)
+
+  expect_matches_reference(g, memb)
+  igraph::E(g)$wt <- c(1, 2, 3, 4, 5, 6, 7)
+  expect_matches_reference(g, memb, "wt")
+})
+
+test_that("an edge to an unknown-module neighbour does not corrupt the tally", {
+  # `TRUE & NA` is NA. Guarding only one endpoint when testing whether an edge is
+  # internal to a module put NA into a subscript, which errors outright -- but the
+  # same slip in the P tally would have silently mixed an unknown module into the
+  # denominator. Both ends are guarded, and the NA-module vertices keep NA roles
+  # while their neighbours stay computable.
+  set.seed(11)
+  g <- igraph::add_vertices(igraph::sample_gnp(40, 0.1, directed = FALSE), 2)
+  igraph::V(g)$name <- paste0("n", seq_len(igraph::vcount(g)))
+  memb <- as.integer(igraph::membership(igraph::cluster_louvain(g)))
+  names(memb) <- igraph::V(g)$name
+  memb[c(3, 7, 11, 19, 23, 31, 37, 41)] <- NA
+
+  expect_matches_reference(g, memb)
+  igraph::E(g)$wt <- stats::runif(igraph::ecount(g), 0.5, 5)
+  expect_matches_reference(g, memb, "wt")
+
+  res <- suppressWarnings(calculate_roles(g, communities = memb, plot = FALSE))
+  # The unknown-module vertices are reported, not quietly given a module.
+  expect_true(all(is.na(res$result$role[is.na(res$result$module)])))
+  # ... and vertices that do have a module still get a role, so one NA neighbour
+  # does not propagate across the graph.
+  known <- !is.na(res$result$module) & res$result$module %in% res$result$module
+  expect_true(any(!is.na(res$result$role[known])))
+})
+
+test_that("every vertex in a singleton module gets z = 0", {
+  # A module of one has no within-module variance to standardize against. The
+  # per-module sd is NA there rather than 0, so the zero-variance branch has to
+  # catch both.
+  set.seed(5)
+  g <- igraph::sample_gnp(80, 0.06, directed = FALSE)
+  igraph::V(g)$name <- paste0("n", seq_len(80))
+  memb <- stats::setNames(seq_len(80), igraph::V(g)$name)
+
+  res <- suppressWarnings(calculate_roles(g, communities = memb, plot = FALSE))
+  expect_true(all(res$result$z == 0))
+  expect_matches_reference(g, memb)
+})
+
+test_that("an edgeless graph yields z = 0 and P = 0 throughout", {
+  g <- igraph::make_empty_graph(5, directed = FALSE)
+  igraph::V(g)$name <- paste0("n", seq_len(5))
+  res <- calculate_roles(g, communities = stats::setNames(rep(1L, 5), igraph::V(g)$name),
+                         plot = FALSE)
+  expect_true(all(res$result$z == 0))
+  # No neighbours at all is P = 0, distinct from neighbours of unknown module,
+  # which is P = NA.
+  expect_true(all(res$result$p == 0))
+})
+
+test_that("the result table carries plain unnamed numeric columns", {
+  # lengths() and rowsum() both carry names through, and ifelse() propagates the
+  # attributes of its first argument, so the aggregation can hand back a named
+  # vector that would surface as named tibble columns.
+  g <- test_graph()
+  res <- suppressWarnings(calculate_roles(g, cluster.method = "louvain", plot = FALSE))
+  expect_null(names(res$result$z))
+  expect_null(names(res$result$p))
+  expect_null(names(res$result$module))
+})
