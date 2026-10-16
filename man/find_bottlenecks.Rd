@@ -6,7 +6,8 @@
 \usage{
 find_bottlenecks(
   graph,
-  method = c("zscore", "quantile"),
+  method = c("absolute", "zscore", "quantile"),
+  max_degree = 3,
   degree_threshold = -1,
   betweenness_threshold = 1,
   degree_quantile = 0.25,
@@ -26,7 +27,12 @@ find_bottlenecks(
 data frame containing a symbolic edge list in the first two columns. Additional
 columns are considered as edge attributes.}
 
-\item{method}{Character. Method to define bottlenecks: \code{"zscore"} or \code{"quantile"}.}
+\item{method}{Character. Method to define bottlenecks: \code{"absolute"}
+(default), \code{"zscore"} or \code{"quantile"}. See "Choosing a method"
+below -- the default changed in 0.1.2.}
+
+\item{max_degree}{Numeric. Upper bound on the number of neighbors a bottleneck
+may have (only used if \code{method = "absolute"}). Default is \code{3}.}
 
 \item{degree_threshold}{Numeric. Upper threshold for standardized degree (only used if \code{method = "zscore"}).}
 
@@ -91,9 +97,55 @@ on few shortest paths. That is a real answer to the question, and the
 function now says so rather than returning an empty table in silence. The
 warning distinguishes it from the other two causes -- a threshold no vertex
 can reach, and a metric with no variance at all.
+}
 
-See the "Choosing a method" section of \code{\link[=find_hubs]{find_hubs()}} for the trade-off
-between \code{"zscore"} and \code{"quantile"}, which applies identically here.
+\section{Choosing a method}{
+
+
+The default is \code{"absolute"}, which was \code{"zscore"} through 0.1.1. The two axes
+of a bottleneck are not the same kind of statement, and treating them as
+though they were is what made the old default unreachable:
+\itemize{
+\item \strong{Low degree is absolute.} A bottleneck is poorly connected -- it has few
+neighbors, full stop. \code{"zscore"} instead asked for low degree to be a
+\emph{statistical outlier}, with \code{degree_threshold = -1} requiring a degree a
+standard deviation below the mean. On any right-skewed degree distribution
+the left tail is short: degree-1 vertices are the single most common kind of
+vertex in a scale-free graph, so they are the \emph{mode}, not an anomaly, and
+their z-score is around -0.6. The default therefore selected nothing at
+every size from n = 60 to n = 2000 -- not because those graphs have no
+bottlenecks, but because "unusually poorly connected" is close to a
+contradiction in a graph where being poorly connected is the norm.
+\item \strong{High betweenness is relative.} Carrying a lot of flow only means
+something by comparison with the rest of the graph, so this axis stays a
+quantile (\code{betweenness_quantile}, default the 75th percentile).
+}
+
+So \code{"absolute"} selects vertices with at most \code{max_degree} neighbors whose
+betweenness is in the top \code{1 - betweenness_quantile} of the vertices that lie
+on any shortest path at all. Two details matter:
+\itemize{
+\item The degree axis is the neighbor \strong{count}, even when \code{weights} is supplied,
+and is neither log-transformed nor standardized. An absolute threshold needs
+a unit that means the same thing in every graph, and only the neighbor count
+qualifies: a strength cap of 3 means nothing without knowing what the
+weights measure. Betweenness still honours \code{weights}, so connectivity is
+counted while flow is weighted.
+\item The betweenness quantile is computed over the vertices with \strong{nonzero}
+betweenness. Over the full distribution it would be zero on any sparse
+graph, for the reason given below.
+}
+
+\code{max_degree = 3} is a default, not a law. It is low enough to mean "poorly
+connected" in most networks and high enough to admit a genuine multi-edged
+bridge; raise it on a dense graph, where no vertex may be that sparse, and
+note that a vertex of degree 1 can never be selected whatever it is set to,
+since a leaf lies on no shortest path between other vertices.
+
+\code{"zscore"} and \code{"quantile"} are unchanged and still available. See the
+"Choosing a method" section of \code{\link[=find_hubs]{find_hubs()}} for the trade-off between those
+two, which applies identically here -- with the caveat that the \code{"zscore"}
+degree default is the one described above and will usually select nothing.
 
 A vertex with betweenness of exactly zero is never selected, whatever the
 thresholds. A bottleneck lies on shortest paths, and such a vertex lies on

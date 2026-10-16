@@ -8,7 +8,11 @@
 #' @param graph An \code{igraph} object representing the network to analyze or a
 #'   data frame containing a symbolic edge list in the first two columns. Additional
 #'   columns are considered as edge attributes.
-#' @param method Character. Method to define bottlenecks: \code{"zscore"} or \code{"quantile"}.
+#' @param method Character. Method to define bottlenecks: \code{"absolute"}
+#'   (default), \code{"zscore"} or \code{"quantile"}. See "Choosing a method"
+#'   below -- the default changed in 0.1.2.
+#' @param max_degree Numeric. Upper bound on the number of neighbors a bottleneck
+#'   may have (only used if \code{method = "absolute"}). Default is \code{3}.
 #' @param degree_threshold Numeric. Upper threshold for standardized degree (only used if \code{method = "zscore"}).
 #' @param betweenness_threshold Numeric. Lower threshold for standardized betweenness (used in both methods).
 #' @param degree_quantile Numeric between 0 and 1. Quantile threshold for degree (used if \code{method = "quantile"}).
@@ -48,8 +52,50 @@
 #' warning distinguishes it from the other two causes -- a threshold no vertex
 #' can reach, and a metric with no variance at all.
 #'
-#' See the "Choosing a method" section of [find_hubs()] for the trade-off
-#' between `"zscore"` and `"quantile"`, which applies identically here.
+#' @section Choosing a method:
+#'
+#' The default is `"absolute"`, which was `"zscore"` through 0.1.1. The two axes
+#' of a bottleneck are not the same kind of statement, and treating them as
+#' though they were is what made the old default unreachable:
+#'
+#' * **Low degree is absolute.** A bottleneck is poorly connected -- it has few
+#'   neighbors, full stop. `"zscore"` instead asked for low degree to be a
+#'   *statistical outlier*, with `degree_threshold = -1` requiring a degree a
+#'   standard deviation below the mean. On any right-skewed degree distribution
+#'   the left tail is short: degree-1 vertices are the single most common kind of
+#'   vertex in a scale-free graph, so they are the *mode*, not an anomaly, and
+#'   their z-score is around -0.6. The default therefore selected nothing at
+#'   every size from n = 60 to n = 2000 -- not because those graphs have no
+#'   bottlenecks, but because "unusually poorly connected" is close to a
+#'   contradiction in a graph where being poorly connected is the norm.
+#' * **High betweenness is relative.** Carrying a lot of flow only means
+#'   something by comparison with the rest of the graph, so this axis stays a
+#'   quantile (`betweenness_quantile`, default the 75th percentile).
+#'
+#' So `"absolute"` selects vertices with at most `max_degree` neighbors whose
+#' betweenness is in the top `1 - betweenness_quantile` of the vertices that lie
+#' on any shortest path at all. Two details matter:
+#'
+#' * The degree axis is the neighbor **count**, even when `weights` is supplied,
+#'   and is neither log-transformed nor standardized. An absolute threshold needs
+#'   a unit that means the same thing in every graph, and only the neighbor count
+#'   qualifies: a strength cap of 3 means nothing without knowing what the
+#'   weights measure. Betweenness still honours `weights`, so connectivity is
+#'   counted while flow is weighted.
+#' * The betweenness quantile is computed over the vertices with **nonzero**
+#'   betweenness. Over the full distribution it would be zero on any sparse
+#'   graph, for the reason given below.
+#'
+#' `max_degree = 3` is a default, not a law. It is low enough to mean "poorly
+#' connected" in most networks and high enough to admit a genuine multi-edged
+#' bridge; raise it on a dense graph, where no vertex may be that sparse, and
+#' note that a vertex of degree 1 can never be selected whatever it is set to,
+#' since a leaf lies on no shortest path between other vertices.
+#'
+#' `"zscore"` and `"quantile"` are unchanged and still available. See the
+#' "Choosing a method" section of [find_hubs()] for the trade-off between those
+#' two, which applies identically here -- with the caveat that the `"zscore"`
+#' degree default is the one described above and will usually select nothing.
 #'
 #' A vertex with betweenness of exactly zero is never selected, whatever the
 #' thresholds. A bottleneck lies on shortest paths, and such a vertex lies on
@@ -101,7 +147,8 @@
 #'
 #' @export
 find_bottlenecks <- function(graph,
-                             method = c("zscore", "quantile"),
+                             method = c("absolute", "zscore", "quantile"),
+                             max_degree = 3,
                              degree_threshold = -1,
                              betweenness_threshold = 1,
                              degree_quantile = 0.25,
@@ -124,7 +171,8 @@ find_bottlenecks <- function(graph,
   # and cost-based betweenness: a "high degree, high betweenness" node in a
   # weighted graph is one with strong attachments on many shortest paths, which
   # is not the same set of nodes as the unweighted counts pick out.
-  deg <- if (w$weighted) igraph::strength(graph, weights = w$strength) else degree(graph)
+  deg_count <- degree(graph)
+  deg <- if (w$weighted) igraph::strength(graph, weights = w$strength) else deg_count
   btw <- betweenness(graph, normalized = TRUE, weights = w$distance)
 
   # Optional log transform
@@ -134,7 +182,53 @@ find_bottlenecks <- function(graph,
   deg_degenerate <- FALSE
   btw_degenerate <- FALSE
 
-  if (method == "zscore") {
+  if (method == "absolute") {
+    if (!is.numeric(max_degree) || length(max_degree) != 1L ||
+        !is.finite(max_degree) || max_degree < 1) {
+      stop("`max_degree` must be a single finite number of at least 1.")
+    }
+
+    # The degree axis is the neighbor *count*, even under weights, and is
+    # deliberately not log-transformed or standardized. An absolute threshold
+    # needs a unit that means the same thing in every graph, and the number of
+    # neighbors is the only such unit available: a strength cap of 3 says nothing
+    # without knowing what the weights measure, and log1p(degree) <= 3 is not a
+    # statement anyone intends. Betweenness still honours `weights`, so
+    # connectivity is counted while flow is weighted.
+    deg_score <- deg_count
+    btw_score <- btw_val
+
+    # The betweenness cutoff is taken over the vertices that lie on at least one
+    # shortest path, not over all of them. On a sparse graph most vertices have
+    # betweenness exactly zero, so a quantile of the full distribution is itself
+    # zero -- the trap documented below, which no choice of quantile escapes.
+    # Restricted to the positive values, the cutoff is a real quantile of the
+    # distribution of actual flow.
+    positive <- btw > 0
+    btw_pos <- btw_score[positive]
+    btw_cutoff <- if (length(btw_pos)) {
+      quantile(btw_pos, betweenness_quantile, na.rm = TRUE)
+    } else {
+      Inf
+    }
+
+    # "High betweenness" is a comparison, so it is undefined when the vertices
+    # carrying flow all carry the same amount. Without this guard a quantile
+    # cutoff admits all of them -- every vertex of a ring is at the 75th
+    # percentile of a constant -- which is precisely the criticism of taking a
+    # fixed fraction of the graph regardless of its structure. One flow-carrying
+    # vertex is not degenerate: it is unambiguously the maximum.
+    s_pos <- if (length(btw_pos) > 1L) stats::sd(btw_pos) else NA_real_
+    btw_degenerate <- length(btw_pos) > 1L && (!is.finite(s_pos) || s_pos == 0)
+
+    degree_threshold <- max_degree
+    betweenness_threshold <- btw_cutoff
+    is_bottleneck <- if (btw_degenerate) {
+      rep(FALSE, length(deg_score))
+    } else {
+      deg_score <= max_degree & btw_score >= btw_cutoff
+    }
+  } else if (method == "zscore") {
     # Via standardize_node_metric() rather than scale() directly: on a graph
     # where every vertex has the same degree, scale() returns NaN throughout and
     # the comparisons below are then NA, not FALSE.
@@ -178,6 +272,10 @@ find_bottlenecks <- function(graph,
   if (!any(is_bottleneck)) {
     criterion <- if (method == "zscore") {
       c("degree_threshold", "betweenness_threshold")
+    } else if (method == "absolute") {
+      c("max_degree",
+        sprintf("the betweenness %s quantile of the vertices with nonzero betweenness",
+                format(betweenness_quantile)))
     } else {
       c(sprintf("the degree %s quantile", format(degree_quantile)),
         sprintf("the betweenness %s quantile", format(betweenness_quantile)))

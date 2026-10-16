@@ -69,14 +69,25 @@ warn_empty_selection <- function(fn, label, method, axes) {
 
   if (any(degenerate)) {
     flat <- vapply(axes[degenerate], function(a) a$label, character(1))
+
+    # Under "absolute" the flat axis is compared against a quantile of itself
+    # rather than standardized, so there is no NA column to point at -- the
+    # metric is reported as measured and only the classification is FALSE.
+    tail_text <- if (method == "absolute") {
+      paste0("The metric is reported as measured; the classification is FALSE ",
+             "throughout.")
+    } else {
+      paste0("The standardized columns are NA for that reason; the ",
+             "classification is FALSE throughout.")
+    }
+
     warning(sprintf(
-      paste0("%s() found no %s: %s %s the same value at every vertex, so the ",
-             "standardized metric is undefined and no vertex can be unusual. ",
-             "This is a property of the graph -- in a regular graph no vertex ",
-             "is better connected than another. The standardized columns are ",
-             "NA for that reason; the classification is FALSE throughout."),
+      paste0("%s() found no %s: %s %s the same value at every vertex, so no ",
+             "vertex can be unusual by comparison with the others. This is a ",
+             "property of the graph -- in a regular graph no vertex is better ",
+             "connected than another. %s"),
       fn, label, paste(flat, collapse = " and "),
-      if (length(flat) > 1) "take" else "takes"
+      if (length(flat) > 1) "take" else "takes", tail_text
     ), call. = FALSE)
     return(invisible(NULL))
   }
@@ -100,6 +111,10 @@ warn_empty_selection <- function(fn, label, method, axes) {
              "3, so a threshold above that is unreachable rather than unmet. ",
              "Use method = \"quantile\" for percentile cutoffs, or lower the ",
              "threshold.")
+    } else if (method == "absolute") {
+      paste0(" Raise max_degree if the graph is dense enough that no vertex is ",
+             "that sparsely connected, or check whether any vertex has nonzero ",
+             "betweenness at all -- in a complete graph none does.")
     } else {
       " Lower the corresponding quantile to widen the selection."
     }

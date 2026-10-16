@@ -435,3 +435,37 @@ test_that("the result table carries plain unnamed numeric columns", {
   expect_null(names(res$result$p))
   expect_null(names(res$result$module))
 })
+
+test_that("the default clustering method covers a disconnected graph", {
+  # The default was "spinglass" through 0.1.1, which igraph cannot run on a
+  # disconnected graph: find_modules() restricted it to the largest component, so
+  # the *documented default* returned a partial table, with no module and no role
+  # for anything outside that component. This asserts the coverage property
+  # rather than the choice of algorithm, so swapping louvain for another method
+  # defined on disconnected graphs keeps the test passing.
+  set.seed(1)
+  g <- igraph::add_vertices(igraph::sample_gnp(60, 0.05, directed = FALSE), 4)
+  igraph::V(g)$name <- paste0("n", seq_len(igraph::vcount(g)))
+  expect_gt(igraph::count_components(g), 1)
+
+  res <- calculate_roles(g, plot = FALSE)
+  expect_equal(nrow(res$result), igraph::vcount(g))
+  expect_false(any(is.na(res$result$module)))
+  expect_setequal(res$result$node, igraph::V(g)$name)
+
+  # The old default is still reachable, and still warns about what it cannot do:
+  # the fallback to the largest component, and the partial coverage that follows.
+  expect_warning(
+    expect_warning(
+      calculate_roles(g, cluster.method = "spinglass", plot = FALSE),
+      "vertices have no module assignment"
+    ),
+    "cannot work with unconnected graph"
+  )
+})
+
+test_that("the default is reported in the method string", {
+  g <- test_graph()
+  res <- calculate_roles(g, plot = FALSE)
+  expect_match(res$method, "louvain")
+})

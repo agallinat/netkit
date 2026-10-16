@@ -93,6 +93,58 @@ than estimates.
 
 ## Behaviour changes
 
+* **`find_bottlenecks()` defaults to `method = "absolute"`, a new third
+  method.** The two axes of a bottleneck are not the same kind of claim, and the
+  old default treated them as though they were. Low degree is an *absolute*
+  statement -- a bottleneck has few neighbours, full stop -- but `"zscore"` asked
+  for it to be a statistical outlier, with `degree_threshold = -1` requiring a
+  degree a standard deviation below the mean. On a right-skewed degree
+  distribution the left tail is short: degree-1 vertices are the single most
+  common kind of vertex in a scale-free graph, so they are the *mode* rather than
+  an anomaly and their z-score is about -0.6. The documented default therefore
+  selected nothing at every size from n = 60 to n = 2000 -- not because those
+  graphs lack bottlenecks, but because "unusually poorly connected" is near a
+  contradiction where being poorly connected is the norm. The empty-selection
+  warning added above made this visible; it did not make it right.
+
+  `"absolute"` keeps the conjunction and splits the axes by kind: at most
+  `max_degree` neighbours (default 3), and betweenness in the top
+  `1 - betweenness_quantile` of the vertices that lie on any shortest path. Two
+  details carry the design. The degree axis is the neighbour **count** even under
+  `weights`, and is neither logged nor standardized, because an absolute
+  threshold needs a unit that means the same thing in every graph and only a
+  count qualifies -- a strength cap of 3 says nothing without knowing what the
+  weights measure. And the betweenness quantile is taken over the **nonzero**
+  values, because over the full distribution it is zero on any sparse graph,
+  which is the zero-inflation trap already documented for `"quantile"`.
+
+  On the two cliques joined by a two-vertex bridge in the help page, the default
+  now returns exactly those two bridge vertices. `"zscore"` and `"quantile"` are
+  unchanged and still available.
+
+* `find_bottlenecks(method = "absolute")` selects nothing on a regular graph, and
+  says why. "High betweenness" is a comparison, so it is undefined when every
+  flow-carrying vertex carries the same amount; without that guard the quantile
+  cutoff admitted all of them and returned every vertex of a ring as a
+  bottleneck -- the same objection this package records against taking a fixed
+  fraction of the graph regardless of its structure. A single flow-carrying
+  vertex is not treated as degenerate, since it is unambiguously the maximum.
+
+* **`calculate_roles()` defaults to `cluster.method = "louvain"`**, which was
+  `"spinglass"`. Two reasons, neither about the quality of the partition.
+  `igraph::cluster_spinglass()` cannot run on a disconnected graph, so
+  [find_modules()] restricted it to the largest connected component and the
+  *documented default* returned a partial table -- no module and no role for
+  anything outside that component -- on any graph that is not connected. And it
+  cost essentially the whole runtime: about 56 of 57 seconds on a 6000-vertex
+  graph, against under a tenth of a second for the role arithmetic itself.
+
+  This changes the modules, and therefore z, P and the assigned roles, for every
+  call that relied on the default. That is inherent to the measure rather than an
+  artifact: any change of clustering method changes the roles. Pass
+  `cluster.method = "spinglass"` to restore the previous behaviour, or supply
+  `communities` directly when the partition matters and should not be re-derived.
+
 * **`find_hubs()` and `find_bottlenecks()` warn when they select nothing.**
   Both used to return an empty table in silence, which conflates three
   different situations, and the warning now says which one occurred because the

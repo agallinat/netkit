@@ -11,7 +11,10 @@
 #'   containing a symbolic edge list in the first two columns. Additional columns are
 #'   considered as edge attributes.
 #' @param communities Optional. A community clustering object (as returned by an `igraph` clustering function), or a named membership vector. If `NULL`, community detection is performed using `cluster.method`.
-#' @param cluster.method Character. Clustering algorithm to use if `communities` is `NULL`. Default is `"spinglass"`. Passed to `find_modules()`.
+#' @param cluster.method Character. Clustering algorithm to use if `communities`
+#'   is `NULL`. Default is `"louvain"`. Passed to [find_modules()]. Changed from
+#'   `"spinglass"` in 0.1.2 -- see Details for why, and pass
+#'   `cluster.method = "spinglass"` to restore the old behaviour.
 #' @param plot Logical. Whether to generate a 2D plot of participation coefficient (P) vs. within-module z-score (z). Default is `TRUE`.
 #' @param highlight_roles Logical. If `TRUE`, the role regions in the z–P plane are shaded for visual clarity. Default is `TRUE`.
 #' @param hub_z Numeric. Threshold for defining hubs in terms of within-module z-score. Default is `2.5`.
@@ -31,9 +34,9 @@
 #'     z-score, participation coefficient, and assigned role. It has one row per
 #'     graph vertex. The exception is `cluster.method = "spinglass"`, which can only
 #'     be run on the largest connected component of a disconnected graph; vertices
-#'     outside it have no module and are absent, which raises a warning. `z`, `p` and
-#'     `role` are `NA` for any vertex whose module, or whose neighbors' modules, are
-#'     unknown.}
+#'     outside it have no module and are absent, which raises a warning. This is
+#'     why spinglass is no longer the default. `z`, `p` and `role` are `NA` for any
+#'     vertex whose module, or whose neighbors' modules, are unknown.}
 #'   \item{`graph`}{The input graph with `module`, `role_z`, `role_p` and `role`
 #'     attached as vertex attributes, so that the classification can be passed
 #'     straight to [plot_Net()] or [robustness_analysis()].}
@@ -50,6 +53,28 @@
 #' coverage: the participation coefficient of a node is computed from the module
 #' memberships of its neighbors, so dropping a neighbor's module silently distorts
 #' the coefficient of the node that remains.
+#'
+#' @section Choice of clustering method:
+#' The default is `"louvain"`. It was `"spinglass"` through 0.1.1, which was a
+#' poor default for two reasons that have nothing to do with the quality of the
+#' partition:
+#'
+#' * **Coverage.** `igraph::cluster_spinglass()` cannot run on a disconnected
+#'   graph, so [find_modules()] restricts it to the largest connected component.
+#'   Every vertex outside that component then has no module, and no role --
+#'   a partial table from the *documented default*, on any graph that is not
+#'   connected. It is warned about, but the remedy is not to warn.
+#' * **Cost.** On a 6000-vertex, 78000-edge graph a default call took about 57
+#'   seconds, of which roughly 56 were spinglass. The role arithmetic itself is
+#'   under a tenth of a second, so the default chose essentially all of the
+#'   runtime.
+#'
+#' `"louvain"` is fast, defined on disconnected graphs, and seeded internally so
+#' repeated calls agree. Pass `cluster.method = "spinglass"` to restore the
+#' previous behaviour. Any change of clustering method changes the modules, and
+#' so changes z, P and the assigned roles -- that is inherent to the measure, not
+#' an artifact of the default. Supply `communities` directly when the partition
+#' matters and should not be re-derived.
 #'
 #' The node roles are defined as follows, where `hub_z` defaults to 2.5 and the
 #' participation-coefficient boundaries are those published in Guimera & Amaral
@@ -79,10 +104,7 @@
 #' g <- igraph::sample_gnp(80, 0.08, directed = FALSE)
 #' igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
 #'
-#' # "louvain" is used here rather than the "spinglass" default. spinglass cannot
-#' # run on a disconnected graph, so find_modules() falls back to the largest
-#' # connected component and the remaining nodes receive no role.
-#' result <- calculate_roles(g, cluster.method = "louvain", plot = FALSE)
+#' result <- calculate_roles(g, plot = FALSE)
 #' head(result$result)
 #' result$roles_definitions
 #'
@@ -103,7 +125,7 @@
 #' @export
 calculate_roles <- function(graph,
                             communities = NULL,
-                            cluster.method = "spinglass",
+                            cluster.method = "louvain",
                             plot = TRUE,
                             highlight_roles = TRUE,
                             hub_z = 2.5,
