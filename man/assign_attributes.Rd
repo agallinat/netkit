@@ -29,6 +29,20 @@ using user-provided metadata tables. Vertex attributes are matched by the first 
 and edge attributes are matched using the first two columns of \code{edge_table}, taking graph direction into account.
 Only matching nodes and edges are updated. Warnings are issued when there are unmatched entries.
 }
+\section{Parallel edges}{
+
+An endpoint pair does not identify an edge in a multigraph. When a graph holds
+several edges between the same two vertices, the k-th such edge takes the k-th
+\code{edge_table} row carrying that pair, in the order both appear. A graph with no
+parallel edges is unaffected, since every pair then occurs once on each side.
+Rows and edges left over -- a pair repeated more often on one side than the
+other -- are reported by the usual unmatched warnings, and unmatched edges
+receive \code{NA}.
+
+In an undirected graph the endpoint pair is read as unordered, so an
+\code{edge_table} row may list either endpoint first.
+}
+
 \examples{
 g <- igraph::make_ring(5)
 igraph::V(g)$name <- letters[1:5]

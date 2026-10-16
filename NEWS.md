@@ -205,6 +205,35 @@ regression test.
 
 ## Bug fixes
 
+* **`assign_attributes()` gave parallel edges the wrong attributes, and which
+  wrong value depended on the row order of `edge_table`.** An endpoint pair does
+  not identify an edge in a multigraph, but the match was a
+  `merge(by = c("FROM", "TO"))`, which forms the cartesian product of the two
+  duplicate groups. The assignment `values[merged$index] <- merged[[col]]` then
+  wrote through a duplicated index, and R keeps the last occurrence, so every
+  edge between one pair of vertices received a single value -- whichever the
+  merge happened to put last. On a three-edge graph with `a-b` twice, the two
+  parallel edges both took `"second"`, and permuting the table's rows changed
+  that to `"first"`. The pairing is now explicit and 1:1: the k-th graph edge of
+  an endpoint pair takes the k-th `edge_table` row carrying that pair. Graphs
+  with no parallel edges are unaffected. Reported by `bionetkit`, whose SIGNOR
+  network has 40021 edges over 30921 distinct endpoint pairs.
+
+* **`assign_attributes()` reported edge-match counts that could not be read.**
+  It warned "Only 88279 rows from 'edge_table' matched graph edges (total edges
+  in graph: 40021)" -- more rows matched than the table had, because the count
+  was `nrow(merged)` while the denominator was the table's row count. The two
+  numbers now come from one matching, so each is bounded by its own total. This
+  also makes the warning *reachable*: `all.x = TRUE` pinned `nrow(merged)` to the
+  graph's edge count, so the partial-match warning could never fire for an
+  ordinary graph and fired only spuriously on a multigraph. Attaching a 2-row
+  `edge_table` to a 5-edge ring now warns, where before it was silent.
+
+* `assign_attributes()` no longer counts a repeated id in `nodes_table` as an
+  unmatched row. `match()` resolves every repeat to the first row, so the old
+  comparison of matched *vertices* against the table's row count overstated the
+  misses.
+
 * **`network_diffusion_with_pvalues()` matched each node against the wrong
   null distribution.** `network_diffusion()` returns its nodes sorted by
   descending score, so the real scores and every permutation came back in a

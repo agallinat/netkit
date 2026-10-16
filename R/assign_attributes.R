@@ -5,6 +5,18 @@
 #' and edge attributes are matched using the first two columns of \code{edge_table}, taking graph direction into account.
 #' Only matching nodes and edges are updated. Warnings are issued when there are unmatched entries.
 #'
+#' @section Parallel edges:
+#' An endpoint pair does not identify an edge in a multigraph. When a graph holds
+#' several edges between the same two vertices, the k-th such edge takes the k-th
+#' `edge_table` row carrying that pair, in the order both appear. A graph with no
+#' parallel edges is unaffected, since every pair then occurs once on each side.
+#' Rows and edges left over -- a pair repeated more often on one side than the
+#' other -- are reported by the usual unmatched warnings, and unmatched edges
+#' receive `NA`.
+#'
+#' In an undirected graph the endpoint pair is read as unordered, so an
+#' `edge_table` row may list either endpoint first.
+#'
 #' @param graph An \code{igraph} object or a data frame containing a symbolic edge list.
 #' @param nodes_table Optional. A \code{data.frame} whose first column corresponds to vertex names.
 #' @param edge_table Optional. A \code{data.frame} whose first two columns correspond to source and target vertices.
@@ -41,13 +53,21 @@ assign_attributes <- function(graph,
 
     # Match nodes_table to graph nodes by name
     match_idx <- match(graph_nodes, vertex_ids)
-    n_matched <- sum(!is.na(match_idx))
 
-    if (n_matched < nrow(nodes_table)) {
-      warning(sprintf("Only %d of %d nodes in 'nodes_table' matched the graph vertices.", n_matched, nrow(nodes_table)))
+    # Both counts are derived from match_idx, so they describe one matching
+    # rather than two. Counting matched vertices and then reporting it against
+    # nrow(nodes_table) overstates the unmatched rows whenever the table repeats
+    # an id, because match() resolves every repeat to the first row.
+    n_vertices_matched <- sum(!is.na(match_idx))
+    n_rows_used <- length(unique(match_idx[!is.na(match_idx)]))
+
+    if (n_rows_used < nrow(nodes_table)) {
+      warning(sprintf("Only %d of %d rows in 'nodes_table' matched a graph vertex.",
+                      n_rows_used, nrow(nodes_table)))
     }
-    if (n_matched < length(graph_nodes)) {
-      warning(sprintf("Only %d of %d graph vertices matched 'nodes_table' entries.", n_matched, length(graph_nodes)))
+    if (n_vertices_matched < length(graph_nodes)) {
+      warning(sprintf("Only %d of %d graph vertices matched 'nodes_table' entries.",
+                      n_vertices_matched, length(graph_nodes)))
     }
 
     existing_v_attrs <- igraph::vertex_attr_names(graph)
@@ -72,31 +92,53 @@ assign_attributes <- function(graph,
 
     # Prepare edge data from graph
     edge_ends <- igraph::ends(graph, igraph::E(graph), names = TRUE)
-    graph_df <- data.frame(FROM = edge_ends[,1],
-                           TO = edge_ends[,2],
-                           index = seq_len(nrow(edge_ends)),
-                           stringsAsFactors = FALSE)
 
-    # Prepare attribute table
-    table_df <- edge_table
-    colnames(table_df)[1:2] <- c("FROM", "TO")
-
-    if (!igraph::is_directed(graph)) {
-      # Sort endpoints for undirected graphs
-      graph_df[, c("FROM", "TO")] <- t(apply(graph_df[, c("FROM", "TO")], 1, sort))
-      table_df[, c("FROM", "TO")] <- t(apply(table_df[, c("FROM", "TO")], 1, sort))
+    if (igraph::is_directed(graph)) {
+      g_a <- edge_ends[, 1]; g_b <- edge_ends[, 2]
+      t_a <- from;           t_b <- to
+    } else {
+      # Endpoint order carries no information in an undirected graph, so both
+      # sides are keyed on the sorted pair. pmin/pmax rather than apply(, 1, sort):
+      # one vectorized pass instead of one call per edge.
+      g_a <- pmin(edge_ends[, 1], edge_ends[, 2])
+      g_b <- pmax(edge_ends[, 1], edge_ends[, 2])
+      t_a <- pmin(from, to)
+      t_b <- pmax(from, to)
     }
 
-    # Merge based on FROM and TO to get matching attributes
-    merged <- merge(graph_df, table_df, by = c("FROM", "TO"), all.x = TRUE, sort = FALSE)
+    # Parallel edges share an endpoint pair, so the pair alone does not identify
+    # an edge. The k-th graph edge of a pair takes the k-th edge_table row of
+    # that pair: a 1:1 matching that reduces to plain pair matching when there
+    # are no parallel edges. merge() cannot be used here -- it forms the
+    # cartesian product of the two duplicate groups, which both inflates the
+    # reported counts and, because `values[index] <- ` keeps the last of a
+    # duplicated index, assigned every parallel edge whichever row the merge
+    # happened to put last.
+    #
+    # The separator cannot occur in a vertex name read from a table, so the
+    # pasted key is unambiguous.
+    sep <- "\r"
+    g_key <- paste(g_a, g_b, sep = sep)
+    t_key <- paste(t_a, t_b, sep = sep)
+    g_occ <- stats::ave(seq_along(g_key), g_key, FUN = seq_along)
+    t_occ <- stats::ave(seq_along(t_key), t_key, FUN = seq_along)
 
-    # Report matching stats
-    n_matched <- sum(!is.na(merged$index))
-    if (n_matched < nrow(table_df)) {
-      warning(sprintf("Only %d of %d edges in 'edge_table' matched the graph edges.", n_matched, nrow(table_df)))
+    row_of_edge <- match(paste(g_key, g_occ, sep = sep),
+                         paste(t_key, t_occ, sep = sep))
+    matched <- !is.na(row_of_edge)
+
+    # Both counts come from row_of_edge, so a row count and an edge count are
+    # never compared against different denominators.
+    n_edges_matched <- sum(matched)
+    n_rows_used <- length(unique(row_of_edge[matched]))
+
+    if (n_rows_used < nrow(edge_table)) {
+      warning(sprintf("Only %d of %d rows in 'edge_table' matched a graph edge.",
+                      n_rows_used, nrow(edge_table)))
     }
-    if (igraph::ecount(graph) != n_matched) {
-      warning(sprintf("Only %d rows from 'edge_table' matched graph edges (total edges in graph: %d).", n_matched, igraph::ecount(graph)))
+    if (n_edges_matched < igraph::ecount(graph)) {
+      warning(sprintf("Only %d of %d graph edges matched an 'edge_table' row.",
+                      n_edges_matched, igraph::ecount(graph)))
     }
 
     # Assign edge attributes
@@ -107,7 +149,7 @@ assign_attributes <- function(graph,
         warning(sprintf("Overwriting existing edge attribute '%s'", col))
       }
       values <- rep(NA, igraph::ecount(graph))
-      values[merged$index] <- merged[[col]]
+      values[matched] <- attr_data[[col]][row_of_edge[matched]]
       igraph::edge_attr(graph, col) <- values
     }
   }
